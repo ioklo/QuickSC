@@ -1,15 +1,14 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Text;
 
 namespace QuickSC.Token
 {
     public abstract class QsToken
     {
-    }
 
-    public class QsEOFToken : QsToken { }
+    }
 
     public class QsStringToken : QsToken
     {
@@ -43,5 +42,10 @@ namespace QuickSC.Token
         {
             return HashCode.Combine(Value);
         }
+    }
+
+    public class QsEndOfFileToken : QsToken
+    {
+
     }
 }

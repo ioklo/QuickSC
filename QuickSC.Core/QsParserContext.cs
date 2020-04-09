@@ -1,25 +1,54 @@
 ﻿
 using QuickSC.Token;
 using System;
+using System.Threading.Tasks;
 
 namespace QuickSC
 {
     class QsParserContext
     {
-        QsLexer lexer;
-        int lexerPos;
+        QsNormalLexer normalLexer;
+        QsCommandLexer commandLexer;
+        QsBufferPosition pos;
         
-        public QsParserContext(QsLexer lexer)
+        public QsParserContext(QsBufferPosition pos, QsNormalLexer lexer, QsCommandLexer commandLexer)
         {
-            this.lexer = lexer;
+            this.normalLexer = lexer;
+            this.commandLexer = commandLexer;
+            this.pos = pos;
         }
 
-        public QsToken? NextToken()
+        public async ValueTask<QsToken?> NextTokenAsync()
         {
-            var tokenResult = lexer.NextToken(lexerPos);
+            var tokenResult = await normalLexer.GetNextTokenAsync(pos);
             if (tokenResult.HasValue)
             {
-                lexerPos = tokenResult.Value.NextPos;
+                pos = tokenResult.Value.NextPos;
+                return tokenResult.Value.Token;
+            }
+
+            return null;
+        }
+
+        public async ValueTask<QsCommandToken?> GetNextCommandTokenAsync()
+        {
+            var tokenResult = await commandLexer.GetNextCommandTokenAsync(pos);
+            if (tokenResult.HasValue)
+            {
+                pos = tokenResult.Value.NextPos;
+                return tokenResult.Value.Token;
+            }
+
+            return null;
+        }
+
+        public async ValueTask<QsCommandArgToken?> GetNextArgTokenAsync()
+        {
+            var tokenResult = await commandLexer.GetNextArgTokenAsync(pos);
+
+            if (tokenResult.HasValue)
+            {
+                pos = tokenResult.Value.NextPos;
                 return tokenResult.Value.Token;
             }
 
@@ -28,17 +57,17 @@ namespace QuickSC
 
         public bool IsReachedEnd()
         {
-            throw new NotImplementedException();
+            return pos.IsReachEnd();
+        }        
+
+        public QsBufferPosition GetState()
+        {
+            return pos;
         }
 
-        internal object GetState()
+        public void SetState(QsBufferPosition savedState)
         {
-            throw new NotImplementedException();
-        }
-
-        internal void SetState(object savedState)
-        {
-            throw new NotImplementedException();
+            pos = savedState;
         }
     }
 }

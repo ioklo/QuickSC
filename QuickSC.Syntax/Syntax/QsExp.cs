@@ -8,6 +8,12 @@ namespace QuickSC.Syntax
     {
     }
 
+    public class QsIdentifierExp : QsExp
+    {
+        public string Value;
+        public QsIdentifierExp(string value) { Value = value; }
+    }
+
     public class QsStringExp : QsExp
     {
         public List<QsStringExpElement> Elements { get; }

@@ -1,4 +1,6 @@
-﻿namespace QuickSC
+﻿using System.Threading.Tasks;
+
+namespace QuickSC
 {
     public class QsEvaluator
     {
@@ -11,9 +13,9 @@
             syntaxEvaluator = new QsSyntaxEvaluator();
         }
 
-        public void Evaluate(string text)
+        public async ValueTask EvaluateAsync(QsBufferPosition pos)
         {
-            var script = parser.ParseScript(text);
+            var script = await parser.ParseScriptAsync(pos);
 
             if (script != null)
                 syntaxEvaluator.EvaluateScript(script);

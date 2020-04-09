@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\QuickSC.Infra\QuickSC.Infra.csproj" />
     <ProjectReference Include="..\QuickSC.Syntax\QuickSC.Syntax.csproj" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
         <_Parameter1>QuickSC.Test</_Parameter1>

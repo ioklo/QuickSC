@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace QuickSC
@@ -6,10 +8,11 @@ namespace QuickSC
     public class FuncionalTest
     {
         [Fact]
-        public void TestExecution()
+        public async ValueTask TestExecution()
         {
             var evaluator = new QsEvaluator();
-            evaluator.Evaluate("dir");
+            var buffer = new QsBuffer(new StringReader("dir"));
+            await evaluator.EvaluateAsync(buffer.MakePosition());
 
             // 해야 할 일
             // Abstract Syntax 만들기
