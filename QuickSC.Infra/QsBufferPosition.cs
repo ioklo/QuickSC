@@ -15,13 +15,13 @@ namespace QuickSC
         internal QsBufferPosition(QsBuffer buffer, int nextPos, int code)
         {
             this.buffer = buffer;
-            this.nextPos = 0;
-            this.code = -1;
+            this.nextPos = nextPos;
+            this.code = code;
         }
 
         public bool IsReachEnd()
         {
-            return code == -1;
+            return nextPos == -1;
         }
 
         public bool IsWhiteSpace()

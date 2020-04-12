@@ -13,4 +13,10 @@ namespace QuickSC.Syntax
         public string Text { get; }
         public QsTextStringExpElement(string text) { Text = text; }
     }
+
+    public class QsExpStringExpElement : QsStringExpElement
+    {
+        public QsExp Exp { get; }
+        public QsExpStringExpElement(QsExp exp) { Exp = exp; }
+    }
 }

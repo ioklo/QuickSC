@@ -7,26 +7,67 @@ namespace QuickSC.Token
 {
     public abstract class QsToken
     {
-
     }
 
-    public class QsStringToken : QsToken
+    public class QsSimpleToken : QsToken
     {
-        public List<QsStringTokenElement> Elements { get; }
-        public QsStringToken(List<QsStringTokenElement> elements) { Elements = elements; }
-
         public override bool Equals(object? obj)
         {
-            return obj is QsStringToken token &&
-                Enumerable.SequenceEqual(Elements, token.Elements);
+            return obj != null && this.GetType() == obj.GetType();
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Elements);
+            return this.GetType().GetHashCode();
+        }
+
+        // TODO: 제대로 동작하는지 확인 필요
+        public static bool operator ==(QsSimpleToken? left, QsSimpleToken? right)
+        {
+            return EqualityComparer<QsSimpleToken>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsSimpleToken? left, QsSimpleToken? right)
+        {
+            return !(left == right);
         }
     }
 
+    public class QsWhitespaceToken : QsSimpleToken { }
+    public class QsBeginStringToken : QsSimpleToken { } // "
+    public class QsEndStringToken : QsSimpleToken { }   
+    public class QsBeginStringExpToken : QsSimpleToken { }
+    public class QsEndStringExpToken : QsSimpleToken { }
+    public class QsEndOfFileToken : QsSimpleToken { }
+    public class QsEndOfCommandTokenToken : QsSimpleToken { }
+
+    public class QsTextToken : QsToken
+    {
+        public string Text { get; }
+        public QsTextToken(string text) { Text = text; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsTextToken token &&
+                   Text == token.Text;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Text);
+        }
+
+        public static bool operator ==(QsTextToken? left, QsTextToken? right)
+        {
+            return EqualityComparer<QsTextToken>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsTextToken? left, QsTextToken? right)
+        {
+            return !(left == right);
+        }
+    }
+    
     public class QsIdentifierToken : QsToken
     {
         public string Value { get; }
@@ -42,10 +83,5 @@ namespace QuickSC.Token
         {
             return HashCode.Combine(Value);
         }
-    }
-
-    public class QsEndOfFileToken : QsToken
-    {
-
     }
 }

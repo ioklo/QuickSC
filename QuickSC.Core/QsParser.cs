@@ -8,192 +8,141 @@ using QuickSC.Token;
 namespace QuickSC
 {
     class QsParser
-    {   
-        async ValueTask<QsExp?> ParseExpAsync(QsParserContext context)
+    {
+        QsLexer lexer;
+
+        public QsParser(QsLexer lexer)
         {
-            var stringExp = await ParseStringExpAsync(context);
-            if (stringExp != null)
-                return stringExp;
-
-            var idExp = await ParseIdentifierExpAsync(context);
-            if (idExp != null)
-                return idExp;
-
-            return null;
+            this.lexer = lexer;
         }
 
-        async ValueTask<QsStringExp?> ParseStringExpAsync(QsParserContext context)
-        {
-            var savedState = context.GetState();
-            var token = await context.NextTokenAsync();
+        //async ValueTask<(QsToken Token, QsBufferPosition NextPos)?> NextTokenAsync(QsParserContext context)
+        //{
+        //    return await lexer.LexAsync(pos);
+        //}
 
-            if( token is QsStringToken stringToken)
-                return MakeStringExp(stringToken);
+        //async ValueTask<(QsExp Exp, QsBufferPosition NextPos)?> ParseExpAsync(QsBufferPosition pos)
+        //{
+        //    var stringExpResult = await ParseStringExpAsync(pos);
+        //    if (stringExpResult.HasValue) 
+        //        return stringExpResult.Value;
 
-            context.SetState(savedState);
-            return null;
-        }
+        //    var idExpResult = await ParseIdentifierExpAsync(pos);
+        //    if (idExpResult.HasValue)
+        //        return idExpResult.Value;
 
-        async ValueTask<QsIdentifierExp?> ParseIdentifierExpAsync(QsParserContext context)
-        {
-            var savedState = context.GetState();
+        //    return null;
+        //}
 
-            var token = await context.NextTokenAsync();
-            if (token is QsIdentifierToken idToken)
-                return new QsIdentifierExp(idToken.Value);
+        //async ValueTask<(QsStringExp Exp, QsBufferPosition NextPos)?> ParseStringExpAsync(QsBufferPosition pos)
+        //{
+        //    var tokenResult = await lexer.LexAsync(pos);
 
-            context.SetState(savedState);
-            return null;
-        }
-
-        QsStringExp MakeStringExp(QsStringToken stringToken)
-        {
-            //var elem = new List<QsStringExpElement>();
-
-            //foreach(var tokenElem in stringToken.Elements)
-            //{
-            //    switch(tokenElem)
-            //    {
-            //        case QsTextStringTokenElement textTokenElem: 
-            //            elem.Add(new QsTextStringExpElement(textTokenElem.Value)); 
-            //            break;
-
-            //        case QsTokenStringTokenElement tokenTokenElem:
-            //            // 새로운 parserContext를 사용해서 파싱을 진행해야 한다
-            //            ParseExp();
-
-            //        default: throw new InvalidOperationException();
-            //    }
-            //}
-
-            //return new QsStringExp()
-
-            // var a = dir // 실행이어야 한다.
-            // var a = "" a b c  // string 집어넣는거랑 어떻게 구분할 수 있는가
+        //    if(tokenResult.HasValue && tokenResult.Value.Token is QsStringToken stringToken)
+        //        return (MakeStringExp(stringToken), tokenResult.Value.NextPos);
             
-            // stringToken이
+        //    return null;
+        //}
 
-            // "aaa bbb $xxx ccc" => StringExp(TEXT("aaa bbb "), EXP(xxx), TEXT(" ccc"))
-            //                    => StringExp(TEXT("aaa bbb "), EXP(xxx), TEXT(" ccc"))
+        //async ValueTask<(QsIdentifierExp Exp, QsBufferPosition NextPos)?> ParseIdentifierExpAsync(QsBufferPosition pos)
+        //{
+        //    var tokenResult = await lexer.LexAsync(pos);
 
-            // return stringToken.Value;
-
-            throw new NotImplementedException();
-        }
-
-        public async ValueTask<QsExp?> ParseCommandStatementCommandExpAsync(QsParserContext context)
-        {
-            var savedState = context.GetState();
-            var cmdToken = await context.GetNextCommandTokenAsync();
-            if (cmdToken is QsStringCommandToken stringCmdToken) // quoted string 검사
-            {   
-                return MakeStringExp(stringCmdToken.Token);
-            }
-            else if (cmdToken is QsIdentifierCommandToken idCmdToken) 
-            {
-                return new QsIdentifierExp(idCmdToken.Token.Value);
-            }
-            else
-            {
-                context.SetState(savedState);
-                return null;
-            }
-        }
-
-        public async ValueTask<QsExp?> ParseCommandStatementArgExpAsync(QsParserContext context)
-        {
-            var savedState = context.GetState();
-            var cmdToken = await context.GetNextArgTokenAsync();
-            if (cmdToken is QsStringCommandArgToken stringCmdArgToken) // quoted string 검사
-            {
-                return MakeStringExp(stringCmdArgToken.Token);
-            }
-            else
-            {
-                context.SetState(savedState);
-                return null;
-            }
-        }
-
-        // Parse-류 함수는 실패하면 null을 리턴하고 context는 rewind가 일어나야 한다
-        public async ValueTask<QsCommandStatement?> ParseCommandStatementAsync(QsParserContext context)
-        {
-            var savedState = context.GetState();
-
-            var commandExp = await ParseCommandStatementCommandExpAsync(context);
-            if (commandExp == null)
-            {
-                context.SetState(savedState);
-                return null;
-            }
-
-            var argExps = new List<QsExp>();
-
-            while (!context.IsReachedEnd())
-            {
-                var cmdSavedState = context.GetState();
-                var cmdArgToken = await context.GetNextArgTokenAsync();
-                if (cmdArgToken != null && cmdArgToken is QsEndOfCommandArgToken)
-                    break;
-                else
-                    context.SetState(cmdSavedState);
-
-                var argExp = await ParseCommandStatementArgExpAsync(context); // 끝을 발견하면 null을 리턴한다.. 잘못된 것이 나오면 throw
-                if (argExp == null)
-                    throw new InvalidOperationException();
-
-                argExps.Add(argExp);
-            }
-
-            return new QsCommandStatement(commandExp, argExps);
-        }
-
-        public async ValueTask<QsStatement?> ParseStatementAsync(QsParserContext context)
-        {
-            var cmd = await ParseCommandStatementAsync(context);
-            if (cmd != null) return cmd;
-
-            throw new NotImplementedException();
-        }
-
-        public async ValueTask<QsScriptElement?> ParseScriptElementAsync(QsParserContext context)
-        {
-            var stmt = await ParseStatementAsync(context);
-            if (stmt != null) return new QsStatementScriptElement(stmt);
-
-            return null;
-        }
-
-        public async ValueTask<QsScript?> ParseScriptAsync(QsBufferPosition pos)
-        {
-            var elems = new List<QsScriptElement>();
-            var normalLexer = new QsNormalLexer();
-            var commandLexer = new QsCommandLexer(normalLexer);            
+        //    if (tokenResult.HasValue && tokenResult.Value.Token is QsIdentifierToken idToken)
+        //        return (new QsIdentifierExp(idToken.Value), tokenResult.Value.NextPos);
             
-            var context = new QsParserContext(pos, normalLexer, commandLexer);
+        //    return null;
+        //}
+        
+        //public async ValueTask<(QsExp Exp, QsBufferPosition NextPos)?> ParseCommandStatementCommandExpAsync(QsBufferPosition pos)
+        //{
+        //    var cmdTokenResult = await lexer.LexAsync(GetNextCommandTokenAsync(pos);
+
+        //    if (cmdTokenResult.HasValue)
+        //    {
+        //        if (cmdTokenResult.Value.Token is QsStringCommandToken stringCmdToken) // quoted string 검사
+        //            return (MakeStringExp(stringCmdToken.Token), cmdTokenResult.Value.NextPos);
+        //        else if (cmdTokenResult.Value.Token is QsIdentifierCommandToken idCmdToken)
+        //            return (new QsIdentifierExp(idCmdToken.Token.Value), cmdTokenResult.Value.NextPos);
+        //    }
+
+        //    return null;
+        //}
+
+        //public async ValueTask<(QsExp Exp, QsBufferPosition NextPos)?> ParseCommandStatementArgExpAsync(QsBufferPosition pos)
+        //{
+        //    var cmdTokenResult = await commandLexer.GetNextArgTokenAsync(pos);
+        //    if (cmdTokenResult.HasValue && cmdTokenResult.Value.Token is QsStringCommandArgToken stringCmdArgToken) // quoted string 검사
+        //    {
+        //        return (MakeStringExp(stringCmdArgToken.Token), cmdTokenResult.Value.NextPos);
+        //    }
+
+        //    return null;
+        //}
+
+        //public async ValueTask<(QsCommandStatement Stmt, QsBufferPosition NextPos)?> ParseCommandStatementAsync(QsBufferPosition pos)
+        //{
+        //    var commandExpResult = await ParseCommandStatementCommandExpAsync(pos);
+        //    if (!commandExpResult.HasValue)
+        //        return null;
+
+        //    var argExps = new List<QsExp>();
+
+        //    var curPos = commandExpResult.Value.NextPos;
+
+        //    while (!curPos.IsReachEnd())
+        //    {
+        //        // 끝 체크가 너무 장황하다 ㅋ
+        //        var cmdArgTokenResult = await commandLexer.GetNextArgTokenAsync(curPos);
+        //        if (cmdArgTokenResult.HasValue && cmdArgTokenResult.Value.Token is QsEndOfCommandArgToken)
+        //            break;
+
+        //        var argExpResult = await ParseCommandStatementArgExpAsync(curPos);
+        //        if (!argExpResult.HasValue)
+        //            throw new InvalidOperationException();
+
+        //        argExps.Add(argExpResult.Value.Exp);
+        //        curPos = argExpResult.Value.NextPos;
+        //    }
+
+        //    return (new QsCommandStatement(commandExpResult.Value.Exp, argExps), curPos);
+        //}
+
+        //public async ValueTask<(QsStatement Stmt, QsBufferPosition NextPos)?> ParseStatementAsync(QsBufferPosition pos)
+        //{
+        //    var cmdResult = await ParseCommandStatementAsync(pos);
+        //    if (cmdResult.HasValue) return cmdResult;
+
+        //    throw new NotImplementedException();
+        //}
+
+        //public async ValueTask<(QsScriptElement Elem, QsBufferPosition NextPos)?> ParseScriptElementAsync(QsBufferPosition pos)
+        //{
+        //    var stmtResult = await ParseStatementAsync(pos);
+        //    if (stmtResult.HasValue) return (new QsStatementScriptElement(stmtResult.Value.Stmt), stmtResult.Value.NextPos);
+
+        //    return null;
+        //}
+
+        //public async ValueTask<(QsScript Script, QsBufferPosition NextPos)?> ParseScriptAsync(QsBufferPosition pos)
+        //{
+        //    var elems = new List<QsScriptElement>();
             
-            while (!context.IsReachedEnd())
-            {
-                // 끝인지 검사
-                var savedState = context.GetState();
-                var token = await context.NextTokenAsync();
-                if (token != null && token is QsEndOfFileToken)
-                {
-                    break;
-                }
-                else
-                {
-                    // TODO: ugly
-                    context.SetState(savedState);
-                }
+        //    while (!pos.IsReachEnd())
+        //    {
+        //        // 끝인지 검사
+        //        var tokenResult = await lexer.LexAsync(pos);
+        //        if (tokenResult.HasValue && tokenResult.Value.Token.IsSingleToken(QsSimpleTokenKind.EndOfFile))
+        //            break;
 
-                var elem = await ParseScriptElementAsync(context);
-                if (elem == null) return null;
+        //        var elemResult = await ParseScriptElementAsync(pos);
+        //        if (!elemResult.HasValue) return null;
 
-                elems.Add(elem);
-            }
+        //        elems.Add(elemResult.Value.Elem);
+        //        pos = elemResult.Value.NextPos;
+        //    }
 
-            return new QsScript(elems);
-        }
+        //    return (new QsScript(elems), pos);
+        //}
     }
 }

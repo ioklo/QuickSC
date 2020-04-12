@@ -10,38 +10,57 @@ namespace QuickSC
 {   
     public class QsCommandLexerTest
     {
-        QsBufferPosition ToPosition(string text)
+        QsLexerContext ToContext(string text)
         {
             var buffer = new QsBuffer(new StringReader(text));
-            return buffer.MakePosition();
+            return QsLexerContext.Make(buffer.MakePosition()).UpdateMode(QsLexingMode.Command);
         }
 
-        [Fact]
-        public async ValueTask TestNextCommandTokenReturnIdentifier()
+        async ValueTask<IEnumerable<QsToken>> ProcessAsync(QsLexer lexer, QsLexerContext context)
         {
-            var normalLexer = new QsNormalLexer();
-            var lexer = new QsCommandLexer(normalLexer);
-            var token = await lexer.GetNextCommandTokenAsync(ToPosition("abcd"));
+            var result = new List<QsToken>();
 
-            var expectedToken = new QsIdentifierCommandToken(new QsIdentifierToken("abcd"));
-            Assert.Equal(expectedToken, token?.Token);
-        }
-
-        [Fact]
-        public async ValueTask TestLexCommandTokenReturnString()
-        {
-            var normalLexer = new QsNormalLexer();
-            var lexer = new QsCommandLexer(normalLexer);
-            var token = await lexer.GetNextCommandTokenAsync(ToPosition("ps${ccc}ddd"));
-
-            var expectedToken = new QsStringCommandToken(new QsStringToken(new List<QsStringTokenElement>
+            while(true)
             {
-                new QsTextStringTokenElement("ps"),
-                new QsTokenStringTokenElement(new QsIdentifierToken("ccc")),
-                new QsTextStringTokenElement("ddd")
-            }));
+                var lexResult = await lexer.LexAsync(context);
+                if (!lexResult.HasValue) break;
 
-            Assert.Equal(expectedToken, token?.Token);
+                result.Add(lexResult.Token);
+            }
+
+            return result;
+        }
+
+        [Fact]
+        public async ValueTask TestLexerProcessTextInCommandMode()
+        {
+            var lexer = new QsLexer();
+            var result = await lexer.LexAsync(ToContext("abcd"));
+            
+            Assert.True(result.HasValue);
+            Assert.Equal(new QsTextToken("abcd"), result.Token);
+        }
+        
+        [Fact]
+        public async ValueTask TestLexerProcessStringExpInCommandMode()
+        {
+            var lexer = new QsLexer();
+            var context = ToContext("ps${ccc}ddd");
+
+            var result = await ProcessAsync(lexer, context);
+
+            var expectedTokens = new QsToken[]
+            {
+                new QsTextToken("ps"),
+                new QsBeginStringToken(),
+                new QsTextToken("ccc"),
+                new QsEndStringToken(),
+                new QsTextToken("ddd"),
+                new QsEndOfCommandTokenToken(),
+                new QsEndOfFileToken()
+            };
+
+            Assert.Equal(expectedTokens, result);
         }
     }
 }

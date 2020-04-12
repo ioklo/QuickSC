@@ -28,6 +28,9 @@ namespace QuickSC
 
         internal async ValueTask<(int Code, int NextPos)> NextAsync(int nextPos)
         {
+            if (nextPos == -1)
+                return (-1, -1);
+
             Debug.Assert(nextPos <= codes.Count);
 
             if (nextPos < codes.Count)
@@ -37,7 +40,7 @@ namespace QuickSC
             {
                 int readCount = await reader.ReadAsync(buf, 0, 1);
                 if (readCount == 0)
-                    return (-1, nextPos);
+                    return (-1, -1);
 
                 int code = -1;
                 if (char.IsSurrogate(buf[0]))

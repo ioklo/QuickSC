@@ -8,6 +8,12 @@ namespace QuickSC.Syntax
     {
     }
 
+    public class QsCommandExp : QsExp
+    {
+        List<QsExp> Exps { get; }
+        public QsCommandExp(List<QsExp> exps) { Exps = exps; }
+    }
+
     public class QsIdentifierExp : QsExp
     {
         public string Value;
