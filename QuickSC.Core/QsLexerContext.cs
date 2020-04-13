@@ -10,7 +10,7 @@ namespace QuickSC
         Deploted,
         Normal,
         String,
-        StringExp,
+        InnerExp,
         Command,
     }
 

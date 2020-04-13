@@ -71,7 +71,6 @@ namespace QuickSC
         {
             var lexer = new QsLexer();
             var context = await MakeContextAsync("\" \"\" \"  ");
-            // var token = await lexer.LexAsync(await MakeContextAsync("\" \"\" \"  "));
 
             var tokens = await ProcessAsync(lexer, context);
             var expectedTokens = new QsToken[]
@@ -137,9 +136,9 @@ namespace QuickSC
             {
                 new QsBeginStringToken(),
                 new QsTextToken("aaa bbb "),
-                new QsBeginStringExpToken(),
+                new QsBeginInnerExpToken(),
                 new QsIdentifierToken("ccc"),
-                new QsEndStringExpToken(),
+                new QsEndInnerExpToken(),
                 new QsTextToken(" ddd"),
                 new QsEndStringToken(),
                 new QsEndOfFileToken(),
@@ -161,16 +160,16 @@ namespace QuickSC
             {
                 new QsBeginStringToken(),
                 new QsTextToken("aaa bbb "),
-                new QsBeginStringExpToken(),
+                new QsBeginInnerExpToken(),
                 
                 new QsBeginStringToken(),
 
                 new QsTextToken("xxx "),
-                new QsBeginStringExpToken(),
+                new QsBeginInnerExpToken(),
                 new QsIdentifierToken("ddd"),
-                new QsEndStringExpToken(),
+                new QsEndInnerExpToken(),
                 new QsEndStringToken(),
-                new QsEndStringExpToken(),
+                new QsEndInnerExpToken(),
                 new QsTextToken(" ddd"),
                 new QsEndStringToken(),
                 new QsEndOfFileToken(),

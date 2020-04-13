@@ -36,8 +36,8 @@ namespace QuickSC.Token
     public class QsWhitespaceToken : QsSimpleToken { }
     public class QsBeginStringToken : QsSimpleToken { } // "
     public class QsEndStringToken : QsSimpleToken { }   
-    public class QsBeginStringExpToken : QsSimpleToken { }
-    public class QsEndStringExpToken : QsSimpleToken { }
+    public class QsBeginInnerExpToken : QsSimpleToken { }
+    public class QsEndInnerExpToken : QsSimpleToken { }
     public class QsEndOfFileToken : QsSimpleToken { }
     public class QsEndOfCommandTokenToken : QsSimpleToken { }
 

@@ -9,22 +9,22 @@ using QuickSC.Token;
 
 namespace QuickSC
 {
-    class QsLexer
+    struct QsLexResult
     {
-        public struct QsLexResult
+        public static QsLexResult Invalid { get; }
+        static QsLexResult()
         {
-            public static QsLexResult Invalid { get; }
-            static QsLexResult()
-            {
-                Invalid = new QsLexResult();
-            }
-
-            public bool HasValue { get; }
-            public QsToken Token { get; }
-            public QsLexerContext Context { get; }
-            public QsLexResult(QsToken token, QsLexerContext context) { HasValue = true; Token = token; Context = context; }
+            Invalid = new QsLexResult();
         }
 
+        public bool HasValue { get; }
+        public QsToken Token { get; }
+        public QsLexerContext Context { get; }
+        public QsLexResult(QsToken token, QsLexerContext context) { HasValue = true; Token = token; Context = context; }
+    }
+
+    class QsLexer
+    {
         public QsLexer()
         {
         }
@@ -86,8 +86,8 @@ namespace QuickSC
 
                 if (nextPos.Equals('{'))
                     return new QsLexResult(
-                        new QsBeginStringExpToken(),
-                        context.PushMode(QsLexingMode.StringExp, await nextPos.NextAsync()));
+                        new QsBeginInnerExpToken(),
+                        context.PushMode(QsLexingMode.InnerExp, await nextPos.NextAsync()));
 
                 var idResult = await LexIdentifierAsync(context.UpdatePos(nextPos), false);
                 if (idResult.HasValue)
@@ -126,9 +126,9 @@ namespace QuickSC
             return QsLexResult.Invalid;
         }
 
-        async ValueTask<QsLexResult> LexStringExpModeAsync(QsLexerContext context)
+        async ValueTask<QsLexResult> LexInnerExpModeAsync(QsLexerContext context)
         {
-            Debug.Assert(context.LexingMode == QsLexingMode.StringExp);
+            Debug.Assert(context.LexingMode == QsLexingMode.InnerExp);
 
             // 스킵처리
             var skipResult = await SkipAsync(context.Pos);
@@ -144,7 +144,7 @@ namespace QuickSC
             // 이거 제외하고는 Normal모드랑 같다
             if (context.Pos.Equals('}'))
                 return new QsLexResult(
-                    new QsEndStringExpToken(),
+                    new QsEndInnerExpToken(),
                     context.PopMode(await context.Pos.NextAsync()));
 
             if (context.Pos.Equals('"'))
@@ -198,8 +198,8 @@ namespace QuickSC
                 if (nextDollarPos.Equals('{'))
                 {
                     return new QsLexResult(
-                        new QsBeginStringExpToken(),
-                        context.PushMode(QsLexingMode.StringExp, await nextDollarPos.NextAsync()));
+                        new QsBeginInnerExpToken(),
+                        context.PushMode(QsLexingMode.InnerExp, await nextDollarPos.NextAsync()));
                 }
 
                 if (!nextDollarPos.Equals('$'))
@@ -368,8 +368,8 @@ namespace QuickSC
                 case QsLexingMode.String:
                     return await LexStringModeAsync(context);
 
-                case QsLexingMode.StringExp:
-                    return await LexStringExpModeAsync(context);
+                case QsLexingMode.InnerExp:
+                    return await LexInnerExpModeAsync(context);
 
                 case QsLexingMode.Command:
                     return await LexCommandModeAsync(context);
