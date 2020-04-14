@@ -39,7 +39,7 @@ namespace QuickSC.Token
     public class QsBeginInnerExpToken : QsSimpleToken { }
     public class QsEndInnerExpToken : QsSimpleToken { }
     public class QsEndOfFileToken : QsSimpleToken { }
-    public class QsEndOfCommandTokenToken : QsSimpleToken { }
+    public class QsEndOfCommandToken : QsSimpleToken { }
 
     public class QsTextToken : QsToken
     {

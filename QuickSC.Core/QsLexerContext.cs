@@ -5,7 +5,7 @@ using System.Text;
 
 namespace QuickSC
 {
-    enum QsLexingMode // 과연 여기 딸린 데이터가 필요없을까
+    public enum QsLexingMode // 과연 여기 딸린 데이터가 필요없을까
     {
         Deploted,
         Normal,
@@ -14,7 +14,7 @@ namespace QuickSC
         Command,
     }
 
-    struct QsLexerContext
+    public struct QsLexerContext
     {
         public static QsLexerContext Make(QsBufferPosition pos)
         {

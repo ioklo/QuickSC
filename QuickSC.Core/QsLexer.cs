@@ -9,7 +9,7 @@ using QuickSC.Token;
 
 namespace QuickSC
 {
-    struct QsLexResult
+    public struct QsLexResult
     {
         public static QsLexResult Invalid { get; }
         static QsLexResult()
@@ -23,7 +23,7 @@ namespace QuickSC
         public QsLexResult(QsToken token, QsLexerContext context) { HasValue = true; Token = token; Context = context; }
     }
 
-    class QsLexer
+    public class QsLexer
     {
         public QsLexer()
         {
@@ -106,7 +106,8 @@ namespace QuickSC
             if (skipResult.HasValue)
                 context = context.UpdatePos(skipResult.Value);
 
-            // 스킵하면 끝도 다시 처리 해줘야
+            // 끝 처리, 
+            // TODO: 모드 스택에 NormalMode 하나만 남은 상태인걸 확인해야 하지 않을까
             if (context.Pos.IsReachEnd())
                 return new QsLexResult(
                     new QsEndOfFileToken(),
@@ -135,13 +136,10 @@ namespace QuickSC
             if (skipResult.HasValue)
                 context = context.UpdatePos(skipResult.Value);
 
-            // 스킵하면 끝도 다시 처리 해줘야
+            // }와 끝처리를 제외하고는 Normal모드랑 같다
             if (context.Pos.IsReachEnd())
-                return new QsLexResult(
-                    new QsEndOfFileToken(),
-                    context.UpdateMode(QsLexingMode.Deploted));
-
-            // 이거 제외하고는 Normal모드랑 같다
+                return QsLexResult.Invalid; // 뜬금없는 끝
+            
             if (context.Pos.Equals('}'))
                 return new QsLexResult(
                     new QsEndInnerExpToken(),
@@ -170,13 +168,13 @@ namespace QuickSC
 
             // 끝 도달
             if (context.Pos.IsReachEnd())
-                return new QsLexResult(new QsEndOfCommandTokenToken(), context.UpdateMode(QsLexingMode.Normal));
+                return new QsLexResult(new QsEndOfCommandToken(), context.UpdateMode(QsLexingMode.Normal));
 
             // 줄바꿈
             if (context.Pos.GetUnicodeCategory() == UnicodeCategory.LineSeparator)
             {
                 var nextLineSepPos = await context.Pos.NextAsync();
-                return new QsLexResult(new QsEndOfCommandTokenToken(), context.Update(QsLexingMode.Normal, nextLineSepPos));
+                return new QsLexResult(new QsEndOfCommandToken(), context.Update(QsLexingMode.Normal, nextLineSepPos));
             }
 
             // "이면 스트링 처리 모드로 변경하고 BeginString 리턴
@@ -230,6 +228,8 @@ namespace QuickSC
                         context = context.UpdatePos(await nextQuotePos.NextAsync());
                         continue;
                     }
+
+                    break;
                 }
 
                 if (context.Pos.Equals('$'))
@@ -241,6 +241,8 @@ namespace QuickSC
                         context = context.UpdatePos(await nextDollarPos.NextAsync());
                         continue;
                     }
+
+                    break;
                 }
 
                 context.Pos.AppendTo(sb);
@@ -352,12 +354,6 @@ namespace QuickSC
             // 고갈 되었으면 더이상 아무것도 리턴하지 않는다
             if (context.LexingMode == QsLexingMode.Deploted)
                 return QsLexResult.Invalid;
-
-            // 이전에 끝을 처리하지 않았으면 
-            if (context.Pos.IsReachEnd())
-                return new QsLexResult(
-                    new QsEndOfFileToken(), 
-                    context.UpdateMode(QsLexingMode.Deploted));
 
             Debug.Assert(context.LexingMode != QsLexingMode.Deploted);
             switch (context.LexingMode)

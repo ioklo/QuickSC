@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 
@@ -8,13 +9,7 @@ namespace QuickSC.Syntax
     public abstract class QsExp
     {
     }
-
-    public class QsCommandExp : QsExp
-    {
-        List<QsExp> Exps { get; }
-        public QsCommandExp(List<QsExp> exps) { Exps = exps; }
-    }
-
+    
     public class QsIdentifierExp : QsExp
     {
         public string Value;
@@ -44,9 +39,9 @@ namespace QuickSC.Syntax
 
     public class QsStringExp : QsExp
     {
-        public List<QsStringExpElement> Elements { get; }
+        public ImmutableArray<QsStringExpElement> Elements { get; }
         
-        public QsStringExp(List<QsStringExpElement> elements)
+        public QsStringExp(ImmutableArray<QsStringExpElement> elements)
         {
             Elements = elements;
         }
