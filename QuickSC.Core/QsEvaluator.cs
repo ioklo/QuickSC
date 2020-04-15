@@ -39,8 +39,20 @@ namespace QuickSC
         string? ToString(QsValue value)
         {
             if (value is QsStringValue strValue) return strValue.Value;
+            if (value is QsIntValue intValue) return intValue.Value.ToString();
+            if (value is QsBoolValue boolValue) return boolValue.Value ? "true" : "false";
 
             return null;
+        }
+
+        QsEvalResult<QsValue> EvaluateBoolLiteralExp(QsBoolLiteralExp boolLiteralExp, QsEvalContext context)
+        {
+            return new QsEvalResult<QsValue>(new QsBoolValue(boolLiteralExp.Value), context);
+        }
+
+        QsEvalResult<QsValue> EvaluateIntLiteralExp(QsIntLiteralExp intLiteralExp, QsEvalContext context)
+        {
+            return new QsEvalResult<QsValue>(new QsIntValue(intLiteralExp.Value), context);
         }
 
         QsEvalResult<QsValue> EvaluateStringExp(QsStringExp stringExp, QsEvalContext context)
@@ -79,13 +91,15 @@ namespace QuickSC
 
         QsEvalResult<QsValue> EvaluateExp(QsExp exp, QsEvalContext context)
         {
-            if (exp is QsIdentifierExp idExp)
-                return EvaluateIdExp(idExp, context);
-
-            else if (exp is QsStringExp stringExp)
-                return EvaluateStringExp(stringExp, context);
-
-            return QsEvalResult<QsValue>.Invalid;
+            return exp switch
+            {
+                QsIdentifierExp idExp => EvaluateIdExp(idExp, context),
+                QsBoolLiteralExp boolExp => EvaluateBoolLiteralExp(boolExp, context),
+                QsIntLiteralExp intExp => EvaluateIntLiteralExp(intExp, context),
+                QsStringExp stringExp => EvaluateStringExp(stringExp, context),
+                
+                _ => throw new NotImplementedException()
+            };
         }
 
         QsEvalContext? EvaluateCommandStmt(QsCommandStmt stmt, QsEvalContext context)

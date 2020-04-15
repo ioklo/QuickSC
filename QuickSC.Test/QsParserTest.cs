@@ -85,5 +85,33 @@ namespace QuickSC
 
             Assert.Equal(expected, expResult.Elem);
         }
+
+        [Theory]
+        [InlineData("true", true)]
+        [InlineData("false", false)]
+        public async Task TestParseBoolAsync(string input, bool bExpectedResult)
+        {
+            var lexer = new QsLexer();
+            var parser = new QsParser(lexer);
+            var context = await MakeContextAsync(input);
+            var expResult = await parser.ParseExpAsync(context);
+
+            var expected = new QsBoolLiteralExp(bExpectedResult);
+
+            Assert.Equal(expected, expResult.Elem);
+        }
+
+        [Fact]
+        public async Task TestParseIntAsync()
+        {
+            var lexer = new QsLexer();
+            var parser = new QsParser(lexer);
+            var context = await MakeContextAsync("1234");
+            var expResult = await parser.ParseExpAsync(context);
+
+            var expected = new QsIntLiteralExp(1234);
+
+            Assert.Equal(expected, expResult.Elem);
+        }
     }
 }

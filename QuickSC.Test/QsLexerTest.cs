@@ -49,7 +49,23 @@ namespace QuickSC
             };
 
             Assert.Equal(expectedTokens, tokens);
+        }
 
+        [Fact]
+        public async Task TestLexKeywords()
+        {
+            var lexer = new QsLexer();
+            var context = await MakeContextAsync("true false");
+
+            var tokens = await ProcessAsync(lexer, context);
+            var expectedTokens = new QsToken[]
+            {
+                new QsBoolToken(true),
+                new QsBoolToken(false),
+                new QsEndOfFileToken(),
+            };
+
+            Assert.Equal(expectedTokens, tokens);
         }
 
         [Fact]
@@ -211,6 +227,23 @@ namespace QuickSC
                 new QsTextToken(" ddd"),
                 new QsEndStringToken(),
                 new QsEndOfFileToken(),
+            };
+
+            Assert.Equal(expectedTokens, tokens);
+        }
+
+        [Fact]
+        public async Task TestLexInt()
+        {
+            var lexer = new QsLexer();
+            var context = await MakeContextAsync("1234"); // 나머지는 지원 안함
+
+            var tokens = await ProcessAsync(lexer, context);
+
+            var expectedTokens = new QsToken[]
+            {
+                new QsIntToken(1234),
+                new QsEndOfFileToken()
             };
 
             Assert.Equal(expectedTokens, tokens);

@@ -12,6 +12,18 @@
         private QsNullValue() { }
     }
 
+    public class QsBoolValue : QsValue
+    {
+        public bool Value { get; }
+        public QsBoolValue(bool value) { Value = value; }
+    }
+
+    public class QsIntValue : QsValue
+    {
+        public int Value { get; }
+        public QsIntValue(int value) { Value = value; }
+    }
+
     public class QsStringValue : QsValue
     {
         public string Value { get; }

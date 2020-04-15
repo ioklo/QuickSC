@@ -99,6 +99,22 @@ namespace QuickSC
             var skipResult = await SkipAsync(context.Pos);
             if (skipResult.HasValue)
                 context = context.UpdatePos(skipResult.Value);
+            
+            // 끝 처리, 
+            // TODO: 모드 스택에 NormalMode 하나만 남은 상태인걸 확인해야 하지 않을까
+            if (context.Pos.IsReachEnd())
+                return new QsLexResult(
+                    new QsEndOfFileToken(),
+                    context.UpdateMode(QsLexingMode.Deploted));
+
+            // 여러개 먼저
+            var intResult = await LexIntAsync(context);
+            if (intResult.HasValue)
+                return new QsLexResult(intResult.Token, intResult.Context);
+
+            var boolResult = await LexBoolAsync(context);
+            if (boolResult.HasValue)
+                return new QsLexResult(boolResult.Token, boolResult.Context);
 
             // 간단한 심볼 처리
             if (context.Pos.Equals(';'))
@@ -109,13 +125,6 @@ namespace QuickSC
 
             if (context.Pos.Equals('='))
                 return new QsLexResult(new QsEqualToken(), context.UpdatePos(await context.Pos.NextAsync()));
-
-            // 끝 처리, 
-            // TODO: 모드 스택에 NormalMode 하나만 남은 상태인걸 확인해야 하지 않을까
-            if (context.Pos.IsReachEnd())
-                return new QsLexResult(
-                    new QsEndOfFileToken(),
-                    context.UpdateMode(QsLexingMode.Deploted));
 
             // "이면 스트링 처리 모드로 변경하고 BeginString 리턴
             if (context.Pos.Equals('"'))
@@ -261,9 +270,6 @@ namespace QuickSC
 
         async ValueTask<QsLexResult> LexIdentifierAsync(QsLexerContext context, bool bAllowRawMark)
         {
-            if (context.Pos.IsReachEnd())
-                return QsLexResult.Invalid;
-
             var sb = new StringBuilder();
             QsBufferPosition curPos = context.Pos;
 
@@ -281,13 +287,8 @@ namespace QuickSC
                 return QsLexResult.Invalid;
             }
 
-            while (!curPos.IsReachEnd())
-            {
-                if (!IsIdentifierLetter(curPos))
-                {
-                    break;
-                }
-
+            while (IsIdentifierLetter(curPos))
+            {   
                 curPos.AppendTo(sb);
                 curPos = await curPos.NextAsync();
             }
@@ -297,7 +298,50 @@ namespace QuickSC
 
             return new QsLexResult(new QsIdentifierToken(sb.ToString()), context.UpdatePos(curPos));
         }
-        
+
+        async ValueTask<QsBufferPosition?> ConsumeAsync(string text, QsBufferPosition pos)
+        {
+            foreach (var c in text)
+            {
+                if (!pos.Equals(c))
+                    return null;
+
+                pos = await pos.NextAsync();
+            }
+
+            return pos;
+        }
+
+        async ValueTask<QsLexResult> LexBoolAsync(QsLexerContext context)
+        {
+            var trueResult = await ConsumeAsync("true", context.Pos);
+            if (trueResult.HasValue)
+                return new QsLexResult(new QsBoolToken(true), context.UpdatePos(trueResult.Value));
+
+            var falseResult = await ConsumeAsync("false", context.Pos);
+            if (falseResult.HasValue)
+                return new QsLexResult(new QsBoolToken(false), context.UpdatePos(falseResult.Value));
+
+            return QsLexResult.Invalid;
+        }
+
+        async ValueTask<QsLexResult> LexIntAsync(QsLexerContext context)
+        {
+            var sb = new StringBuilder();
+            QsBufferPosition curPos = context.Pos;
+
+            while (curPos.GetUnicodeCategory() == UnicodeCategory.DecimalDigitNumber)
+            {   
+                curPos.AppendTo(sb);
+                curPos = await curPos.NextAsync();
+            }
+
+            if (sb.Length == 0)
+                return QsLexResult.Invalid;
+
+            return new QsLexResult(new QsIntToken(int.Parse(sb.ToString())), context.UpdatePos(curPos));
+        }
+
         async ValueTask<QsLexResult> LexStringModeTextAsync(QsLexerContext context)
         {
             Debug.Assert(context.LexingMode == QsLexingMode.String);

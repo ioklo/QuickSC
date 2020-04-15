@@ -71,4 +71,58 @@ namespace QuickSC.Syntax
             return !(left == right);
         }
     }
+
+    public class QsIntLiteralExp : QsExp
+    {
+        public int Value { get; }
+        public QsIntLiteralExp(int value) { Value = value; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsIntLiteralExp exp &&
+                   Value == exp.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
+
+        public static bool operator ==(QsIntLiteralExp? left, QsIntLiteralExp? right)
+        {
+            return EqualityComparer<QsIntLiteralExp>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsIntLiteralExp? left, QsIntLiteralExp? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public class QsBoolLiteralExp : QsExp
+    {
+        public bool Value { get; }
+        public QsBoolLiteralExp(bool value) { Value = value; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsBoolLiteralExp exp &&
+                   Value == exp.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
+
+        public static bool operator ==(QsBoolLiteralExp? left, QsBoolLiteralExp? right)
+        {
+            return EqualityComparer<QsBoolLiteralExp>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsBoolLiteralExp? left, QsBoolLiteralExp? right)
+        {
+            return !(left == right);
+        }
+    }
 }

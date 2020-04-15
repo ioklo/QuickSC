@@ -109,6 +109,14 @@ namespace QuickSC
 
         internal async ValueTask<QsExpParseResult> ParseExpAsync(QsParserContext context)
         {
+            var boolExpResult = await ParseBoolLiteralExpAsync(context);
+            if (boolExpResult.HasValue)
+                return new QsExpParseResult(boolExpResult.Elem, boolExpResult.Context);
+
+            var intExpResult = await ParseIntLiteralExpAsync(context);
+            if (intExpResult.HasValue)
+                return new QsExpParseResult(intExpResult.Elem, intExpResult.Context);
+
             var stringExpResult = await ParseStringExpAsync(context);
             if (stringExpResult.HasValue)
                 return new QsExpParseResult(stringExpResult.Elem, stringExpResult.Context);
@@ -119,7 +127,25 @@ namespace QuickSC
 
             return QsExpParseResult.Invalid;
         }
-        
+
+        async ValueTask<QsExpParseResult> ParseBoolLiteralExpAsync(QsParserContext context)
+        {
+            var boolResult = AcceptAndReturn<QsBoolToken>(await LexAsync(context), ref context);
+            if (boolResult != null)
+                return new QsExpParseResult(new QsBoolLiteralExp(boolResult.Value), context);
+            
+            return QsExpParseResult.Invalid;
+        }
+
+        async ValueTask<QsExpParseResult> ParseIntLiteralExpAsync(QsParserContext context)
+        {
+            var intResult = AcceptAndReturn<QsIntToken>(await LexAsync(context), ref context);
+            if (intResult != null)
+                return new QsExpParseResult(new QsIntLiteralExp(intResult.Value), context);
+
+            return QsExpParseResult.Invalid;
+        }
+
         // 스트링 파싱
         async ValueTask<QsStringExpParseResult> ParseStringExpAsync(QsParserContext context)
         {
@@ -182,7 +208,8 @@ namespace QuickSC
             if (typeIdResult == null)
                 return Invalid();
 
-            if (!context.HasType(typeIdResult.Value))
+            // var 이면 무사 통과
+            if (typeIdResult.Value != "var" && !context.HasType(typeIdResult.Value))
                 return Invalid();
 
             var elems = ImmutableArray.CreateBuilder<QsVarDeclStmtElement>();

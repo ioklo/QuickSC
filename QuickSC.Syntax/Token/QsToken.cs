@@ -35,7 +35,8 @@ namespace QuickSC.Token
 
     public class QsEqualToken : QsSimpleToken { } // =
     public class QsCommaToken : QsSimpleToken { } // ,
-    public class QsSemiColonToken : QsSimpleToken { } // ;
+    public class QsSemiColonToken : QsSimpleToken { } // ;   
+    
 
     public class QsWhitespaceToken : QsSimpleToken { }
     public class QsBeginStringToken : QsSimpleToken { } // "
@@ -44,6 +45,61 @@ namespace QuickSC.Token
     public class QsEndInnerExpToken : QsSimpleToken { }
     public class QsEndOfFileToken : QsSimpleToken { }
     public class QsEndOfCommandToken : QsSimpleToken { }
+
+    // digit
+    public class QsIntToken : QsToken
+    {
+        public int Value { get; }
+        public QsIntToken(int value) { Value = value; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsIntToken token &&
+                   Value == token.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
+
+        public static bool operator ==(QsIntToken? left, QsIntToken? right)
+        {
+            return EqualityComparer<QsIntToken>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsIntToken? left, QsIntToken? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public class QsBoolToken : QsToken 
+    { 
+        public bool Value { get; }
+        public QsBoolToken(bool value) { Value = value; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsBoolToken token &&
+                   Value == token.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
+
+        public static bool operator ==(QsBoolToken? left, QsBoolToken? right)
+        {
+            return EqualityComparer<QsBoolToken>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsBoolToken? left, QsBoolToken? right)
+        {
+            return !(left == right);
+        }
+    }
 
     public class QsTextToken : QsToken
     {
