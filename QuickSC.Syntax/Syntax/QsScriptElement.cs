@@ -7,18 +7,18 @@ namespace QuickSC.Syntax
     {
     }
 
-    public class QsStatementScriptElement : QsScriptElement
+    public class QsStmtScriptElement : QsScriptElement
     {
-        public QsStatement Stmt { get; }
-        public QsStatementScriptElement(QsStatement stmt)
+        public QsStmt Stmt { get; }
+        public QsStmtScriptElement(QsStmt stmt)
         {
             Stmt = stmt;
         }
 
         public override bool Equals(object? obj)
         {
-            return obj is QsStatementScriptElement element &&
-                   EqualityComparer<QsStatement>.Default.Equals(Stmt, element.Stmt);
+            return obj is QsStmtScriptElement element &&
+                   EqualityComparer<QsStmt>.Default.Equals(Stmt, element.Stmt);
         }
 
         public override int GetHashCode()
@@ -26,12 +26,12 @@ namespace QuickSC.Syntax
             return HashCode.Combine(Stmt);
         }
 
-        public static bool operator ==(QsStatementScriptElement? left, QsStatementScriptElement? right)
+        public static bool operator ==(QsStmtScriptElement? left, QsStmtScriptElement? right)
         {
-            return EqualityComparer<QsStatementScriptElement>.Default.Equals(left, right);
+            return EqualityComparer<QsStmtScriptElement>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(QsStatementScriptElement? left, QsStatementScriptElement? right)
+        public static bool operator !=(QsStmtScriptElement? left, QsStmtScriptElement? right)
         {
             return !(left == right);
         }

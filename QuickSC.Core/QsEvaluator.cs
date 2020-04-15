@@ -8,11 +8,7 @@ namespace QuickSC
 {
     public struct QsEvalResult<TValue>
     {
-        public static QsEvalResult<TValue> Invalid;
-        static QsEvalResult()
-        {
-            Invalid = new QsEvalResult<TValue>();
-        }
+        public static QsEvalResult<TValue> Invalid = new QsEvalResult<TValue>();
 
         public bool HasValue { get; }
         public TValue Value { get; }
@@ -30,8 +26,14 @@ namespace QuickSC
     {
         QsEvalResult<QsValue> EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
         {
-            // 지금은 Define, Assign이 없기 때문에 Value 가 없다
-            throw new NotImplementedException();
+            var result = context.GetValue(idExp.Value);
+
+            // 없는 경우,
+            if (result == null)
+                return QsEvalResult<QsValue>.Invalid;
+
+            // 초기화 되지 않은 경우는 QsNullValue를 머금고 리턴될 것이다
+            return new QsEvalResult<QsValue>(result, context);
         }
 
         string? ToString(QsValue value)
@@ -86,7 +88,7 @@ namespace QuickSC
             return QsEvalResult<QsValue>.Invalid;
         }
 
-        QsEvalContext? EvaluateCommandStatement(QsCommandStatement stmt, QsEvalContext context)
+        QsEvalContext? EvaluateCommandStmt(QsCommandStmt stmt, QsEvalContext context)
         {
             var nameResult = EvaluateExp(stmt.CommandExp, context);
             if (!nameResult.HasValue) return null;
@@ -124,22 +126,50 @@ namespace QuickSC
             return context;
         }
 
-        // TODO: 임시 public
-        public QsEvalContext? EvaluateStatement(QsStatement stmt, QsEvalContext context)
+        QsEvalContext? EvaluateVarDeclStmt(QsVarDeclStmt stmt, QsEvalContext context)
         {
-            if (stmt is QsCommandStatement cmdStmt)            
-                return EvaluateCommandStatement(cmdStmt, context);
-            else
-                return null;
+            foreach(var elem in stmt.Elements)
+            {
+                QsValue value;
+                if (elem.InitExp != null)
+                {
+                    var expResult = EvaluateExp(elem.InitExp, context);
+                    if (!expResult.HasValue)
+                        return null;
+
+                    value = expResult.Value;
+                    context = expResult.Context;
+                }
+                else
+                {
+                    value = QsNullValue.Value;
+                }
+
+                context = context.SetValue(elem.VarName, value);
+            }
+
+            return context;
+        }
+
+        // TODO: 임시 public
+        public QsEvalContext? EvaluateStmt(QsStmt stmt, QsEvalContext context)
+        {
+            return stmt switch
+            {
+                QsCommandStmt cmdStmt => EvaluateCommandStmt(cmdStmt, context),
+                QsVarDeclStmt varDeclStmt => EvaluateVarDeclStmt(varDeclStmt, context),
+
+                _ => null
+            };
         }        
 
         public QsEvalContext? EvaluateScript(QsScript script, QsEvalContext context)
         {
             foreach(var elem in script.Elements)
             {
-                if (elem is QsStatementScriptElement statementElem)
+                if (elem is QsStmtScriptElement statementElem)
                 {
-                    var result = EvaluateStatement(statementElem.Stmt, context);
+                    var result = EvaluateStmt(statementElem.Stmt, context);
                     if (!result.HasValue) return null;
 
                     context = result.Value;

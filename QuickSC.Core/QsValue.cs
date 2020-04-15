@@ -6,6 +6,12 @@
 
     }
 
+    public class QsNullValue : QsValue
+    {
+        public static QsNullValue Value = new QsNullValue();
+        private QsNullValue() { }
+    }
+
     public class QsStringValue : QsValue
     {
         public string Value { get; }

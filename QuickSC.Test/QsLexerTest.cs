@@ -34,6 +34,25 @@ namespace QuickSC
         }
 
         [Fact]
+        public async Task TestLexSymbols()
+        {
+            var lexer = new QsLexer();
+            var context = await MakeContextAsync(", ; =");
+
+            var tokens = await ProcessAsync(lexer, context);
+            var expectedTokens = new QsToken[]
+            {
+                new QsCommaToken(),
+                new QsSemiColonToken(),
+                new QsEqualToken(),
+                new QsEndOfFileToken(),
+            };
+
+            Assert.Equal(expectedTokens, tokens);
+
+        }
+
+        [Fact]
         public async Task TestLexSimpleIdentifier()
         {   
             var lexer = new QsLexer();
@@ -96,6 +115,25 @@ namespace QuickSC
             {
                 new QsBeginStringToken(),
                 new QsTextToken("$"),
+                new QsEndStringToken(),
+                new QsEndOfFileToken(),
+            };
+
+            Assert.Equal(expectedTokens, tokens);
+        }
+
+        [Fact]
+        public async Task TestLexSimpleEscapedString2()
+        {
+            var lexer = new QsLexer();
+            var context = await MakeContextAsync("\"$ccc\"");
+
+            var tokens = await ProcessAsync(lexer, context);
+
+            var expectedTokens = new QsToken[]
+            {
+                new QsBeginStringToken(),
+                new QsIdentifierToken("ccc"),
                 new QsEndStringToken(),
                 new QsEndOfFileToken(),
             };

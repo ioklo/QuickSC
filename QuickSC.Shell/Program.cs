@@ -12,7 +12,7 @@ namespace QuickSC.Shell
             var parser = new QsParser(lexer);
 
             var evaluator = new QsEvaluator();
-            var evalContext = new QsEvalContext();
+            var evalContext = QsEvalContext.Make();
 
             // Statement만 입력으로 받고
             while (true)
@@ -20,21 +20,21 @@ namespace QuickSC.Shell
                 try
                 {
                     Console.WriteLine();
-                    Console.Write("{0}> ", Directory.GetCurrentDirectory());
+                    Console.Write("QS {0}>", Directory.GetCurrentDirectory());
 
                     var line = Console.ReadLine();
                     var buffer = new QsBuffer(new StringReader(line));
                     var pos = await buffer.MakePosition().NextAsync();
                     var parserContext = QsParserContext.Make(QsLexerContext.Make(pos));
 
-                    var stmtResult = await parser.ParseStatementAsync(parserContext);
+                    var stmtResult = await parser.ParseStmtAsync(parserContext);
                     if (!stmtResult.HasValue)
                     {
                         Console.WriteLine("파싱에 실패했습니다");
                         continue;
                     }
 
-                    var newEvalContext = evaluator.EvaluateStatement(stmtResult.Elem, evalContext);
+                    var newEvalContext = evaluator.EvaluateStmt(stmtResult.Elem, evalContext);
                     if (!newEvalContext.HasValue)
                     {
                         Console.WriteLine("실행에 실패했습니다");

@@ -61,12 +61,6 @@ namespace QuickSC
                 category == UnicodeCategory.DecimalDigitNumber;
         }
 
-        bool IsAllowedAfterIdentifierLetter(QsBufferPosition pos)
-        {
-            // TODO: 다시 한번 쭉 훑어봐야 한다
-            return pos.IsWhiteSpace() || pos.Equals('{') || pos.Equals('}');
-        }
-
         async ValueTask<QsLexResult> LexStringModeAsync(QsLexerContext context)
         {
             Debug.Assert(context.LexingMode == QsLexingMode.String);
@@ -105,6 +99,16 @@ namespace QuickSC
             var skipResult = await SkipAsync(context.Pos);
             if (skipResult.HasValue)
                 context = context.UpdatePos(skipResult.Value);
+
+            // 간단한 심볼 처리
+            if (context.Pos.Equals(';'))
+                return new QsLexResult(new QsSemiColonToken(), context.UpdatePos(await context.Pos.NextAsync()));
+
+            if (context.Pos.Equals(','))
+                return new QsLexResult(new QsCommaToken(), context.UpdatePos(await context.Pos.NextAsync()));
+
+            if (context.Pos.Equals('='))
+                return new QsLexResult(new QsEqualToken(), context.UpdatePos(await context.Pos.NextAsync()));
 
             // 끝 처리, 
             // TODO: 모드 스택에 NormalMode 하나만 남은 상태인걸 확인해야 하지 않을까
@@ -281,9 +285,6 @@ namespace QuickSC
             {
                 if (!IsIdentifierLetter(curPos))
                 {
-                    if (!IsAllowedAfterIdentifierLetter(curPos))
-                        return QsLexResult.Invalid;
-
                     break;
                 }
 

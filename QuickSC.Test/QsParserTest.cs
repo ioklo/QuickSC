@@ -28,7 +28,7 @@ namespace QuickSC
             var script = await parser.ParseScriptAsync(context);
 
             var expected = new QsScript(ImmutableArray.Create<QsScriptElement>(
-                new QsStatementScriptElement(new QsCommandStatement(
+                new QsStmtScriptElement(new QsCommandStmt(
                     new QsStringExp(ImmutableArray.Create<QsStringExpElement>(new QsTextStringExpElement("ls"))),
                     ImmutableArray.Create<QsExp>(
                         new QsStringExp(ImmutableArray.Create<QsStringExpElement>(new QsTextStringExpElement("-al")))
@@ -36,6 +36,23 @@ namespace QuickSC
             ));
 
             Assert.Equal(expected, script.Elem);
+        }
+
+        [Fact] async Task TestParseVarDeclStmtAsync()
+        {
+            var lexer = new QsLexer();
+            var parser = new QsParser(lexer);
+            var context = (await MakeContextAsync("string a = \"hello\";")).AddType("string");
+
+            var varDeclStmt = await parser.ParseVarDeclStmtAsync(context);
+
+            var expected = new QsVarDeclStmt("string", ImmutableArray.Create<QsVarDeclStmtElement>(
+                new QsVarDeclStmtElement("a", new QsStringExp(ImmutableArray.Create<QsStringExpElement>(
+                    new QsTextStringExpElement("hello"))
+                ))
+            ));
+
+            Assert.Equal(expected, varDeclStmt.Elem);
         }
 
         [Fact]

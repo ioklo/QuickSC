@@ -33,6 +33,10 @@ namespace QuickSC.Token
         }
     }
 
+    public class QsEqualToken : QsSimpleToken { } // =
+    public class QsCommaToken : QsSimpleToken { } // ,
+    public class QsSemiColonToken : QsSimpleToken { } // ;
+
     public class QsWhitespaceToken : QsSimpleToken { }
     public class QsBeginStringToken : QsSimpleToken { } // "
     public class QsEndStringToken : QsSimpleToken { }   
