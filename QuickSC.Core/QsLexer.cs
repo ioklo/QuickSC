@@ -124,15 +124,49 @@ namespace QuickSC
                 return new QsLexResult(boolResult.Token, boolResult.Context);
 
             // 키워드 처리
-            var ifToken = await ConsumeAsync("if", context.Pos);
-            if (ifToken.HasValue)
-                return new QsLexResult(new QsIfToken(), context.UpdatePos(ifToken.Value));
+            var ifResult = await ConsumeAsync("if", context.Pos);
+            if (ifResult.HasValue)
+                return new QsLexResult(new QsIfToken(), context.UpdatePos(ifResult.Value));
 
-            var elseToken = await ConsumeAsync("else", context.Pos);
-            if (elseToken.HasValue)
-                return new QsLexResult(new QsElseToken(), context.UpdatePos(elseToken.Value));
+            var elseResult = await ConsumeAsync("else", context.Pos);
+            if (elseResult.HasValue)
+                return new QsLexResult(new QsElseToken(), context.UpdatePos(elseResult.Value));
+
+            var forResult = await ConsumeAsync("for", context.Pos);
+            if (forResult.HasValue)
+                return new QsLexResult(new QsForToken(), context.UpdatePos(forResult.Value));
+
+            var continueResult = await ConsumeAsync("continue", context.Pos);
+            if (continueResult.HasValue)
+                return new QsLexResult(new QsContinueToken(), context.UpdatePos(continueResult.Value));
+
+            var breakResult = await ConsumeAsync("break", context.Pos);
+            if (breakResult.HasValue)
+                return new QsLexResult(new QsBreakToken(), context.UpdatePos(breakResult.Value));
+
+            var plusplusResult = await ConsumeAsync("++", context.Pos);
+            if (plusplusResult.HasValue)
+                return new QsLexResult(new QsPlusPlusToken(), context.UpdatePos(plusplusResult.Value));
+
+            var minusminusResult = await ConsumeAsync("--", context.Pos);
+            if (minusminusResult.HasValue)
+                return new QsLexResult(new QsMinusMinusToken(), context.UpdatePos(minusminusResult.Value));
+
+            var lessthanequalResult = await ConsumeAsync("<=", context.Pos);
+            if (lessthanequalResult.HasValue)
+                return new QsLexResult(new QsLessThanEqualToken(), context.UpdatePos(lessthanequalResult.Value));
+
+            var greaterthanequalResult = await ConsumeAsync(">=", context.Pos);
+            if (greaterthanequalResult.HasValue)
+                return new QsLexResult(new QsGreaterThanEqualToken(), context.UpdatePos(greaterthanequalResult.Value));
 
             // 간단한 심볼 처리
+            if (context.Pos.Equals('<'))
+                return new QsLexResult(new QsLessThanToken(), context.UpdatePos(await context.Pos.NextAsync()));
+
+            if (context.Pos.Equals('>'))
+                return new QsLexResult(new QsGreaterThanToken(), context.UpdatePos(await context.Pos.NextAsync()));
+
             if (context.Pos.Equals(';'))
                 return new QsLexResult(new QsSemiColonToken(), context.UpdatePos(await context.Pos.NextAsync()));
 

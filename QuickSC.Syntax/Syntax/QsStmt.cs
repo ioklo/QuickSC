@@ -8,7 +8,7 @@ namespace QuickSC.Syntax
     public abstract class QsStmt
     {
     }
-
+    
     // 명령어
     public class QsCommandStmt : QsStmt
     {
@@ -137,6 +137,86 @@ namespace QuickSC.Syntax
             CondExp = condExp;
             BodyStmt = bodyStmt;
             ElseBodyStmt = elseBodyStmt;
+        }
+    }
+
+    public abstract class QsForStmtInitializer { }
+    public class QsExpForStmtInitializer : QsForStmtInitializer 
+    { 
+        public QsExp Exp { get; }
+        public QsExpForStmtInitializer(QsExp exp) { Exp = exp; }
+    }
+    public class QsVarDeclForStmtInitializer : QsForStmtInitializer 
+    {
+        public QsVarDeclStmt Stmt { get; }
+        public QsVarDeclForStmtInitializer(QsVarDeclStmt stmt) { Stmt = stmt; }
+    }
+
+    public class QsForStmt : QsStmt
+    {
+        // InitExp Or VarDecl
+        public QsForStmtInitializer? Initializer { get; }
+        public QsExp? CondExp { get; }
+        public QsExp? ContinueExp { get; }
+        public QsStmt BodyStmt { get; }
+
+        public QsForStmt(QsForStmtInitializer? initializer, QsExp? condExp, QsExp? continueExp, QsStmt bodyStmt)
+        {
+            Initializer = initializer;
+            CondExp = condExp;
+            ContinueExp = continueExp;
+            BodyStmt = bodyStmt;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsForStmt stmt &&
+                   EqualityComparer<QsForStmtInitializer?>.Default.Equals(Initializer, stmt.Initializer) &&
+                   EqualityComparer<QsExp?>.Default.Equals(CondExp, stmt.CondExp) &&
+                   EqualityComparer<QsExp?>.Default.Equals(ContinueExp, stmt.ContinueExp) &&
+                   EqualityComparer<QsStmt>.Default.Equals(BodyStmt, stmt.BodyStmt);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Initializer, CondExp, ContinueExp, BodyStmt);
+        }
+
+        public static bool operator ==(QsForStmt? left, QsForStmt? right)
+        {
+            return EqualityComparer<QsForStmt>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsForStmt? left, QsForStmt? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public class QsBlankStmt : QsStmt 
+    {
+        public static QsBlankStmt Instance { get; } = new QsBlankStmt();
+        private QsBlankStmt() { }
+    }
+
+    public class QsContinueStmt : QsStmt
+    {
+        public static QsContinueStmt Instance { get; } = new QsContinueStmt();
+        private QsContinueStmt() { }
+    }
+
+    public class QsBreakStmt : QsStmt
+    {
+        public static QsBreakStmt Instance { get; } = new QsBreakStmt();
+        private QsBreakStmt() { }
+    }
+
+    public class QsBlockStmt : QsStmt
+    {
+        public ImmutableArray<QsStmt> Stmts { get; }
+        public QsBlockStmt(ImmutableArray<QsStmt> stmts)
+        {
+            Stmts = stmts;
         }
     }
 }

@@ -8,7 +8,7 @@
 
     public class QsNullValue : QsValue
     {
-        public static QsNullValue Value = new QsNullValue();
+        public static QsNullValue Instance { get; } = new QsNullValue();
         private QsNullValue() { }
     }
 

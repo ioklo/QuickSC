@@ -33,6 +33,14 @@ namespace QuickSC.Token
         }
     }
 
+    public class QsPlusPlusToken : QsSimpleToken { } // ++
+    public class QsMinusMinusToken : QsSimpleToken { } // --
+    public class QsLessThanEqualToken : QsSimpleToken { } // <=
+    public class QsGreaterThanEqualToken : QsSimpleToken { } // >=    
+
+    public class QsLessThanToken : QsSimpleToken { } // <
+    public class QsGreaterThanToken : QsSimpleToken { } // >
+
     public class QsEqualToken : QsSimpleToken { } // =
     public class QsCommaToken : QsSimpleToken { } // ,
     public class QsSemiColonToken : QsSimpleToken { } // ;   
@@ -43,6 +51,9 @@ namespace QuickSC.Token
 
     public class QsIfToken : QsSimpleToken { }    // if 
     public class QsElseToken : QsSimpleToken { }  // else 
+    public class QsForToken : QsSimpleToken { }  // for
+    public class QsContinueToken : QsSimpleToken { } // continue
+    public class QsBreakToken : QsSimpleToken { } // break
 
     public class QsWhitespaceToken : QsSimpleToken { } // \s
     public class QsNewLineToken: QsSimpleToken { }     // \r \n \r\n

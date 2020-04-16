@@ -156,7 +156,7 @@ namespace QuickSC
                 }
                 else
                 {
-                    value = QsNullValue.Value;
+                    value = QsNullValue.Instance;
                 }
 
                 context = context.SetValue(elem.VarName, value);
@@ -189,6 +189,108 @@ namespace QuickSC
             return context;
         }
 
+        QsEvalContext? EvaluateForStmt(QsForStmt forStmt, QsEvalContext context)
+        {
+            switch (forStmt.Initializer)
+            {
+                case QsExpForStmtInitializer expInitializer:
+                    {
+                        var valueResult = EvaluateExp(expInitializer.Exp, context);
+                        if (!valueResult.HasValue) return null;
+                        context = valueResult.Context;
+                        break;
+                    }
+                case QsVarDeclForStmtInitializer varDeclInitializer:
+                    {
+                        var evalResult = EvaluateVarDeclStmt(varDeclInitializer.Stmt, context);
+                        if (!evalResult.HasValue) return null;
+                        context = evalResult.Value;
+                        break;
+                    }
+
+                case null:
+                    break;
+
+                default:
+                    throw new NotImplementedException();
+            }
+
+            while (true)
+            {
+                if (forStmt.CondExp != null)
+                {
+                    var condExpResult = EvaluateExp(forStmt.CondExp, context);
+                    if (!condExpResult.HasValue)
+                        return null;
+
+                    var condExpBoolValue = condExpResult.Value as QsBoolValue;
+                    if (condExpBoolValue == null)
+                        return null;
+
+                    context = condExpResult.Context;
+                    if (!condExpBoolValue.Value)
+                        return context;
+                }
+                
+                var bodyStmtResult = EvaluateStmt(forStmt.BodyStmt, context);
+                if (!bodyStmtResult.HasValue)
+                    return null;
+
+                context = bodyStmtResult.Value;
+
+                if (context.LoopControl == QsEvalContextLoopControl.Break)
+                {
+                    context = context.SetLoopControl(QsEvalContextLoopControl.None);
+                    return context;
+                }
+                else if (context.LoopControl == QsEvalContextLoopControl.Continue)
+                {
+                    context = context.SetLoopControl(QsEvalContextLoopControl.None);
+                }
+                else
+                {
+                    Debug.Assert(context.LoopControl == QsEvalContextLoopControl.None);
+                }
+
+                if (forStmt.ContinueExp != null)
+                {
+                    var contExpResult = EvaluateExp(forStmt.ContinueExp, context);
+                    if (!contExpResult.HasValue)
+                        return null;
+
+                    context = contExpResult.Context;
+                }
+            }
+        }
+
+        QsEvalContext? EvaluateContinueStmt(QsContinueStmt continueStmt, QsEvalContext context)
+        {
+            return context.SetLoopControl(QsEvalContextLoopControl.Continue);
+        }
+
+        QsEvalContext? EvaluateBreakStmt(QsBreakStmt breakStmt, QsEvalContext context)
+        {
+            return context.SetLoopControl(QsEvalContextLoopControl.Break);
+        }
+
+        QsEvalContext? EvaluateBlockStmt(QsBlockStmt blockStmt, QsEvalContext context)
+        {
+            var prevVars = context.Vars;
+
+            foreach(var stmt in blockStmt.Stmts)
+            {
+                var stmtResult = EvaluateStmt(stmt, context);
+                if (!stmtResult.HasValue) return null;
+
+                context = stmtResult.Value;
+
+                if (context.LoopControl != QsEvalContextLoopControl.None)
+                    return context.SetVars(prevVars);
+            }
+
+            return context.SetVars(prevVars);
+        }
+
         // TODO: 임시 public
         public QsEvalContext? EvaluateStmt(QsStmt stmt, QsEvalContext context)
         {
@@ -196,8 +298,13 @@ namespace QuickSC
             {
                 QsCommandStmt cmdStmt => EvaluateCommandStmt(cmdStmt, context),
                 QsVarDeclStmt varDeclStmt => EvaluateVarDeclStmt(varDeclStmt, context),
-                QsIfStmt ifStmt => EvaluateIfStmt(ifStmt, context),
-                _ => null
+                QsIfStmt ifStmt => EvaluateIfStmt(ifStmt, context),                
+                QsForStmt forStmt => EvaluateForStmt(forStmt, context),
+                QsContinueStmt continueStmt => EvaluateContinueStmt(continueStmt, context),
+                QsBreakStmt breakStmt => EvaluateBreakStmt(breakStmt, context),
+                QsBlockStmt blockStmt => EvaluateBlockStmt(blockStmt, context),
+                QsBlankStmt blankStmt => context,
+                _ => throw new NotImplementedException()
             };
         }        
 

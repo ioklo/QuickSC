@@ -280,9 +280,121 @@ namespace QuickSC
 
             static QsParseResult<QsVarDeclStmt> Invalid() => QsParseResult<QsVarDeclStmt>.Invalid;
         }
-        
 
-        // 커맨드란
+        async ValueTask<QsParseResult<QsForStmtInitializer>> ParseForStmtInitializerAsync(QsParserContext context)
+        {
+            return QsParseResult<QsForStmtInitializer>.Invalid;
+        }
+
+        async ValueTask<QsParseResult<QsForStmt>> ParseForStmtAsync(QsParserContext context)
+        {
+            // TODO: Invalid와 Fatal을 구분해야 할 것 같다.. 어찌할지는 깊게 생각을 해보자
+            if (!Accept<QsForToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return Invalid();
+            
+            if (!Accept<QsLParenToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return Invalid();
+
+            QsForStmtInitializer? initializer = null;
+            // TODO: 이 Initializer의 끝은 ';' 이다
+            var initializerResult = await ParseForStmtInitializerAsync(context);
+            if (initializerResult.HasValue)
+            {
+                initializer = initializerResult.Elem;
+                context = initializerResult.Context;
+            }
+
+            if (!Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return Invalid();
+
+            // TODO: 이 CondExp의 끝은 ';' 이다
+            QsExp? condExp = null;
+            var condExpResult = await ParseExpAsync(context);
+            if (condExpResult.HasValue)
+            {
+                condExp = condExpResult.Elem;
+                context = condExpResult.Context;
+            }
+
+            if (!Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return Invalid();
+
+            QsExp? contExp = null;
+            // TODO: 이 CondExp의 끝은 ')' 이다            
+            var contExpResult = await ParseExpAsync(context);
+            if (condExpResult.HasValue)
+            {
+                contExp = contExpResult.Elem;
+                context = contExpResult.Context;
+            }
+
+            if (!Accept<QsRParenToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return Invalid();
+
+            var bodyStmtResult = await ParseStmtAsync(context);
+            if (!bodyStmtResult.HasValue)
+                return Invalid();
+
+            context = bodyStmtResult.Context;
+
+            return new QsParseResult<QsForStmt>(new QsForStmt(initializer, condExp, contExp, bodyStmtResult.Elem), context);
+
+            static QsParseResult<QsForStmt> Invalid() => QsParseResult<QsForStmt>.Invalid;
+        }
+
+        async ValueTask<QsParseResult<QsBlankStmt>> ParseBlankStmtAsync(QsParserContext context)
+        {
+            if (Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return new QsParseResult<QsBlankStmt>(QsBlankStmt.Instance, context);
+
+            return QsParseResult<QsBlankStmt>.Invalid;
+        }
+
+        async ValueTask<QsParseResult<QsContinueStmt>> ParseContinueStmtAsync(QsParserContext context)
+        {
+            if (!Accept<QsContinueStmt>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return QsParseResult<QsContinueStmt>.Invalid;
+
+            if (!Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return QsParseResult<QsContinueStmt>.Invalid;
+
+            return new QsParseResult<QsContinueStmt>(QsContinueStmt.Instance, context);
+        }
+
+        async ValueTask<QsParseResult<QsBreakStmt>> ParseBreakStmtAsync(QsParserContext context)
+        {
+            if (!Accept<QsContinueStmt>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return QsParseResult<QsBreakStmt>.Invalid;
+
+            if (!Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return QsParseResult<QsBreakStmt>.Invalid;
+
+            return new QsParseResult<QsBreakStmt>(QsBreakStmt.Instance, context);
+        }
+
+        async ValueTask<QsParseResult<QsBlockStmt>> ParseBlockStmtAsync(QsParserContext context)
+        {
+            if (!Accept<QsLBraceToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                return QsParseResult<QsBlockStmt>.Invalid;
+
+            var stmts = ImmutableArray.CreateBuilder<QsStmt>();
+            while (!Accept<QsRBraceToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+            {
+                var stmtResult = await ParseStmtAsync(context);
+                if (stmtResult.HasValue)
+                {
+                    context = stmtResult.Context;
+                    stmts.Add(stmtResult.Elem);
+
+                    continue;
+                }
+
+                return QsParseResult<QsBlockStmt>.Invalid;
+            }            
+
+            return new QsParseResult<QsBlockStmt>(new QsBlockStmt(stmts.ToImmutable()), context);
+        }
+
         async ValueTask<QsParseResult<QsCommandStmt>> ParseCommandStmtAsync(QsParserContext context)
         {
             //  첫 <NEWLINE>, <WS>는 넘기는데, 
@@ -349,6 +461,22 @@ namespace QuickSC
 
         public async ValueTask<QsParseResult<QsStmt>> ParseStmtAsync(QsParserContext context)
         {
+            var blankStmtResult = await ParseBlankStmtAsync(context);
+            if (blankStmtResult.HasValue)
+                return Result(blankStmtResult);
+
+            var blockStmtResult = await ParseBlockStmtAsync(context);
+            if (blockStmtResult.HasValue)
+                return Result(blockStmtResult);
+
+            var continueStmtResult = await ParseContinueStmtAsync(context);
+            if (continueStmtResult.HasValue)
+                return Result(continueStmtResult);
+
+            var breakStmtResult = await ParseBreakStmtAsync(context);
+            if (breakStmtResult.HasValue)
+                return Result(breakStmtResult);
+
             var varDeclResult = await ParseVarDeclStmtAsync(context);
             if (varDeclResult.HasValue)
                 return Result(varDeclResult);
@@ -356,6 +484,10 @@ namespace QuickSC
             var ifStmtResult = await ParseIfStmtAsync(context);
             if (ifStmtResult.HasValue)
                 return Result(ifStmtResult);
+
+            var forStmtResult = await ParseForStmtAsync(context);
+            if (forStmtResult.HasValue)
+                return Result(forStmtResult);            
 
             var cmdResult = await ParseCommandStmtAsync(context);
             if (cmdResult.HasValue) 
