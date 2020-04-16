@@ -61,18 +61,16 @@ namespace QuickSC
                 category == UnicodeCategory.DecimalDigitNumber;
         }
 
-        async ValueTask<QsLexResult> LexStringModeAsync(QsLexerContext context)
-        {
-            Debug.Assert(context.LexingMode == QsLexingMode.String);
-            
+        public async ValueTask<QsLexResult> LexStringModeAsync(QsLexerContext context)
+        {   
             var textResult = await LexStringModeTextAsync(context);
             if (textResult.HasValue)
                 return textResult;
 
             if (context.Pos.Equals('"'))
                 return new QsLexResult(
-                    new QsEndStringToken(),
-                    context.PopMode(await context.Pos.NextAsync()));
+                    new QsDoubleQuoteToken(),
+                    context.UpdatePos(await context.Pos.NextAsync()));
 
             if (context.Pos.Equals('$'))
             {
@@ -80,8 +78,8 @@ namespace QuickSC
 
                 if (nextPos.Equals('{'))
                     return new QsLexResult(
-                        new QsBeginInnerExpToken(),
-                        context.PushMode(QsLexingMode.InnerExp, await nextPos.NextAsync()));
+                        new QsDollarLBraceToken(),
+                        context.UpdatePos(await nextPos.NextAsync()));
 
                 var idResult = await LexIdentifierAsync(context.UpdatePos(nextPos), false);
                 if (idResult.HasValue)
@@ -91,21 +89,30 @@ namespace QuickSC
             return QsLexResult.Invalid;
         }
 
-        async ValueTask<QsLexResult> LexNormalModeAsync(QsLexerContext context)
+        public async ValueTask<QsLexResult> LexNormalModeAsync(QsLexerContext context, bool bSkipWhitespaceAndNewLine = true)
         {
-            Debug.Assert(context.LexingMode == QsLexingMode.Normal);
-
             // 스킵처리
-            var skipResult = await SkipAsync(context.Pos);
-            if (skipResult.HasValue)
-                context = context.UpdatePos(skipResult.Value);
-            
+            if (bSkipWhitespaceAndNewLine)
+            {
+                while (true)
+                {
+                    var wsResult = await LexWhitespaceAsync(context, bIncludeNewLine: true);
+                    if (wsResult.HasValue)
+                    {
+                        context = wsResult.Context;
+                        continue;
+                    }
+
+                    break;
+                }
+            }
+
             // 끝 처리, 
             // TODO: 모드 스택에 NormalMode 하나만 남은 상태인걸 확인해야 하지 않을까
             if (context.Pos.IsReachEnd())
                 return new QsLexResult(
                     new QsEndOfFileToken(),
-                    context.UpdateMode(QsLexingMode.Deploted));
+                    context);
 
             // 여러개 먼저
             var intResult = await LexIntAsync(context);
@@ -115,6 +122,15 @@ namespace QuickSC
             var boolResult = await LexBoolAsync(context);
             if (boolResult.HasValue)
                 return new QsLexResult(boolResult.Token, boolResult.Context);
+
+            // 키워드 처리
+            var ifToken = await ConsumeAsync("if", context.Pos);
+            if (ifToken.HasValue)
+                return new QsLexResult(new QsIfToken(), context.UpdatePos(ifToken.Value));
+
+            var elseToken = await ConsumeAsync("else", context.Pos);
+            if (elseToken.HasValue)
+                return new QsLexResult(new QsElseToken(), context.UpdatePos(elseToken.Value));
 
             // 간단한 심볼 처리
             if (context.Pos.Equals(';'))
@@ -126,11 +142,24 @@ namespace QuickSC
             if (context.Pos.Equals('='))
                 return new QsLexResult(new QsEqualToken(), context.UpdatePos(await context.Pos.NextAsync()));
 
+            if (context.Pos.Equals('{'))
+                return new QsLexResult(new QsLBraceToken(), context.UpdatePos(await context.Pos.NextAsync()));
+
+            if (context.Pos.Equals('}'))
+                return new QsLexResult(new QsRBraceToken(), context.UpdatePos(await context.Pos.NextAsync()));
+
+            if (context.Pos.Equals('('))
+                return new QsLexResult(new QsLParenToken(), context.UpdatePos(await context.Pos.NextAsync()));
+
+            if (context.Pos.Equals(')'))
+                return new QsLexResult(new QsRParenToken(), context.UpdatePos(await context.Pos.NextAsync()));
+
+
             // "이면 스트링 처리 모드로 변경하고 BeginString 리턴
             if (context.Pos.Equals('"'))
                 return new QsLexResult(
-                    new QsBeginStringToken(), 
-                    context.PushMode(QsLexingMode.String, await context.Pos.NextAsync()));
+                    new QsDoubleQuoteToken(), 
+                    context.UpdatePos(await context.Pos.NextAsync()));
 
             // Identifier 시도
             var idResult = await LexIdentifierAsync(context, true);
@@ -139,57 +168,21 @@ namespace QuickSC
 
             return QsLexResult.Invalid;
         }
-
-        async ValueTask<QsLexResult> LexInnerExpModeAsync(QsLexerContext context)
+        
+        public async ValueTask<QsLexResult> LexCommandModeAsync(QsLexerContext context)
         {
-            Debug.Assert(context.LexingMode == QsLexingMode.InnerExp);
+            var wsResult = await LexWhitespaceAsync(context, bIncludeNewLine: false);
+            if (wsResult.HasValue)
+                return new QsLexResult(new QsWhitespaceToken(), wsResult.Context);
 
-            // 스킵처리
-            var skipResult = await SkipAsync(context.Pos);
-            if (skipResult.HasValue)
-                context = context.UpdatePos(skipResult.Value);
-
-            // }와 끝처리를 제외하고는 Normal모드랑 같다
-            if (context.Pos.IsReachEnd())
-                return QsLexResult.Invalid; // 뜬금없는 끝
-            
-            if (context.Pos.Equals('}'))
-                return new QsLexResult(
-                    new QsEndInnerExpToken(),
-                    context.PopMode(await context.Pos.NextAsync()));
-
-            if (context.Pos.Equals('"'))
-                return new QsLexResult(
-                    new QsBeginStringToken(), 
-                    context.PushMode(QsLexingMode.String, await context.Pos.NextAsync()));
-            
-            // Identifier 시도
-            var idResult = await LexIdentifierAsync(context, true);
-            if (idResult.HasValue)
-                return new QsLexResult(idResult.Token, idResult.Context);
-
-            return QsLexResult.Invalid;
-        }
-
-        async ValueTask<QsLexResult> LexCommandModeAsync(QsLexerContext context)
-        {
-            Debug.Assert(context.LexingMode == QsLexingMode.Command);
-
-            var nextSkipPos = await SkipAsync(context.Pos, bExceptLineSeparator: true);
-            if (nextSkipPos != null)
-                return new QsLexResult(new QsWhitespaceToken(), context.UpdatePos(nextSkipPos.Value));
+            var newLineResult = await LexNewLineAsync(context);
+            if (newLineResult.HasValue)
+                return new QsLexResult(new QsEndOfCommandToken(), newLineResult.Context);
 
             // 끝 도달
             if (context.Pos.IsReachEnd())
-                return new QsLexResult(new QsEndOfCommandToken(), context.UpdateMode(QsLexingMode.Normal));
-
-            // 줄바꿈
-            if (context.Pos.GetUnicodeCategory() == UnicodeCategory.LineSeparator)
-            {
-                var nextLineSepPos = await context.Pos.NextAsync();
-                return new QsLexResult(new QsEndOfCommandToken(), context.Update(QsLexingMode.Normal, nextLineSepPos));
-            }
-
+                return new QsLexResult(new QsEndOfCommandToken(), context);
+            
             // "이면 스트링 처리 모드로 변경하고 BeginString 리턴
             if (context.Pos.Equals('"'))
             {
@@ -197,8 +190,8 @@ namespace QuickSC
                 if (!nextQuotePos.Equals('"'))
                 {
                     return new QsLexResult(
-                        new QsBeginStringToken(),
-                        context.PushMode(QsLexingMode.String, await context.Pos.NextAsync())); // 끝나면 CommandArgument로 점프하도록
+                        new QsDoubleQuoteToken(),
+                        context.UpdatePos(await context.Pos.NextAsync())); // 끝나면 CommandArgument로 점프하도록
                 }
             }
 
@@ -209,8 +202,8 @@ namespace QuickSC
                 if (nextDollarPos.Equals('{'))
                 {
                     return new QsLexResult(
-                        new QsBeginInnerExpToken(),
-                        context.PushMode(QsLexingMode.InnerExp, await nextDollarPos.NextAsync()));
+                        new QsDollarLBraceToken(),
+                        context.UpdatePos(await nextDollarPos.NextAsync()));
                 }
 
                 if (!nextDollarPos.Equals('$'))
@@ -344,14 +337,12 @@ namespace QuickSC
 
         async ValueTask<QsLexResult> LexStringModeTextAsync(QsLexerContext context)
         {
-            Debug.Assert(context.LexingMode == QsLexingMode.String);
-
             var sb = new StringBuilder();
             var curPos = context.Pos;
             while (true) // 조심
             {
                 if (curPos.IsReachEnd())
-                    return QsLexResult.Invalid;
+                    break;
 
                 if (curPos.Equals('"')) // "두개 처리
                 {
@@ -382,41 +373,59 @@ namespace QuickSC
             return new QsLexResult(new QsTextToken(sb.ToString()), context.UpdatePos(curPos));
         }
         
-        async ValueTask<QsBufferPosition?> SkipAsync(QsBufferPosition pos, bool bExceptLineSeparator = false)
+        async ValueTask<QsLexResult> LexWhitespaceAsync(QsLexerContext context, bool bIncludeNewLine)
         {
-            var curPos = pos;
+            bool bUpdated = false;
 
-            while(!curPos.IsReachEnd() && curPos.IsWhiteSpace() && (!bExceptLineSeparator || curPos.GetUnicodeCategory() != UnicodeCategory.LineSeparator))
+            while(true)
             {
-                curPos = await curPos.NextAsync();
+                if (context.Pos.IsReachEnd()) break;
+                if (!context.Pos.IsWhiteSpace()) break;
+
+                // whitespace인데 lineseparator라면 종료
+                if (!bIncludeNewLine && (context.Pos.Equals('\r') || context.Pos.Equals('\n'))) break;
+
+                context = context.UpdatePos(await context.Pos.NextAsync());
+                bUpdated = true;
             }
 
-            return (curPos == pos) ? (QsBufferPosition?)null : curPos;
+            return bUpdated ? new QsLexResult(new QsWhitespaceToken(), context) : QsLexResult.Invalid;
         }
 
-        public async ValueTask<QsLexResult> LexAsync(QsLexerContext context)
+        async ValueTask<QsLexResult> LexNewLineAsync(QsLexerContext context)
         {
-            // 고갈 되었으면 더이상 아무것도 리턴하지 않는다
-            if (context.LexingMode == QsLexingMode.Deploted)
-                return QsLexResult.Invalid;
-
-            Debug.Assert(context.LexingMode != QsLexingMode.Deploted);
-            switch (context.LexingMode)
+            bool bUpdated = false;
+            while (context.Pos.Equals('\r') || context.Pos.Equals('\n'))
             {
-                case QsLexingMode.Normal:
-                    return await LexNormalModeAsync(context);
-
-                case QsLexingMode.String:
-                    return await LexStringModeAsync(context);
-
-                case QsLexingMode.InnerExp:
-                    return await LexInnerExpModeAsync(context);
-
-                case QsLexingMode.Command:
-                    return await LexCommandModeAsync(context);
+                context = context.UpdatePos(await context.Pos.NextAsync());
+                bUpdated = true;
             }
-            
-            return QsLexResult.Invalid;
+
+            return bUpdated ? new QsLexResult(new QsNewLineToken(), context) : QsLexResult.Invalid;
         }
+
+        //public async ValueTask<QsLexResult> LexAsync(QsLexerContext context, bool bSkipWhitespaceAndNewLine)
+        //{   
+        //    switch (context.LexingMode)
+        //    {
+        //        case QsLexingMode.Normal:
+        //            return await LexNormalModeAsync(context);
+
+        //        case QsLexingMode.String:
+        //            return await LexStringModeAsync(context);
+
+        //        case QsLexingMode.InnerExp:
+        //            return await LexInnerExpModeAsync(context);
+
+        //        case QsLexingMode.Command:
+        //            return await LexCommandModeAsync(context);
+
+        //        // 고갈 되었으면 더이상 아무것도 리턴하지 않는다
+        //        case QsLexingMode.Deploted:
+        //            return QsLexResult.Invalid;
+        //        }
+
+        //    return QsLexResult.Invalid;
+        //}
     }
 }

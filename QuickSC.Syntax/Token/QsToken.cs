@@ -36,13 +36,19 @@ namespace QuickSC.Token
     public class QsEqualToken : QsSimpleToken { } // =
     public class QsCommaToken : QsSimpleToken { } // ,
     public class QsSemiColonToken : QsSimpleToken { } // ;   
-    
+    public class QsLBraceToken : QsSimpleToken { } // {
+    public class QsRBraceToken : QsSimpleToken { } // }
+    public class QsLParenToken : QsSimpleToken { } // (
+    public class QsRParenToken : QsSimpleToken { } // )
 
-    public class QsWhitespaceToken : QsSimpleToken { }
-    public class QsBeginStringToken : QsSimpleToken { } // "
-    public class QsEndStringToken : QsSimpleToken { }   
-    public class QsBeginInnerExpToken : QsSimpleToken { }
-    public class QsEndInnerExpToken : QsSimpleToken { }
+    public class QsIfToken : QsSimpleToken { }    // if 
+    public class QsElseToken : QsSimpleToken { }  // else 
+
+    public class QsWhitespaceToken : QsSimpleToken { } // \s
+    public class QsNewLineToken: QsSimpleToken { }     // \r \n \r\n
+
+    public class QsDoubleQuoteToken : QsSimpleToken { } // "
+    public class QsDollarLBraceToken : QsSimpleToken { }
     public class QsEndOfFileToken : QsSimpleToken { }
     public class QsEndOfCommandToken : QsSimpleToken { }
 

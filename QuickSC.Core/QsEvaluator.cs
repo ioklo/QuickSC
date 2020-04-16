@@ -165,6 +165,30 @@ namespace QuickSC
             return context;
         }
 
+        QsEvalContext? EvaluateIfStmt(QsIfStmt stmt, QsEvalContext context)
+        {
+            var condValue = EvaluateExp(stmt.CondExp, context);
+            if (!condValue.HasValue) return null;
+
+            var condBoolValue = condValue.Value as QsBoolValue;
+            if (condBoolValue == null)
+                return null;
+
+            context = condValue.Context;
+
+            if (condBoolValue.Value)
+            {
+                return EvaluateStmt(stmt.BodyStmt, context);
+            }
+            else
+            {
+                if (stmt.ElseBodyStmt != null)
+                    return EvaluateStmt(stmt.ElseBodyStmt, context);
+            }
+
+            return context;
+        }
+
         // TODO: 임시 public
         public QsEvalContext? EvaluateStmt(QsStmt stmt, QsEvalContext context)
         {
@@ -172,7 +196,7 @@ namespace QuickSC
             {
                 QsCommandStmt cmdStmt => EvaluateCommandStmt(cmdStmt, context),
                 QsVarDeclStmt varDeclStmt => EvaluateVarDeclStmt(varDeclStmt, context),
-
+                QsIfStmt ifStmt => EvaluateIfStmt(ifStmt, context),
                 _ => null
             };
         }        

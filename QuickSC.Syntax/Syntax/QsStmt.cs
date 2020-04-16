@@ -50,7 +50,7 @@ namespace QuickSC.Syntax
             return !(left == right);
         }
     }
-    
+
     public struct QsVarDeclStmtElement
     {
         public string VarName { get; }
@@ -126,4 +126,17 @@ namespace QuickSC.Syntax
         }
     }
 
+    public class QsIfStmt : QsStmt
+    {
+        public QsExp CondExp { get; }
+        public QsStmt BodyStmt { get; }
+        public QsStmt? ElseBodyStmt { get; }
+
+        public QsIfStmt(QsExp condExp, QsStmt bodyStmt, QsStmt? elseBodyStmt)
+        {
+            CondExp = condExp;
+            BodyStmt = bodyStmt;
+            ElseBodyStmt = elseBodyStmt;
+        }
+    }
 }
