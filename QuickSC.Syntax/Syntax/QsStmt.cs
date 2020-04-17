@@ -85,13 +85,12 @@ namespace QuickSC.Syntax
         }
     }
 
-    // int a = 0, b, c;
-    public class QsVarDeclStmt : QsStmt
+    public class QsVarDecl
     {
         public string TypeName { get; }
         public ImmutableArray<QsVarDeclStmtElement> Elements { get; }
 
-        public QsVarDeclStmt(string typeName, ImmutableArray<QsVarDeclStmtElement> elems)
+        public QsVarDecl(string typeName, ImmutableArray<QsVarDeclStmtElement> elems)
         {
             TypeName = typeName;
             Elements = elems;
@@ -99,20 +98,46 @@ namespace QuickSC.Syntax
 
         public override bool Equals(object? obj)
         {
-            return obj is QsVarDeclStmt stmt &&
-                   TypeName == stmt.TypeName &&
-                   Enumerable.SequenceEqual(Elements, stmt.Elements);
+            return obj is QsVarDecl decl &&
+                   TypeName == decl.TypeName &&
+                   Enumerable.SequenceEqual(Elements, decl.Elements);
         }
 
         public override int GetHashCode()
         {
-            var hashCode = new HashCode();
-            hashCode.Add(TypeName);
+            return HashCode.Combine(TypeName, Elements);
+        }
 
-            foreach (var elem in Elements)
-                hashCode.Add(elem);
+        public static bool operator ==(QsVarDecl? left, QsVarDecl? right)
+        {
+            return EqualityComparer<QsVarDecl>.Default.Equals(left, right);
+        }
 
-            return hashCode.ToHashCode();
+        public static bool operator !=(QsVarDecl? left, QsVarDecl? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    // int a = 0, b, c;
+    public class QsVarDeclStmt : QsStmt
+    {
+        public QsVarDecl VarDecl { get; }        
+
+        public QsVarDeclStmt(QsVarDecl varDecl)
+        {
+            VarDecl = varDecl;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsVarDeclStmt stmt &&
+                   EqualityComparer<QsVarDecl>.Default.Equals(VarDecl, stmt.VarDecl);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(VarDecl);
         }
 
         public static bool operator ==(QsVarDeclStmt? left, QsVarDeclStmt? right)
@@ -148,8 +173,8 @@ namespace QuickSC.Syntax
     }
     public class QsVarDeclForStmtInitializer : QsForStmtInitializer 
     {
-        public QsVarDeclStmt Stmt { get; }
-        public QsVarDeclForStmtInitializer(QsVarDeclStmt stmt) { Stmt = stmt; }
+        public QsVarDecl VarDecl { get; }
+        public QsVarDeclForStmtInitializer(QsVarDecl varDecl) { VarDecl = varDecl; }
     }
 
     public class QsForStmt : QsStmt

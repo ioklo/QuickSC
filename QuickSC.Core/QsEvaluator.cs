@@ -433,7 +433,12 @@ namespace QuickSC
 
         QsEvalContext? EvaluateVarDeclStmt(QsVarDeclStmt stmt, QsEvalContext context)
         {
-            foreach(var elem in stmt.Elements)
+            return EvaluateVarDecl(stmt.VarDecl, context);
+        }
+
+        QsEvalContext? EvaluateVarDecl(QsVarDecl varDecl, QsEvalContext context)
+        {
+            foreach(var elem in varDecl.Elements)
             {
                 QsValue value;
                 if (elem.InitExp != null)
@@ -482,6 +487,8 @@ namespace QuickSC
 
         QsEvalContext? EvaluateForStmt(QsForStmt forStmt, QsEvalContext context)
         {
+            var prevVars = context.Vars;
+
             switch (forStmt.Initializer)
             {
                 case QsExpForStmtInitializer expInitializer:
@@ -493,7 +500,7 @@ namespace QuickSC
                     }
                 case QsVarDeclForStmtInitializer varDeclInitializer:
                     {
-                        var evalResult = EvaluateVarDeclStmt(varDeclInitializer.Stmt, context);
+                        var evalResult = EvaluateVarDecl(varDeclInitializer.VarDecl, context);
                         if (!evalResult.HasValue) return null;
                         context = evalResult.Value;
                         break;
@@ -520,7 +527,7 @@ namespace QuickSC
 
                     context = condExpResult.Context;
                     if (!condExpBoolValue.Value)
-                        return context;
+                        break;
                 }
                 
                 var bodyStmtResult = EvaluateStmt(forStmt.BodyStmt, context);
@@ -532,7 +539,7 @@ namespace QuickSC
                 if (context.LoopControl == QsEvalContextLoopControl.Break)
                 {
                     context = context.SetLoopControl(QsEvalContextLoopControl.None);
-                    return context;
+                    break;
                 }
                 else if (context.LoopControl == QsEvalContextLoopControl.Continue)
                 {
@@ -552,6 +559,8 @@ namespace QuickSC
                     context = contExpResult.Context;
                 }
             }
+
+            return context.SetVars(prevVars);
         }
 
         QsEvalContext? EvaluateContinueStmt(QsContinueStmt continueStmt, QsEvalContext context)

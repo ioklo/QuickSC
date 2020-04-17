@@ -144,8 +144,7 @@ namespace QuickSC
             static QsParseResult<QsIfStmt> Invalid() => QsParseResult<QsIfStmt>.Invalid;
         }
 
-        // int x = 0;
-        internal async ValueTask<QsParseResult<QsVarDeclStmt>> ParseVarDeclStmtAsync(QsParserContext context)
+        async ValueTask<QsParseResult<QsVarDecl>> ParseVarDeclAsync(QsParserContext context)
         {
             var typeIdResult = AcceptAndReturn<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context);
 
@@ -178,16 +177,36 @@ namespace QuickSC
 
             } while (Accept<QsCommaToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context)); // ,가 나오면 계속한다
 
+            return new QsParseResult<QsVarDecl>(new QsVarDecl(typeIdResult.Value, elems.ToImmutable()), context);
+
+            static QsParseResult<QsVarDecl> Invalid() => QsParseResult<QsVarDecl>.Invalid;
+        }
+
+        // int x = 0;
+        internal async ValueTask<QsParseResult<QsVarDeclStmt>> ParseVarDeclStmtAsync(QsParserContext context)
+        {
+            var varDeclResult = await ParseVarDeclAsync(context);
+            if (!varDeclResult.HasValue)
+                return Invalid();
+
             if (!Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context)) // ;으로 마무리
                 return Invalid();
 
-            return new QsParseResult<QsVarDeclStmt>(new QsVarDeclStmt(typeIdResult.Value, elems.ToImmutable()), context);
+            return new QsParseResult<QsVarDeclStmt>(new QsVarDeclStmt(varDeclResult.Elem), context);
 
             static QsParseResult<QsVarDeclStmt> Invalid() => QsParseResult<QsVarDeclStmt>.Invalid;
         }
 
         async ValueTask<QsParseResult<QsForStmtInitializer>> ParseForStmtInitializerAsync(QsParserContext context)
         {
+            var varDeclResult = await ParseVarDeclAsync(context);
+            if (varDeclResult.HasValue)
+                return new QsParseResult<QsForStmtInitializer>(new QsVarDeclForStmtInitializer(varDeclResult.Elem), varDeclResult.Context);
+
+            var expResult = await expParser.ParseExpAsync(context);
+            if (expResult.HasValue)
+                return new QsParseResult<QsForStmtInitializer>(new QsExpForStmtInitializer(expResult.Elem), expResult.Context);
+
             return QsParseResult<QsForStmtInitializer>.Invalid;
         }
 

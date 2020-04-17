@@ -46,11 +46,11 @@ namespace QuickSC
 
             var varDeclStmt = await parser.ParseVarDeclStmtAsync(context);
 
-            var expected = new QsVarDeclStmt("string", ImmutableArray.Create<QsVarDeclStmtElement>(
+            var expected = new QsVarDeclStmt(new QsVarDecl("string", ImmutableArray.Create<QsVarDeclStmtElement>(
                 new QsVarDeclStmtElement("a", new QsStringExp(ImmutableArray.Create<QsStringExpElement>(
                     new QsTextStringExpElement("hello"))
                 ))
-            ));
+            )));
 
             Assert.Equal(expected, varDeclStmt.Elem);
         }
