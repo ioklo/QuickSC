@@ -1,6 +1,8 @@
-﻿namespace QuickSC
+﻿using System;
+using System.Collections.Generic;
+
+namespace QuickSC
 {
-    // 일단 Value는 String만 있다고 하자.. 추후에 조금씩 추가하는 걸로 
     public abstract class QsValue
     {
 
@@ -14,19 +16,82 @@
 
     public class QsBoolValue : QsValue
     {
-        public bool Value { get; }
+        public bool Value { get; set; }
         public QsBoolValue(bool value) { Value = value; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsBoolValue value &&
+                   Value == value.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
+
+        public static bool operator ==(QsBoolValue? left, QsBoolValue? right)
+        {
+            return EqualityComparer<QsBoolValue>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsBoolValue? left, QsBoolValue? right)
+        {
+            return !(left == right);
+        }
     }
 
     public class QsIntValue : QsValue
     {
-        public int Value { get; }
+        public int Value { get; set; }
         public QsIntValue(int value) { Value = value; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsIntValue value &&
+                   Value == value.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
+
+        public static bool operator ==(QsIntValue? left, QsIntValue? right)
+        {
+            return EqualityComparer<QsIntValue>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsIntValue? left, QsIntValue? right)
+        {
+            return !(left == right);
+        }
     }
 
     public class QsStringValue : QsValue
     {
-        public string Value { get; }
+        public string Value { get; set; }
         public QsStringValue(string value) { Value = value; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsStringValue value &&
+                   Value == value.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
+
+        public static bool operator ==(QsStringValue? left, QsStringValue? right)
+        {
+            return EqualityComparer<QsStringValue>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsStringValue? left, QsStringValue? right)
+        {
+            return !(left == right);
+        }
     }
 }

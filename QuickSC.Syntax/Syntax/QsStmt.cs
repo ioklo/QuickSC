@@ -218,5 +218,60 @@ namespace QuickSC.Syntax
         {
             Stmts = stmts;
         }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsBlockStmt stmt && Enumerable.SequenceEqual(Stmts, stmt.Stmts);
+        }
+
+        public override int GetHashCode()
+        {
+            var hashCode = new HashCode();
+
+            foreach (var stmt in Stmts)
+                hashCode.Add(stmt);
+
+            return hashCode.ToHashCode();
+        }
+
+        public static bool operator ==(QsBlockStmt? left, QsBlockStmt? right)
+        {
+            return EqualityComparer<QsBlockStmt>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsBlockStmt? left, QsBlockStmt? right)
+        {
+            return !(left == right);
+        }
+    }
+    
+    public class QsExpStmt : QsStmt
+    {
+        public QsExp Exp { get; }
+        public QsExpStmt(QsExp exp)
+        { 
+            Exp = exp; 
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsExpStmt stmt &&
+                   EqualityComparer<QsExp>.Default.Equals(Exp, stmt.Exp);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Exp);
+        }
+
+        public static bool operator ==(QsExpStmt? left, QsExpStmt? right)
+        {
+            return EqualityComparer<QsExpStmt>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsExpStmt? left, QsExpStmt? right)
+        {
+            return !(left == right);
+        }
     }
 }

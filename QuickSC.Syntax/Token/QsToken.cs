@@ -33,35 +33,45 @@ namespace QuickSC.Token
         }
     }
 
-    public class QsPlusPlusToken : QsSimpleToken { } // ++
-    public class QsMinusMinusToken : QsSimpleToken { } // --
-    public class QsLessThanEqualToken : QsSimpleToken { } // <=
-    public class QsGreaterThanEqualToken : QsSimpleToken { } // >=    
+    public class QsEqualEqualToken : QsToken { public static QsEqualEqualToken Instance { get; } = new QsEqualEqualToken(); private QsEqualEqualToken() { } } // ==
+    public class QsExclEqualToken : QsToken { public static QsExclEqualToken Instance { get; } = new QsExclEqualToken(); private QsExclEqualToken() { } } // !=
 
-    public class QsLessThanToken : QsSimpleToken { } // <
-    public class QsGreaterThanToken : QsSimpleToken { } // >
+    public class QsPlusPlusToken : QsToken { public static QsPlusPlusToken Instance { get; } = new QsPlusPlusToken(); private QsPlusPlusToken() { } } // ++
+    public class QsMinusMinusToken : QsToken { public static QsMinusMinusToken Instance { get; } = new QsMinusMinusToken(); private QsMinusMinusToken() { } } // --
+    public class QsLessThanEqualToken : QsToken { public static QsLessThanEqualToken Instance { get; } = new QsLessThanEqualToken(); private QsLessThanEqualToken() { } } // <=
+    public class QsGreaterThanEqualToken : QsToken { public static QsGreaterThanEqualToken Instance { get; } = new QsGreaterThanEqualToken(); private QsGreaterThanEqualToken() { } } // >=    
 
-    public class QsEqualToken : QsSimpleToken { } // =
-    public class QsCommaToken : QsSimpleToken { } // ,
-    public class QsSemiColonToken : QsSimpleToken { } // ;   
-    public class QsLBraceToken : QsSimpleToken { } // {
-    public class QsRBraceToken : QsSimpleToken { } // }
-    public class QsLParenToken : QsSimpleToken { } // (
-    public class QsRParenToken : QsSimpleToken { } // )
+    public class QsLessThanToken : QsToken { public static QsLessThanToken Instance { get; } = new QsLessThanToken(); private QsLessThanToken() { } } // <
+    public class QsGreaterThanToken : QsToken { public static QsGreaterThanToken Instance { get; } = new QsGreaterThanToken(); private QsGreaterThanToken() { } } // >
 
-    public class QsIfToken : QsSimpleToken { }    // if 
-    public class QsElseToken : QsSimpleToken { }  // else 
-    public class QsForToken : QsSimpleToken { }  // for
-    public class QsContinueToken : QsSimpleToken { } // continue
-    public class QsBreakToken : QsSimpleToken { } // break
+    public class QsEqualToken : QsToken { public static QsEqualToken Instance { get; } = new QsEqualToken(); private QsEqualToken() { } } // =
+    public class QsCommaToken : QsToken { public static QsCommaToken Instance { get; } = new QsCommaToken(); private QsCommaToken() { } } // ,
+    public class QsSemiColonToken : QsToken { public static QsSemiColonToken Instance { get; } = new QsSemiColonToken(); private QsSemiColonToken() { } } // ;   
+    public class QsLBraceToken : QsToken { public static QsLBraceToken Instance { get; } = new QsLBraceToken(); private QsLBraceToken() { } } // {
+    public class QsRBraceToken : QsToken { public static QsRBraceToken Instance { get; } = new QsRBraceToken(); private QsRBraceToken() { } } // }
+    public class QsLParenToken : QsToken { public static QsLParenToken Instance { get; } = new QsLParenToken(); private QsLParenToken() { } } // (
+    public class QsRParenToken : QsToken { public static QsRParenToken Instance { get; } = new QsRParenToken(); private QsRParenToken() { } } // )    
 
-    public class QsWhitespaceToken : QsSimpleToken { } // \s
-    public class QsNewLineToken: QsSimpleToken { }     // \r \n \r\n
+    public class QsPlusToken : QsToken { public static QsPlusToken Instance { get; } = new QsPlusToken(); private QsPlusToken() { } } // +
+    public class QsMinusToken : QsToken { public static QsMinusToken Instance { get; } = new QsMinusToken(); private QsMinusToken() { } } // -
+    public class QsStarToken : QsToken { public static QsStarToken Instance { get; } = new QsStarToken(); private QsStarToken() { } } // *   
+    public class QsSlashToken : QsToken { public static QsSlashToken Instance { get; } = new QsSlashToken(); private QsSlashToken() { } } // /    
+    public class QsPercentToken : QsToken { public static QsPercentToken Instance { get; } = new QsPercentToken(); private QsPercentToken() { } } // %    
+    public class QsExclToken : QsToken { public static QsExclToken Instance { get; } = new QsExclToken(); private QsExclToken() { } } // !    
 
-    public class QsDoubleQuoteToken : QsSimpleToken { } // "
-    public class QsDollarLBraceToken : QsSimpleToken { }
-    public class QsEndOfFileToken : QsSimpleToken { }
-    public class QsEndOfCommandToken : QsSimpleToken { }
+    public class QsIfToken : QsToken { public static QsIfToken Instance { get; } = new QsIfToken(); private QsIfToken() { } }    // if 
+    public class QsElseToken : QsToken { public static QsElseToken Instance { get; } = new QsElseToken(); private QsElseToken() { } }  // else 
+    public class QsForToken : QsToken { public static QsForToken Instance { get; } = new QsForToken(); private QsForToken() { } }  // for
+    public class QsContinueToken : QsToken { public static QsContinueToken Instance { get; } = new QsContinueToken(); private QsContinueToken() { } } // continue
+    public class QsBreakToken : QsToken { public static QsBreakToken Instance { get; } = new QsBreakToken(); private QsBreakToken() { } } // break
+
+    public class QsWhitespaceToken : QsToken { public static QsWhitespaceToken Instance { get; } = new QsWhitespaceToken(); private QsWhitespaceToken() { } } // \s
+    public class QsNewLineToken : QsToken { public static QsNewLineToken Instance { get; } = new QsNewLineToken(); private QsNewLineToken() { } }     // \r \n \r\n
+
+    public class QsDoubleQuoteToken : QsToken { public static QsDoubleQuoteToken Instance { get; } = new QsDoubleQuoteToken(); private QsDoubleQuoteToken() { } } // "
+    public class QsDollarLBraceToken : QsToken { public static QsDollarLBraceToken Instance { get; } = new QsDollarLBraceToken(); private QsDollarLBraceToken() { } }
+    public class QsEndOfFileToken : QsToken { public static QsEndOfFileToken Instance { get; } = new QsEndOfFileToken(); private QsEndOfFileToken() { } }
+    public class QsEndOfCommandToken : QsToken { public static QsEndOfCommandToken Instance { get; } = new QsEndOfCommandToken(); private QsEndOfCommandToken() { } }
 
     // digit
     public class QsIntToken : QsToken

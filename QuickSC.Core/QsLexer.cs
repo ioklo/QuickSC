@@ -69,7 +69,7 @@ namespace QuickSC
 
             if (context.Pos.Equals('"'))
                 return new QsLexResult(
-                    new QsDoubleQuoteToken(),
+                    QsDoubleQuoteToken.Instance,
                     context.UpdatePos(await context.Pos.NextAsync()));
 
             if (context.Pos.Equals('$'))
@@ -78,7 +78,7 @@ namespace QuickSC
 
                 if (nextPos.Equals('{'))
                     return new QsLexResult(
-                        new QsDollarLBraceToken(),
+                        QsDollarLBraceToken.Instance,
                         context.UpdatePos(await nextPos.NextAsync()));
 
                 var idResult = await LexIdentifierAsync(context.UpdatePos(nextPos), false);
@@ -111,7 +111,7 @@ namespace QuickSC
             // TODO: 모드 스택에 NormalMode 하나만 남은 상태인걸 확인해야 하지 않을까
             if (context.Pos.IsReachEnd())
                 return new QsLexResult(
-                    new QsEndOfFileToken(),
+                    QsEndOfFileToken.Instance,
                     context);
 
             // 여러개 먼저
@@ -124,75 +124,49 @@ namespace QuickSC
                 return new QsLexResult(boolResult.Token, boolResult.Context);
 
             // 키워드 처리
-            var ifResult = await ConsumeAsync("if", context.Pos);
-            if (ifResult.HasValue)
-                return new QsLexResult(new QsIfToken(), context.UpdatePos(ifResult.Value));
+            var infos = new (string Text, Func<QsToken> Constructor)[]
+            {
+                ("if", () => QsIfToken.Instance),
+                ("else", () => QsElseToken.Instance),
+                ("for", () => QsForToken.Instance),
+                ("continue", () => QsContinueToken.Instance),
+                ("break", () => QsBreakToken.Instance),
+                ("++", () => QsPlusPlusToken.Instance),
+                ("--", () => QsMinusMinusToken.Instance),
+                ("<=", () => QsLessThanEqualToken.Instance),
+                (">=", () => QsGreaterThanEqualToken.Instance),
+                ("==", () => QsEqualEqualToken.Instance),
+                ("!=", () => QsExclEqualToken.Instance),
 
-            var elseResult = await ConsumeAsync("else", context.Pos);
-            if (elseResult.HasValue)
-                return new QsLexResult(new QsElseToken(), context.UpdatePos(elseResult.Value));
+                ("<", () => QsLessThanToken.Instance),
+                (">", () => QsGreaterThanToken.Instance),
+                (";", () => QsSemiColonToken.Instance),
+                (",", () => QsCommaToken.Instance),
+                ("=", () => QsEqualToken.Instance),
+                ("{", () => QsLBraceToken.Instance),
+                ("}", () => QsRBraceToken.Instance),
+                ("(", () => QsLParenToken.Instance),
+                (")", () => QsRParenToken.Instance),
 
-            var forResult = await ConsumeAsync("for", context.Pos);
-            if (forResult.HasValue)
-                return new QsLexResult(new QsForToken(), context.UpdatePos(forResult.Value));
+                ("+", () => QsPlusToken.Instance),
+                ("-", () => QsMinusToken.Instance),
+                ("*", () => QsStarToken.Instance),
+                ("/", () => QsSlashToken.Instance),
+                ("%", () => QsPercentToken.Instance),
+                ("!", () => QsExclToken.Instance),
+            };
 
-            var continueResult = await ConsumeAsync("continue", context.Pos);
-            if (continueResult.HasValue)
-                return new QsLexResult(new QsContinueToken(), context.UpdatePos(continueResult.Value));
-
-            var breakResult = await ConsumeAsync("break", context.Pos);
-            if (breakResult.HasValue)
-                return new QsLexResult(new QsBreakToken(), context.UpdatePos(breakResult.Value));
-
-            var plusplusResult = await ConsumeAsync("++", context.Pos);
-            if (plusplusResult.HasValue)
-                return new QsLexResult(new QsPlusPlusToken(), context.UpdatePos(plusplusResult.Value));
-
-            var minusminusResult = await ConsumeAsync("--", context.Pos);
-            if (minusminusResult.HasValue)
-                return new QsLexResult(new QsMinusMinusToken(), context.UpdatePos(minusminusResult.Value));
-
-            var lessthanequalResult = await ConsumeAsync("<=", context.Pos);
-            if (lessthanequalResult.HasValue)
-                return new QsLexResult(new QsLessThanEqualToken(), context.UpdatePos(lessthanequalResult.Value));
-
-            var greaterthanequalResult = await ConsumeAsync(">=", context.Pos);
-            if (greaterthanequalResult.HasValue)
-                return new QsLexResult(new QsGreaterThanEqualToken(), context.UpdatePos(greaterthanequalResult.Value));
-
-            // 간단한 심볼 처리
-            if (context.Pos.Equals('<'))
-                return new QsLexResult(new QsLessThanToken(), context.UpdatePos(await context.Pos.NextAsync()));
-
-            if (context.Pos.Equals('>'))
-                return new QsLexResult(new QsGreaterThanToken(), context.UpdatePos(await context.Pos.NextAsync()));
-
-            if (context.Pos.Equals(';'))
-                return new QsLexResult(new QsSemiColonToken(), context.UpdatePos(await context.Pos.NextAsync()));
-
-            if (context.Pos.Equals(','))
-                return new QsLexResult(new QsCommaToken(), context.UpdatePos(await context.Pos.NextAsync()));
-
-            if (context.Pos.Equals('='))
-                return new QsLexResult(new QsEqualToken(), context.UpdatePos(await context.Pos.NextAsync()));
-
-            if (context.Pos.Equals('{'))
-                return new QsLexResult(new QsLBraceToken(), context.UpdatePos(await context.Pos.NextAsync()));
-
-            if (context.Pos.Equals('}'))
-                return new QsLexResult(new QsRBraceToken(), context.UpdatePos(await context.Pos.NextAsync()));
-
-            if (context.Pos.Equals('('))
-                return new QsLexResult(new QsLParenToken(), context.UpdatePos(await context.Pos.NextAsync()));
-
-            if (context.Pos.Equals(')'))
-                return new QsLexResult(new QsRParenToken(), context.UpdatePos(await context.Pos.NextAsync()));
-
+            foreach (var info in infos)
+            {
+                var consumeResult = await ConsumeAsync(info.Text, context.Pos);
+                if (consumeResult.HasValue)
+                    return new QsLexResult(info.Constructor(), context.UpdatePos(consumeResult.Value));
+            }
 
             // "이면 스트링 처리 모드로 변경하고 BeginString 리턴
             if (context.Pos.Equals('"'))
                 return new QsLexResult(
-                    new QsDoubleQuoteToken(), 
+                    QsDoubleQuoteToken.Instance, 
                     context.UpdatePos(await context.Pos.NextAsync()));
 
             // Identifier 시도
@@ -207,15 +181,15 @@ namespace QuickSC
         {
             var wsResult = await LexWhitespaceAsync(context, bIncludeNewLine: false);
             if (wsResult.HasValue)
-                return new QsLexResult(new QsWhitespaceToken(), wsResult.Context);
+                return new QsLexResult(QsWhitespaceToken.Instance, wsResult.Context);
 
             var newLineResult = await LexNewLineAsync(context);
             if (newLineResult.HasValue)
-                return new QsLexResult(new QsEndOfCommandToken(), newLineResult.Context);
+                return new QsLexResult(QsEndOfCommandToken.Instance, newLineResult.Context);
 
             // 끝 도달
             if (context.Pos.IsReachEnd())
-                return new QsLexResult(new QsEndOfCommandToken(), context);
+                return new QsLexResult(QsEndOfCommandToken.Instance, context);
             
             // "이면 스트링 처리 모드로 변경하고 BeginString 리턴
             if (context.Pos.Equals('"'))
@@ -224,7 +198,7 @@ namespace QuickSC
                 if (!nextQuotePos.Equals('"'))
                 {
                     return new QsLexResult(
-                        new QsDoubleQuoteToken(),
+                        QsDoubleQuoteToken.Instance,
                         context.UpdatePos(await context.Pos.NextAsync())); // 끝나면 CommandArgument로 점프하도록
                 }
             }
@@ -236,7 +210,7 @@ namespace QuickSC
                 if (nextDollarPos.Equals('{'))
                 {
                     return new QsLexResult(
-                        new QsDollarLBraceToken(),
+                        QsDollarLBraceToken.Instance,
                         context.UpdatePos(await nextDollarPos.NextAsync()));
                 }
 
@@ -423,7 +397,7 @@ namespace QuickSC
                 bUpdated = true;
             }
 
-            return bUpdated ? new QsLexResult(new QsWhitespaceToken(), context) : QsLexResult.Invalid;
+            return bUpdated ? new QsLexResult(QsWhitespaceToken.Instance, context) : QsLexResult.Invalid;
         }
 
         async ValueTask<QsLexResult> LexNewLineAsync(QsLexerContext context)
@@ -435,7 +409,7 @@ namespace QuickSC
                 bUpdated = true;
             }
 
-            return bUpdated ? new QsLexResult(new QsNewLineToken(), context) : QsLexResult.Invalid;
+            return bUpdated ? new QsLexResult(QsNewLineToken.Instance, context) : QsLexResult.Invalid;
         }
 
         //public async ValueTask<QsLexResult> LexAsync(QsLexerContext context, bool bSkipWhitespaceAndNewLine)

@@ -57,9 +57,9 @@ namespace QuickSC
             var expectedTokens = new QsToken[]
             {
                 new QsTextToken("ps"),
-                new QsDollarLBraceToken(),
+                QsDollarLBraceToken.Instance,
                 new QsIdentifierToken("ccc"),
-                new QsRBraceToken(),
+                QsRBraceToken.Instance,
                 new QsTextToken("ddd")
             };
 
@@ -77,7 +77,7 @@ namespace QuickSC
             var expectedTokens = new QsToken[]
             {
                 new QsTextToken("ls"),
-                new QsWhitespaceToken(),
+                QsWhitespaceToken.Instance,
                 new QsTextToken("-al"),
             };
 
@@ -95,7 +95,7 @@ namespace QuickSC
             var expectedTokens = new QsToken[]
             {
                 new QsTextToken("ls"),
-                new QsWhitespaceToken(),
+                QsWhitespaceToken.Instance,
                 new QsTextToken("-al"),
             };
 

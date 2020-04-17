@@ -52,9 +52,9 @@ namespace QuickSC
             var tokens = await ProcessNormalAsync(lexer, context);
             var expectedTokens = new QsToken[]
             {
-                new QsCommaToken(),
-                new QsSemiColonToken(),
-                new QsEqualToken(),
+                QsCommaToken.Instance,
+                QsSemiColonToken.Instance,
+                QsEqualToken.Instance,
             };
 
             Assert.Equal(expectedTokens, tokens);
@@ -104,9 +104,9 @@ namespace QuickSC
             var result1 = await lexer.LexStringModeAsync(result0.Context);
             var result2 = await lexer.LexStringModeAsync(result1.Context);
 
-            Assert.Equal(new QsDoubleQuoteToken(), result0.Token);
+            Assert.Equal(QsDoubleQuoteToken.Instance, result0.Token);
             Assert.Equal(new QsTextToken("aaa bbb "), result1.Token);
-            Assert.Equal(new QsDoubleQuoteToken(), result2.Token);
+            Assert.Equal(QsDoubleQuoteToken.Instance, result2.Token);
         }
 
         // stringMode
@@ -188,9 +188,9 @@ namespace QuickSC
             var expectedTokens = new QsToken[]
             {
                 new QsTextToken("aaa bbb "),
-                new QsDollarLBraceToken(),
+                QsDollarLBraceToken.Instance,
                 new QsIdentifierToken("ccc"),
-                new QsRBraceToken(),
+                QsRBraceToken.Instance,
                 new QsTextToken(" ddd"),
             };
 
@@ -242,20 +242,20 @@ namespace QuickSC
 
             var expectedTokens = new QsToken[]
             {
-                new QsDoubleQuoteToken(),
+                QsDoubleQuoteToken.Instance,
                 new QsTextToken("aaa bbb "),
-                new QsDollarLBraceToken(),
+                QsDollarLBraceToken.Instance,
                 
-                new QsDoubleQuoteToken(),
+                QsDoubleQuoteToken.Instance,
 
                 new QsTextToken("xxx "),
-                new QsDollarLBraceToken(),
+                QsDollarLBraceToken.Instance,
                 new QsIdentifierToken("ddd"),
-                new QsRBraceToken(),
-                new QsDoubleQuoteToken(),
-                new QsRBraceToken(),
+                QsRBraceToken.Instance,
+                QsDoubleQuoteToken.Instance,
+                QsRBraceToken.Instance,
                 new QsTextToken(" ddd"),
-                new QsDoubleQuoteToken(),
+                QsDoubleQuoteToken.Instance,
             };
 
             Assert.Equal(expectedTokens, tokens);
