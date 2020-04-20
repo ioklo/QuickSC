@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text;
 using QuickSC.Syntax;
@@ -24,6 +25,13 @@ namespace QuickSC
     // TODO: 레퍼런스용 Big Step, Small Step으로 가야하지 않을까 싶다 (yield로 실행 point 잡는거 해보면 재미있을 것 같다)
     public class QsEvaluator
     {
+        IQsCommandProvider commandProvider;
+
+        public QsEvaluator(IQsCommandProvider commandProvider)
+        {
+            this.commandProvider = commandProvider;
+        }
+
         QsEvalResult<QsValue> EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
         {
             var result = context.GetValue(idExp.Value);
@@ -402,7 +410,7 @@ namespace QuickSC
             var nameStr = ToString(nameResult.Value);
             if (nameStr == null) return null;
 
-            var argStrs = new List<string>();
+            var argStrs = ImmutableArray.CreateBuilder<string>(stmt.ArgExps.Length);
             foreach(var argExp in stmt.ArgExps)
             {
                 var argResult = EvaluateExp(argExp, context);
@@ -415,19 +423,7 @@ namespace QuickSC
                 argStrs.Add(argStr);
             }
 
-            var psi = new ProcessStartInfo();
-            psi.FileName = "cmd.exe";
-
-            psi.ArgumentList.Add("/c");
-            psi.ArgumentList.Add(nameStr);
-            foreach (var argStr in argStrs)
-                psi.ArgumentList.Add(argStr);
-
-            psi.UseShellExecute = false;
-
-            var process = Process.Start(psi);
-            process.WaitForExit();
-
+            commandProvider.Execute(nameStr, argStrs.MoveToImmutable());
             return context;
         }
 
@@ -599,7 +595,7 @@ namespace QuickSC
             return expResult.Context;
         }
 
-        // TODO: 임시 public
+        // TODO: 임시 public, REPL용이 따로 있어야 할 것 같다
         public QsEvalContext? EvaluateStmt(QsStmt stmt, QsEvalContext context)
         {
             return stmt switch

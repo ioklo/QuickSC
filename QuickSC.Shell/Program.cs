@@ -12,7 +12,8 @@ namespace QuickSC.Shell
             var lexer = new QsLexer();
             var parser = new QsParser(lexer);
 
-            var evaluator = new QsEvaluator();
+            var cmdProvider = new QsCmdCommandProvider();
+            var evaluator = new QsEvaluator(cmdProvider);
             var evalContext = QsEvalContext.Make();
 
             var sb = new StringBuilder();
@@ -56,8 +57,6 @@ namespace QuickSC.Shell
                         Console.WriteLine("파싱에 실패했습니다");
                         continue;
                     }
-
-                    
 
                     var newEvalContext = evaluator.EvaluateStmt(stmtResult.Elem, evalContext);
                     if (!newEvalContext.HasValue)

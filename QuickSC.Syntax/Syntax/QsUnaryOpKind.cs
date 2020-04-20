@@ -4,6 +4,6 @@
     {
         PostfixInc, PostfixDec,
 
-        LogicalNot, PrefixInc, PrefixDec
+        Minus, LogicalNot, PrefixInc, PrefixDec
     }
 }

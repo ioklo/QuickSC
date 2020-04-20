@@ -16,7 +16,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QuickSC.Infra", "QuickSC.Infra\QuickSC.Infra.csproj", "{526AB635-E0D2-4F7A-8F16-F7C435AFCE62}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickSC.Shell", "QuickSC.Shell\QuickSC.Shell.csproj", "{BF9870D5-4D3C-4962-95E7-B65BB31D5EBC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QuickSC.Shell", "QuickSC.Shell\QuickSC.Shell.csproj", "{BF9870D5-4D3C-4962-95E7-B65BB31D5EBC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "App", "App", "{D3742362-AB1A-4904-BAFE-ECAFDA20D195}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickSC.Blazor", "QuickSC.Blazor\QuickSC.Blazor.csproj", "{F7B4BA40-6524-46FA-8252-409BBD03882F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,9 +48,16 @@ Global
 		{BF9870D5-4D3C-4962-95E7-B65BB31D5EBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BF9870D5-4D3C-4962-95E7-B65BB31D5EBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BF9870D5-4D3C-4962-95E7-B65BB31D5EBC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7B4BA40-6524-46FA-8252-409BBD03882F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7B4BA40-6524-46FA-8252-409BBD03882F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7B4BA40-6524-46FA-8252-409BBD03882F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7B4BA40-6524-46FA-8252-409BBD03882F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F7B4BA40-6524-46FA-8252-409BBD03882F} = {D3742362-AB1A-4904-BAFE-ECAFDA20D195}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FF2A8DD5-6A2E-4B1F-BC7F-1BD8DBFEAAE0}

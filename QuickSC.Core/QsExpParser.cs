@@ -96,6 +96,16 @@ namespace QuickSC
         }
         #endregion        
 
+        QsExp? HandleUnaryMinusWithIntLiteral(QsUnaryOpKind kind, QsExp exp)
+        {
+            if( kind == QsUnaryOpKind.Minus && exp is QsIntLiteralExp intLiteralExp)
+            {
+                return new QsIntLiteralExp(-intLiteralExp.Value);
+            }
+
+            return null;
+        }
+
         #region Single
         async ValueTask<QsExpParseResult> ParseSingleExpAsync(QsParserContext context)
         {
@@ -162,7 +172,6 @@ namespace QuickSC
 
             if (opKind.HasValue)
             {
-                // TODO: unaryMinus intLiteral은 intLiteral로 변경
                 return new QsExpParseResult(new QsUnaryOpExp(opKind.Value, expResult.Elem), context);
             }
             else
@@ -208,7 +217,10 @@ namespace QuickSC
 
                 context = expResult.Context;
 
-                // TODO: unaryMinus intLiteral은 intLiteral로 변경
+                var handledExp = HandleUnaryMinusWithIntLiteral(opKind.Value, expResult.Elem);
+                if (handledExp != null)                
+                    return new QsExpParseResult(handledExp, context);
+
                 return new QsExpParseResult(new QsUnaryOpExp(opKind.Value, expResult.Elem), context);
             }
             else

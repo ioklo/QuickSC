@@ -67,7 +67,7 @@ namespace QuickSC
             return !(left == right);
         }
     }
-
+    
     public class QsStringValue : QsValue
     {
         public string Value { get; set; }

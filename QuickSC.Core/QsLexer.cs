@@ -107,8 +107,7 @@ namespace QuickSC
                 }
             }
 
-            // 끝 처리, 
-            // TODO: 모드 스택에 NormalMode 하나만 남은 상태인걸 확인해야 하지 않을까
+            // 끝 처리
             if (context.Pos.IsReachEnd())
                 return new QsLexResult(
                     QsEndOfFileToken.Instance,
@@ -163,7 +162,6 @@ namespace QuickSC
                     return new QsLexResult(info.Constructor(), context.UpdatePos(consumeResult.Value));
             }
 
-            // "이면 스트링 처리 모드로 변경하고 BeginString 리턴
             if (context.Pos.Equals('"'))
                 return new QsLexResult(
                     QsDoubleQuoteToken.Instance, 
@@ -189,9 +187,8 @@ namespace QuickSC
 
             // 끝 도달
             if (context.Pos.IsReachEnd())
-                return new QsLexResult(QsEndOfCommandToken.Instance, context);
-            
-            // "이면 스트링 처리 모드로 변경하고 BeginString 리턴
+                return new QsLexResult(QsEndOfCommandToken.Instance, context);            
+
             if (context.Pos.Equals('"'))
             {
                 var nextQuotePos = await context.Pos.NextAsync();
