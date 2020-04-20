@@ -189,6 +189,8 @@ namespace QuickSC
             if (!varDeclResult.HasValue)
                 return Invalid();
 
+            context = varDeclResult.Context;
+
             if (!Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context)) // ;으로 마무리
                 return Invalid();
 
