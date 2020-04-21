@@ -20,7 +20,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QuickSC.Shell", "QuickSC.Sh
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "App", "App", "{D3742362-AB1A-4904-BAFE-ECAFDA20D195}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickSC.Blazor", "QuickSC.Blazor\QuickSC.Blazor.csproj", "{F7B4BA40-6524-46FA-8252-409BBD03882F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QuickSC.Blazor", "QuickSC.Blazor\QuickSC.Blazor.csproj", "{F7B4BA40-6524-46FA-8252-409BBD03882F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -57,6 +57,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{BF9870D5-4D3C-4962-95E7-B65BB31D5EBC} = {D3742362-AB1A-4904-BAFE-ECAFDA20D195}
 		{F7B4BA40-6524-46FA-8252-409BBD03882F} = {D3742362-AB1A-4904-BAFE-ECAFDA20D195}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution

@@ -334,7 +334,7 @@ namespace QuickSC
             return new QsParseResult<QsExpStmt>(new QsExpStmt(expResult.Elem), context);
         }
 
-        async ValueTask<QsParseResult<QsCommandStmt>> ParseCommandStmtAsync(QsParserContext context)
+        internal async ValueTask<QsParseResult<QsCommandStmt>> ParseCommandStmtAsync(QsParserContext context)
         {
             //  첫 <NEWLINE>, <WS>는 넘기는데, 
             // TODO: <NEWLINE> 또는 '파일 시작'이 무조건 하나는 있어야 한다
@@ -356,6 +356,22 @@ namespace QuickSC
                     Debug.Assert(0 < stringElems.Count);
                     exps.Add(new QsStringExp(stringElems.ToImmutable()));
                     stringElems.Clear();
+                    continue;
+                }
+
+                // ${
+                if (Accept<QsDollarLBraceToken>(await lexer.LexCommandModeAsync(context.LexerContext), ref context))
+                {
+                    var expResult = await expParser.ParseExpAsync(context); // TODO: EndInnerExpToken 일때 빠져나와야 한다는 표시를 해줘야 한다
+                    if (!expResult.HasValue)
+                        return QsParseResult<QsCommandStmt>.Invalid;
+
+                    context = expResult.Context;
+
+                    if (!Accept<QsRBraceToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                        return QsParseResult<QsCommandStmt>.Invalid;
+
+                    stringElems.Add(new QsExpStringExpElement(expResult.Elem));
                     continue;
                 }
 

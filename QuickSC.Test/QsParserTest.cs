@@ -38,7 +38,8 @@ namespace QuickSC
             Assert.Equal(expected, script.Elem);
         }
 
-        [Fact] async Task TestParseVarDeclStmtAsync()
+        [Fact] 
+        async Task TestParseVarDeclStmtAsync()
         {
             var lexer = new QsLexer();
             var parser = new QsParser(lexer);
@@ -53,6 +54,25 @@ namespace QuickSC
             )));
 
             Assert.Equal(expected, varDeclStmt.Elem);
+        }
+
+        [Fact]
+        async Task TestCommandStmtAsync()
+        {
+            var lexer = new QsLexer();
+            var parser = new QsParser(lexer);
+            var context = (await MakeContextAsync("  echo ${a}bbb  ")).AddType("string");
+
+            var cmdStmt = await parser.ParseCommandStmtAsync(context);
+
+            var expected = new QsCommandStmt(
+                new QsStringExp(ImmutableArray.Create<QsStringExpElement>(new QsTextStringExpElement("echo"))),
+                ImmutableArray.Create<QsExp>(new QsStringExp(ImmutableArray.Create<QsStringExpElement>(
+                    new QsExpStringExpElement(new QsIdentifierExp("a")),
+                    new QsTextStringExpElement("bbb")
+                ))));
+
+            Assert.Equal(expected, cmdStmt.Elem);
         }
     }
 }
