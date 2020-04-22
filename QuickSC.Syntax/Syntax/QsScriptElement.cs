@@ -28,7 +28,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsStmtScriptElement? left, QsStmtScriptElement? right)
         {
-            return EqualityComparer<QsStmtScriptElement>.Default.Equals(left, right);
+            return EqualityComparer<QsStmtScriptElement?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsStmtScriptElement? left, QsStmtScriptElement? right)

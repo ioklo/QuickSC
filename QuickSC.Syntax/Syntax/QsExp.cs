@@ -28,7 +28,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsIdentifierExp? left, QsIdentifierExp? right)
         {
-            return EqualityComparer<QsIdentifierExp>.Default.Equals(left, right);
+            return EqualityComparer<QsIdentifierExp?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsIdentifierExp? left, QsIdentifierExp? right)
@@ -44,6 +44,11 @@ namespace QuickSC.Syntax
         public QsStringExp(ImmutableArray<QsStringExpElement> elements)
         {
             Elements = elements;
+        }
+
+        public QsStringExp(params QsStringExpElement[] elements)
+        {
+            Elements = ImmutableArray.Create(elements);
         }
 
         public override bool Equals(object? obj)
@@ -63,7 +68,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsStringExp? left, QsStringExp? right)
         {
-            return EqualityComparer<QsStringExp>.Default.Equals(left, right);
+            return EqualityComparer<QsStringExp?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsStringExp? left, QsStringExp? right)
@@ -90,7 +95,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsIntLiteralExp? left, QsIntLiteralExp? right)
         {
-            return EqualityComparer<QsIntLiteralExp>.Default.Equals(left, right);
+            return EqualityComparer<QsIntLiteralExp?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsIntLiteralExp? left, QsIntLiteralExp? right)
@@ -117,7 +122,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsBoolLiteralExp? left, QsBoolLiteralExp? right)
         {
-            return EqualityComparer<QsBoolLiteralExp>.Default.Equals(left, right);
+            return EqualityComparer<QsBoolLiteralExp?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsBoolLiteralExp? left, QsBoolLiteralExp? right)
@@ -154,7 +159,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsBinaryOpExp? left, QsBinaryOpExp? right)
         {
-            return EqualityComparer<QsBinaryOpExp>.Default.Equals(left, right);
+            return EqualityComparer<QsBinaryOpExp?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsBinaryOpExp? left, QsBinaryOpExp? right)
@@ -187,7 +192,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsUnaryOpExp? left, QsUnaryOpExp? right)
         {
-            return EqualityComparer<QsUnaryOpExp>.Default.Equals(left, right);
+            return EqualityComparer<QsUnaryOpExp?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsUnaryOpExp? left, QsUnaryOpExp? right)

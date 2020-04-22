@@ -7,31 +7,7 @@ namespace QuickSC.Token
 {
     public abstract class QsToken
     {
-    }
-
-    public class QsSimpleToken : QsToken
-    {
-        public override bool Equals(object? obj)
-        {
-            return obj != null && this.GetType() == obj.GetType();
-        }
-
-        public override int GetHashCode()
-        {
-            return this.GetType().GetHashCode();
-        }
-
-        // TODO: 제대로 동작하는지 확인 필요
-        public static bool operator ==(QsSimpleToken? left, QsSimpleToken? right)
-        {
-            return EqualityComparer<QsSimpleToken>.Default.Equals(left, right);
-        }
-
-        public static bool operator !=(QsSimpleToken? left, QsSimpleToken? right)
-        {
-            return !(left == right);
-        }
-    }
+    }    
 
     public class QsEqualEqualToken : QsToken { public static QsEqualEqualToken Instance { get; } = new QsEqualEqualToken(); private QsEqualEqualToken() { } } // ==
     public class QsExclEqualToken : QsToken { public static QsExclEqualToken Instance { get; } = new QsExclEqualToken(); private QsExclEqualToken() { } } // !=
@@ -50,8 +26,8 @@ namespace QuickSC.Token
     public class QsLBraceToken : QsToken { public static QsLBraceToken Instance { get; } = new QsLBraceToken(); private QsLBraceToken() { } } // {
     public class QsRBraceToken : QsToken { public static QsRBraceToken Instance { get; } = new QsRBraceToken(); private QsRBraceToken() { } } // }
     public class QsLParenToken : QsToken { public static QsLParenToken Instance { get; } = new QsLParenToken(); private QsLParenToken() { } } // (
-    public class QsRParenToken : QsToken { public static QsRParenToken Instance { get; } = new QsRParenToken(); private QsRParenToken() { } } // )    
-
+    public class QsRParenToken : QsToken { public static QsRParenToken Instance { get; } = new QsRParenToken(); private QsRParenToken() { } } // )
+    
     public class QsPlusToken : QsToken { public static QsPlusToken Instance { get; } = new QsPlusToken(); private QsPlusToken() { } } // +
     public class QsMinusToken : QsToken { public static QsMinusToken Instance { get; } = new QsMinusToken(); private QsMinusToken() { } } // -
     public class QsStarToken : QsToken { public static QsStarToken Instance { get; } = new QsStarToken(); private QsStarToken() { } } // *   
@@ -64,6 +40,7 @@ namespace QuickSC.Token
     public class QsForToken : QsToken { public static QsForToken Instance { get; } = new QsForToken(); private QsForToken() { } }  // for
     public class QsContinueToken : QsToken { public static QsContinueToken Instance { get; } = new QsContinueToken(); private QsContinueToken() { } } // continue
     public class QsBreakToken : QsToken { public static QsBreakToken Instance { get; } = new QsBreakToken(); private QsBreakToken() { } } // break
+    public class QsExecToken : QsToken { public static QsExecToken Instance { get; } = new QsExecToken(); private QsExecToken() { } } // exec
 
     public class QsWhitespaceToken : QsToken { public static QsWhitespaceToken Instance { get; } = new QsWhitespaceToken(); private QsWhitespaceToken() { } } // \s
     public class QsNewLineToken : QsToken { public static QsNewLineToken Instance { get; } = new QsNewLineToken(); private QsNewLineToken() { } }     // \r \n \r\n
@@ -71,7 +48,6 @@ namespace QuickSC.Token
     public class QsDoubleQuoteToken : QsToken { public static QsDoubleQuoteToken Instance { get; } = new QsDoubleQuoteToken(); private QsDoubleQuoteToken() { } } // "
     public class QsDollarLBraceToken : QsToken { public static QsDollarLBraceToken Instance { get; } = new QsDollarLBraceToken(); private QsDollarLBraceToken() { } }
     public class QsEndOfFileToken : QsToken { public static QsEndOfFileToken Instance { get; } = new QsEndOfFileToken(); private QsEndOfFileToken() { } }
-    public class QsEndOfCommandToken : QsToken { public static QsEndOfCommandToken Instance { get; } = new QsEndOfCommandToken(); private QsEndOfCommandToken() { } }
 
     // digit
     public class QsIntToken : QsToken
@@ -92,7 +68,7 @@ namespace QuickSC.Token
 
         public static bool operator ==(QsIntToken? left, QsIntToken? right)
         {
-            return EqualityComparer<QsIntToken>.Default.Equals(left, right);
+            return EqualityComparer<QsIntToken?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsIntToken? left, QsIntToken? right)
@@ -119,7 +95,7 @@ namespace QuickSC.Token
 
         public static bool operator ==(QsBoolToken? left, QsBoolToken? right)
         {
-            return EqualityComparer<QsBoolToken>.Default.Equals(left, right);
+            return EqualityComparer<QsBoolToken?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsBoolToken? left, QsBoolToken? right)
@@ -146,7 +122,7 @@ namespace QuickSC.Token
 
         public static bool operator ==(QsTextToken? left, QsTextToken? right)
         {
-            return EqualityComparer<QsTextToken>.Default.Equals(left, right);
+            return EqualityComparer<QsTextToken?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsTextToken? left, QsTextToken? right)

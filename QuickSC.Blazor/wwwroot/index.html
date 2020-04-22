@@ -48,10 +48,10 @@
                 window.editor = monaco.editor.create(document.getElementById('editor'), {
                     value: [
                         'int sum = 0;',
-                        'for(int i = 0; i< 5; i++)',
+                        'for(int i = 0; i < 5; i++)',
                         '{',
-                        '    sum = sum + i;',
-                        '    echo "$i, $sum"',
+                        '    sum = sum + i; // i를 누적합니다',
+                        '    @echo (i: $i, sum: $sum)\\n',
                         '}'
                     ].join('\n'),
                     language: 'csharp',

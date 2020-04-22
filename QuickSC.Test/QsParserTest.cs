@@ -11,68 +11,69 @@ namespace QuickSC
 {
     public class QsParserTest
     {
-        async ValueTask<QsParserContext> MakeContextAsync(string input)        
+        async ValueTask<QsParserContext> MakeContextAsync(string input)
         {
             var buffer = new QsBuffer(new StringReader(input));
             var bufferPos = await buffer.MakePosition().NextAsync();
             var lexerContext = QsLexerContext.Make(bufferPos);
-            return QsParserContext.Make(lexerContext);
+            return QsParserContext.Make(lexerContext).AddType("int").AddType("bool").AddType("string");
         }
 
         [Fact]
-        public async Task TestParseScriptAsync()
+        public async Task TestParseSimpleScriptAsync()
         {
             var lexer = new QsLexer();
             var parser = new QsParser(lexer);
-            var context = await MakeContextAsync("ls -al");
+            var context = await MakeContextAsync("@ls -al");
             var script = await parser.ParseScriptAsync(context);
 
-            var expected = new QsScript(ImmutableArray.Create<QsScriptElement>(
-                new QsStmtScriptElement(new QsCommandStmt(
-                    new QsStringExp(ImmutableArray.Create<QsStringExpElement>(new QsTextStringExpElement("ls"))),
-                    ImmutableArray.Create<QsExp>(
-                        new QsStringExp(ImmutableArray.Create<QsStringExpElement>(new QsTextStringExpElement("-al")))
-                    )))
-            ));
+            var expected = new QsScript(new QsStmtScriptElement(new QsCommandStmt(new QsStringExp(new QsTextStringExpElement("ls -al")))));
 
             Assert.Equal(expected, script.Elem);
         }
 
-        [Fact] 
-        async Task TestParseVarDeclStmtAsync()
-        {
-            var lexer = new QsLexer();
-            var parser = new QsParser(lexer);
-            var context = (await MakeContextAsync("string a = \"hello\";")).AddType("string");
-
-            var varDeclStmt = await parser.ParseVarDeclStmtAsync(context);
-
-            var expected = new QsVarDeclStmt(new QsVarDecl("string", ImmutableArray.Create<QsVarDeclStmtElement>(
-                new QsVarDeclStmtElement("a", new QsStringExp(ImmutableArray.Create<QsStringExpElement>(
-                    new QsTextStringExpElement("hello"))
-                ))
-            )));
-
-            Assert.Equal(expected, varDeclStmt.Elem);
-        }
-
         [Fact]
-        async Task TestCommandStmtAsync()
+        public async Task TestParseComplexScriptAsync()
         {
             var lexer = new QsLexer();
             var parser = new QsParser(lexer);
-            var context = (await MakeContextAsync("  echo ${a}bbb  ")).AddType("string");
+            var context = await MakeContextAsync(@"
+int sum = 0;
 
-            var cmdStmt = await parser.ParseCommandStmtAsync(context);
+for (int i = 0; i < 5; i++)
+{
+    if (i % 2 == 0)
+        sum = sum + i;
+    else @{ echo hi }
+}
 
-            var expected = new QsCommandStmt(
-                new QsStringExp(ImmutableArray.Create<QsStringExpElement>(new QsTextStringExpElement("echo"))),
-                ImmutableArray.Create<QsExp>(new QsStringExp(ImmutableArray.Create<QsStringExpElement>(
-                    new QsExpStringExpElement(new QsIdentifierExp("a")),
-                    new QsTextStringExpElement("bbb")
-                ))));
+@echo $sum Completed!
 
-            Assert.Equal(expected, cmdStmt.Elem);
+");
+            var script = await parser.ParseScriptAsync(context);
+
+            var expected = new QsScript(
+                new QsStmtScriptElement(new QsVarDeclStmt(new QsVarDecl("int", new QsVarDeclElement("sum", new QsIntLiteralExp(0))))),
+                new QsStmtScriptElement(new QsForStmt(
+                    new QsVarDeclForStmtInitializer(new QsVarDecl("int", new QsVarDeclElement("i", new QsIntLiteralExp(0)))),
+                    new QsBinaryOpExp(QsBinaryOpKind.LessThan, new QsIdentifierExp("i"), new QsIntLiteralExp(5)),
+                    new QsUnaryOpExp(QsUnaryOpKind.PostfixInc, new QsIdentifierExp("i")),
+                    new QsBlockStmt(
+                        new QsIfStmt(
+                                new QsBinaryOpExp(QsBinaryOpKind.Equal,
+                                    new QsBinaryOpExp(QsBinaryOpKind.Modulo, new QsIdentifierExp("i"), new QsIntLiteralExp(2)),
+                                    new QsIntLiteralExp(0)),
+                                new QsExpStmt(
+                                    new QsBinaryOpExp(QsBinaryOpKind.Assign,
+                                        new QsIdentifierExp("sum"),
+                                        new QsBinaryOpExp(QsBinaryOpKind.Add, new QsIdentifierExp("sum"), new QsIdentifierExp("i")))),
+                                new QsCommandStmt(new QsStringExp(new QsTextStringExpElement(" echo hi "))))))),
+                new QsStmtScriptElement(new QsCommandStmt(new QsStringExp(
+                    new QsTextStringExpElement("echo "),
+                    new QsExpStringExpElement(new QsIdentifierExp("sum")),
+                    new QsTextStringExpElement(" Completed!")))));
+                    
+            Assert.Equal(expected, script.Elem);
         }
     }
 }

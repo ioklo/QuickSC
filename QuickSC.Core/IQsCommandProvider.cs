@@ -7,6 +7,6 @@ namespace QuickSC
 {
     public interface IQsCommandProvider
     {
-        void Execute(string nameStr, ImmutableArray<string> argStrs);
+        void Execute(string cmdText);
     }
 }

@@ -15,6 +15,11 @@ namespace QuickSC.Syntax
             Elements = elements;
         }
 
+        public QsScript(params QsScriptElement[] elements)
+        {
+            Elements = ImmutableArray.Create(elements);
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is QsScript script && Enumerable.SequenceEqual(Elements, script.Elements);
@@ -32,7 +37,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsScript? left, QsScript? right)
         {
-            return EqualityComparer<QsScript>.Default.Equals(left, right);
+            return EqualityComparer<QsScript?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsScript? left, QsScript? right)

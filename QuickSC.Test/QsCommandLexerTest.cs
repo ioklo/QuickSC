@@ -20,10 +20,10 @@ namespace QuickSC
         {
             var result = new List<QsToken>();
 
-            while(true)
+            while(!context.Pos.IsReachEnd())
             {
                 var lexResult = await lexer.LexCommandModeAsync(context);
-                if (!lexResult.HasValue || lexResult.Token is QsEndOfCommandToken) break;
+                if (!lexResult.HasValue) break;
 
                 context = lexResult.Context;
                 result.Add(lexResult.Token);
@@ -32,35 +32,55 @@ namespace QuickSC
             return result;
         }
 
+        async ValueTask<QsLexerContext> RepeatLexNormalAsync(List<QsToken> tokens, QsLexer lexer, QsLexerContext context, bool bSkipNewLine, int repeatCount)
+        {
+            for (int i = 0; i < repeatCount; i++)
+            {
+                var result = await lexer.LexNormalModeAsync(context, bSkipNewLine);
+                tokens.Add(result.Token); // ps
+                context = result.Context;
+            }
+
+            return context;
+        }
+
+        async ValueTask<QsLexerContext> RepeatLexCommandAsync(List<QsToken> tokens, QsLexer lexer, QsLexerContext context, int repeatCount)
+        {
+            for (int i = 0; i < repeatCount; i++)
+            {
+                var result = await lexer.LexCommandModeAsync(context);
+                tokens.Add(result.Token); // ps
+                context = result.Context;
+            }
+
+            return context;
+        }
+            
+
         [Fact]
         public async Task TestLexerProcessStringExpInCommandMode()
         {
             var lexer = new QsLexer();
-            var context = await MakeCommandModeContextAsync("ps${ccc}ddd");
+            var context = await MakeCommandModeContextAsync("  p$$s${ ccc } \"ddd $e  \r\n }");
 
             var tokens = new List<QsToken>();
-            var result = await lexer.LexCommandModeAsync(context);
-            tokens.Add(result.Token); // ps
 
-            result = await lexer.LexCommandModeAsync(result.Context);
-            tokens.Add(result.Token); // ${
-
-            result = await lexer.LexNormalModeAsync(result.Context);
-            tokens.Add(result.Token); // ccc
-
-            result = await lexer.LexNormalModeAsync(result.Context);
-            tokens.Add(result.Token); // }
-
-            result = await lexer.LexCommandModeAsync(result.Context);
-            tokens.Add(result.Token); // ddd
-
+            context = await RepeatLexCommandAsync(tokens, lexer, context, 2);
+            context = await RepeatLexNormalAsync(tokens, lexer, context, false, 2);
+            context = await RepeatLexCommandAsync(tokens, lexer, context, 6);
+            
             var expectedTokens = new QsToken[]
             {
-                new QsTextToken("ps"),
+                new QsTextToken("  p$s"),
                 QsDollarLBraceToken.Instance,
                 new QsIdentifierToken("ccc"),
                 QsRBraceToken.Instance,
-                new QsTextToken("ddd")
+                new QsTextToken(" \"ddd "),
+                new QsIdentifierToken("e"),
+                new QsTextToken("  "),
+                QsNewLineToken.Instance,
+                new QsTextToken(" "),
+                QsRBraceToken.Instance,
             };
 
             Assert.Equal(expectedTokens, tokens);
@@ -76,9 +96,7 @@ namespace QuickSC
 
             var expectedTokens = new QsToken[]
             {
-                new QsTextToken("ls"),
-                QsWhitespaceToken.Instance,
-                new QsTextToken("-al"),
+                new QsTextToken("ls -al")
             };
 
             Assert.Equal(expectedTokens, result);
@@ -94,9 +112,9 @@ namespace QuickSC
 
             var expectedTokens = new QsToken[]
             {
-                new QsTextToken("ls"),
-                QsWhitespaceToken.Instance,
-                new QsTextToken("-al"),
+                new QsTextToken("ls -al"),
+                QsNewLineToken.Instance,
+                new QsTextToken("bb"),
             };
 
             Assert.Equal(expectedTokens, result);

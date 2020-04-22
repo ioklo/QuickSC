@@ -401,29 +401,20 @@ namespace QuickSC
             };
         }
 
+        // TODO: CommandProvider가 Parser도 제공해야 할 것 같다
         QsEvalContext? EvaluateCommandStmt(QsCommandStmt stmt, QsEvalContext context)
         {
-            var nameResult = EvaluateExp(stmt.CommandExp, context);
-            if (!nameResult.HasValue) return null;
-            context = nameResult.Context;
-
-            var nameStr = ToString(nameResult.Value);
-            if (nameStr == null) return null;
-
-            var argStrs = ImmutableArray.CreateBuilder<string>(stmt.ArgExps.Length);
-            foreach(var argExp in stmt.ArgExps)
+            foreach (var command in stmt.Commands)
             {
-                var argResult = EvaluateExp(argExp, context);
-                if (!argResult.HasValue) return null;
-                context = argResult.Context;
+                var cmdResult = EvaluateStringExp(command, context);
+                if (!cmdResult.HasValue) return null;
+                context = cmdResult.Context;
 
-                var argStr = ToString(argResult.Value);
-                if (argStr == null) return null;
-
-                argStrs.Add(argStr);
+                var cmdText = ToString(cmdResult.Value);
+                if (cmdText == null) return null;
+                
+                commandProvider.Execute(cmdText);
             }
-
-            commandProvider.Execute(nameStr, argStrs.MoveToImmutable());
             return context;
         }
 
@@ -608,7 +599,6 @@ namespace QuickSC
                 QsBreakStmt breakStmt => EvaluateBreakStmt(breakStmt, context),
                 QsBlockStmt blockStmt => EvaluateBlockStmt(blockStmt, context),
                 QsExpStmt expStmt => EvaluateExpStmt(expStmt, context),
-                QsBlankStmt blankStmt => context,
                 _ => throw new NotImplementedException()
             };
         }        

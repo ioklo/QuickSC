@@ -38,14 +38,12 @@ namespace QuickSC
             var context = await MakeContextAsync("\"aaa bbb ${\"xxx ${ddd}\"} ddd\"");
             var expResult = await expParser.ParseExpAsync(context);
 
-            var expected = new QsStringExp(ImmutableArray.Create<QsStringExpElement>(
+            var expected = new QsStringExp(
                 new QsTextStringExpElement("aaa bbb "),
-                new QsExpStringExpElement(new QsStringExp(ImmutableArray.Create<QsStringExpElement>(
+                new QsExpStringExpElement(new QsStringExp(
                     new QsTextStringExpElement("xxx "),
-                    new QsExpStringExpElement(new QsIdentifierExp("ddd"))
-                ))),
-                new QsTextStringExpElement(" ddd")
-            ));
+                    new QsExpStringExpElement(new QsIdentifierExp("ddd")))),
+                new QsTextStringExpElement(" ddd"));
 
             Assert.Equal(expected, expResult.Elem);
         }

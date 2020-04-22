@@ -8,41 +8,41 @@ namespace QuickSC.Syntax
     public abstract class QsStmt
     {
     }
-    
+
     // 명령어
     public class QsCommandStmt : QsStmt
     {
-        public QsExp CommandExp { get; }
-        public ImmutableArray<QsExp> ArgExps { get; }
+        public ImmutableArray<QsStringExp> Commands { get; }
 
-        public QsCommandStmt(QsExp commandExp, ImmutableArray<QsExp> argExps)
+        public QsCommandStmt(ImmutableArray<QsStringExp> commands)
         {
-            CommandExp = commandExp;
-            ArgExps = argExps;
+            Commands = commands;
+        }
+
+        public QsCommandStmt(params QsStringExp[] commands)
+        {
+            Commands = ImmutableArray.Create(commands);
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsCommandStmt statement &&
-                   EqualityComparer<QsExp>.Default.Equals(CommandExp, statement.CommandExp) &&
-                   Enumerable.SequenceEqual(ArgExps, statement.ArgExps);
+                   Enumerable.SequenceEqual(Commands, statement.Commands);
         }
 
         public override int GetHashCode()
         {
             var hashCode = new HashCode();
 
-            hashCode.Add(CommandExp);
-
-            foreach (var argExp in ArgExps)
-                hashCode.Add(argExp);
+            foreach (var command in Commands)
+                hashCode.Add(command);
 
             return hashCode.ToHashCode();
         }
 
         public static bool operator ==(QsCommandStmt? left, QsCommandStmt? right)
         {
-            return EqualityComparer<QsCommandStmt>.Default.Equals(left, right);
+            return EqualityComparer<QsCommandStmt?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsCommandStmt? left, QsCommandStmt? right)
@@ -51,12 +51,12 @@ namespace QuickSC.Syntax
         }
     }
 
-    public struct QsVarDeclStmtElement
+    public struct QsVarDeclElement
     {
         public string VarName { get; }
         public QsExp? InitExp { get; }
 
-        public QsVarDeclStmtElement(string varName, QsExp? initExp)
+        public QsVarDeclElement(string varName, QsExp? initExp)
         {
             VarName = varName;
             InitExp = initExp;
@@ -64,7 +64,7 @@ namespace QuickSC.Syntax
 
         public override bool Equals(object? obj)
         {
-            return obj is QsVarDeclStmtElement element &&
+            return obj is QsVarDeclElement element &&
                    VarName == element.VarName &&
                    EqualityComparer<QsExp?>.Default.Equals(InitExp, element.InitExp);
         }
@@ -74,12 +74,12 @@ namespace QuickSC.Syntax
             return HashCode.Combine(VarName, InitExp);
         }
 
-        public static bool operator ==(QsVarDeclStmtElement left, QsVarDeclStmtElement right)
+        public static bool operator ==(QsVarDeclElement left, QsVarDeclElement right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(QsVarDeclStmtElement left, QsVarDeclStmtElement right)
+        public static bool operator !=(QsVarDeclElement left, QsVarDeclElement right)
         {
             return !(left == right);
         }
@@ -88,12 +88,18 @@ namespace QuickSC.Syntax
     public class QsVarDecl
     {
         public string TypeName { get; }
-        public ImmutableArray<QsVarDeclStmtElement> Elements { get; }
+        public ImmutableArray<QsVarDeclElement> Elements { get; }
 
-        public QsVarDecl(string typeName, ImmutableArray<QsVarDeclStmtElement> elems)
+        public QsVarDecl(string typeName, ImmutableArray<QsVarDeclElement> elems)
         {
             TypeName = typeName;
             Elements = elems;
+        }
+
+        public QsVarDecl(string typeName, params QsVarDeclElement[] elems)
+        {
+            TypeName = typeName;
+            Elements = ImmutableArray.Create(elems);
         }
 
         public override bool Equals(object? obj)
@@ -110,7 +116,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsVarDecl? left, QsVarDecl? right)
         {
-            return EqualityComparer<QsVarDecl>.Default.Equals(left, right);
+            return EqualityComparer<QsVarDecl?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsVarDecl? left, QsVarDecl? right)
@@ -142,7 +148,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsVarDeclStmt? left, QsVarDeclStmt? right)
         {
-            return EqualityComparer<QsVarDeclStmt>.Default.Equals(left, right);
+            return EqualityComparer<QsVarDeclStmt?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsVarDeclStmt? left, QsVarDeclStmt? right)
@@ -163,6 +169,29 @@ namespace QuickSC.Syntax
             BodyStmt = bodyStmt;
             ElseBodyStmt = elseBodyStmt;
         }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsIfStmt stmt &&
+                   EqualityComparer<QsExp>.Default.Equals(CondExp, stmt.CondExp) &&
+                   EqualityComparer<QsStmt>.Default.Equals(BodyStmt, stmt.BodyStmt) &&
+                   EqualityComparer<QsStmt?>.Default.Equals(ElseBodyStmt, stmt.ElseBodyStmt);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(CondExp, BodyStmt, ElseBodyStmt);
+        }
+
+        public static bool operator ==(QsIfStmt? left, QsIfStmt? right)
+        {
+            return EqualityComparer<QsIfStmt?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsIfStmt? left, QsIfStmt? right)
+        {
+            return !(left == right);
+        }
     }
 
     public abstract class QsForStmtInitializer { }
@@ -170,11 +199,53 @@ namespace QuickSC.Syntax
     { 
         public QsExp Exp { get; }
         public QsExpForStmtInitializer(QsExp exp) { Exp = exp; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsExpForStmtInitializer initializer &&
+                   EqualityComparer<QsExp>.Default.Equals(Exp, initializer.Exp);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Exp);
+        }
+
+        public static bool operator ==(QsExpForStmtInitializer? left, QsExpForStmtInitializer? right)
+        {
+            return EqualityComparer<QsExpForStmtInitializer?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsExpForStmtInitializer? left, QsExpForStmtInitializer? right)
+        {
+            return !(left == right);
+        }
     }
     public class QsVarDeclForStmtInitializer : QsForStmtInitializer 
     {
         public QsVarDecl VarDecl { get; }
         public QsVarDeclForStmtInitializer(QsVarDecl varDecl) { VarDecl = varDecl; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsVarDeclForStmtInitializer initializer &&
+                   EqualityComparer<QsVarDecl>.Default.Equals(VarDecl, initializer.VarDecl);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(VarDecl);
+        }
+
+        public static bool operator ==(QsVarDeclForStmtInitializer? left, QsVarDeclForStmtInitializer? right)
+        {
+            return EqualityComparer<QsVarDeclForStmtInitializer?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsVarDeclForStmtInitializer? left, QsVarDeclForStmtInitializer? right)
+        {
+            return !(left == right);
+        }
     }
 
     public class QsForStmt : QsStmt
@@ -209,7 +280,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsForStmt? left, QsForStmt? right)
         {
-            return EqualityComparer<QsForStmt>.Default.Equals(left, right);
+            return EqualityComparer<QsForStmt?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsForStmt? left, QsForStmt? right)
@@ -217,13 +288,7 @@ namespace QuickSC.Syntax
             return !(left == right);
         }
     }
-
-    public class QsBlankStmt : QsStmt 
-    {
-        public static QsBlankStmt Instance { get; } = new QsBlankStmt();
-        private QsBlankStmt() { }
-    }
-
+    
     public class QsContinueStmt : QsStmt
     {
         public static QsContinueStmt Instance { get; } = new QsContinueStmt();
@@ -244,6 +309,11 @@ namespace QuickSC.Syntax
             Stmts = stmts;
         }
 
+        public QsBlockStmt(params QsStmt[] stmts)
+        {
+            Stmts = ImmutableArray.Create(stmts);
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is QsBlockStmt stmt && Enumerable.SequenceEqual(Stmts, stmt.Stmts);
@@ -261,7 +331,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsBlockStmt? left, QsBlockStmt? right)
         {
-            return EqualityComparer<QsBlockStmt>.Default.Equals(left, right);
+            return EqualityComparer<QsBlockStmt?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsBlockStmt? left, QsBlockStmt? right)
@@ -291,7 +361,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsExpStmt? left, QsExpStmt? right)
         {
-            return EqualityComparer<QsExpStmt>.Default.Equals(left, right);
+            return EqualityComparer<QsExpStmt?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsExpStmt? left, QsExpStmt? right)

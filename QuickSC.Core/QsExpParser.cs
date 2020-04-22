@@ -67,7 +67,7 @@ namespace QuickSC
             {
                 QsBinaryOpKind? opKind = null;
 
-                var lexResult = await lexer.LexNormalModeAsync(context.LexerContext);
+                var lexResult = await lexer.LexNormalModeAsync(context.LexerContext, true);
                 if (lexResult.HasValue)
                 {
                     foreach (var info in infos)
@@ -156,7 +156,7 @@ namespace QuickSC
             QsUnaryOpKind? opKind = null;
 
             // NOTICE: Postfix Unary는 중첩시키지 않고 한개만 쓰기로 한다...
-            var lexResult = await lexer.LexNormalModeAsync(context.LexerContext);
+            var lexResult = await lexer.LexNormalModeAsync(context.LexerContext, true);
             if (lexResult.HasValue)
             {
                 foreach (var info in primaryInfos)
@@ -195,7 +195,7 @@ namespace QuickSC
 
             QsUnaryOpKind? opKind = null;
 
-            var lexResult = await lexer.LexNormalModeAsync(context.LexerContext);
+            var lexResult = await lexer.LexNormalModeAsync(context.LexerContext, true);
             if (lexResult.HasValue)
             {
                 foreach (var info in unaryInfos)
@@ -298,7 +298,7 @@ namespace QuickSC
 
             context = expResult0.Context;
 
-            if (!Accept<QsEqualToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+            if (!Accept<QsEqualToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                 return expResult0;
 
             var expResult1 = await ParseAssignExpAsync(context);
@@ -319,7 +319,7 @@ namespace QuickSC
 
         async ValueTask<QsExpParseResult> ParseParenExpAsync(QsParserContext context)
         {
-            if (!Accept<QsLParenToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+            if (!Accept<QsLParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                 return QsExpParseResult.Invalid;
             
             var expResult = await ParseExpAsync(context);
@@ -328,7 +328,7 @@ namespace QuickSC
 
             context = expResult.Context;
 
-            if (!Accept<QsRParenToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+            if (!Accept<QsRParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                 return QsExpParseResult.Invalid;
 
             return new QsExpParseResult(expResult.Elem, context);
@@ -336,7 +336,7 @@ namespace QuickSC
 
         async ValueTask<QsExpParseResult> ParseBoolLiteralExpAsync(QsParserContext context)
         {
-            var boolResult = AcceptAndReturn<QsBoolToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context);
+            var boolResult = AcceptAndReturn<QsBoolToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
             if (boolResult != null)
                 return new QsExpParseResult(new QsBoolLiteralExp(boolResult.Value), context);
 
@@ -345,7 +345,7 @@ namespace QuickSC
 
         async ValueTask<QsExpParseResult> ParseIntLiteralExpAsync(QsParserContext context)
         {
-            var intResult = AcceptAndReturn<QsIntToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context);
+            var intResult = AcceptAndReturn<QsIntToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
             if (intResult != null)
                 return new QsExpParseResult(new QsIntLiteralExp(intResult.Value), context);
 
@@ -355,7 +355,7 @@ namespace QuickSC
         // 스트링 파싱
         public async ValueTask<QsStringExpParseResult> ParseStringExpAsync(QsParserContext context)
         {
-            if (!Accept<QsDoubleQuoteToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+            if (!Accept<QsDoubleQuoteToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                 return QsStringExpParseResult.Invalid;
 
             var elems = ImmutableArray.CreateBuilder<QsStringExpElement>();
@@ -384,7 +384,7 @@ namespace QuickSC
 
                     context = expResult.Context;
 
-                    if (!Accept<QsRBraceToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context))
+                    if (!Accept<QsRBraceToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                         return QsStringExpParseResult.Invalid;
 
                     elems.Add(new QsExpStringExpElement(expResult.Elem));
@@ -400,7 +400,7 @@ namespace QuickSC
 
         async ValueTask<QsExpParseResult> ParseIdentifierExpAsync(QsParserContext context)
         {
-            var idToken = AcceptAndReturn<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext), ref context);
+            var idToken = AcceptAndReturn<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
             if (idToken != null)
                 return new QsExpParseResult(new QsIdentifierExp(idToken.Value), context);
 

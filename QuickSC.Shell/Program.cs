@@ -10,7 +10,7 @@ namespace QuickSC.Shell
         static async Task Main(string[] args)
         {
             var lexer = new QsLexer();
-            var parser = new QsParser(lexer);
+            var stmtParser = new QsStmtParser(lexer);
 
             var cmdProvider = new QsCmdCommandProvider();
             var evaluator = new QsEvaluator(cmdProvider);
@@ -47,11 +47,11 @@ namespace QuickSC.Shell
 
                     var buffer = new QsBuffer(new StringReader(sb.ToString()));
                     var pos = await buffer.MakePosition().NextAsync();
-                    var parserContext = QsParserContext.Make(QsLexerContext.Make(pos));
+                    var parserContext = QsParserContext.Make(QsLexerContext.Make(pos)).AddType("int").AddType("string");
 
                     sb.Clear();
 
-                    var stmtResult = await parser.ParseStmtAsync(parserContext);
+                    var stmtResult = await stmtParser.ParseStmtAsync(parserContext);
                     if (!stmtResult.HasValue)
                     {
                         Console.WriteLine("파싱에 실패했습니다");

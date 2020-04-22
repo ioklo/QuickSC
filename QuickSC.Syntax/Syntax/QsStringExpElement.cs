@@ -26,7 +26,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsTextStringExpElement? left, QsTextStringExpElement? right)
         {
-            return EqualityComparer<QsTextStringExpElement>.Default.Equals(left, right);
+            return EqualityComparer<QsTextStringExpElement?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsTextStringExpElement? left, QsTextStringExpElement? right)
@@ -53,7 +53,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsExpStringExpElement? left, QsExpStringExpElement? right)
         {
-            return EqualityComparer<QsExpStringExpElement>.Default.Equals(left, right);
+            return EqualityComparer<QsExpStringExpElement?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsExpStringExpElement? left, QsExpStringExpElement? right)

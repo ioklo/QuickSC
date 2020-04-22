@@ -28,7 +28,9 @@ namespace QuickSC
         {
             if (code == -1) return false;
 
-            return char.IsWhiteSpace(char.ConvertFromUtf32(code), 0);
+            if (!char.IsWhiteSpace(char.ConvertFromUtf32(code), 0)) return false;
+
+            return code != '\r' && code != '\n';
         }
 
         public async ValueTask<QsBufferPosition> NextAsync()

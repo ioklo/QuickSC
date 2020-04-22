@@ -35,7 +35,7 @@ namespace QuickSC
 
         ValueTask<IEnumerable<QsToken>> ProcessNormalAsync(QsLexer lexer, QsLexerContext context)
         {
-            return ProcessInnerAsync(context => lexer.LexNormalModeAsync(context), context);
+            return ProcessInnerAsync(context => lexer.LexNormalModeAsync(context, false), context);
         }
 
         ValueTask<IEnumerable<QsToken>> ProcessStringAsync(QsLexer lexer, QsLexerContext context)
@@ -70,7 +70,7 @@ namespace QuickSC
             var expectedTokens = new QsToken[]
             {
                 new QsBoolToken(true),
-                new QsBoolToken(false),                
+                new QsBoolToken(false),
             };
 
             Assert.Equal(expectedTokens, tokens);
@@ -78,21 +78,12 @@ namespace QuickSC
 
         [Fact]
         public async Task TestLexSimpleIdentifier()
-        {   
+        {
             var lexer = new QsLexer();
-            var token = await lexer.LexNormalModeAsync(await MakeContextAsync("x"));
+            var token = await lexer.LexNormalModeAsync(await MakeContextAsync("x"), false);
 
             Assert.True(token.HasValue);
             Assert.Equal(new QsIdentifierToken("x"), token.Token);
-        }
-
-        [Fact]
-        public async Task TestLexAlternativeIdentifier()
-        {
-            var lexer = new QsLexer();
-            var token = await lexer.LexNormalModeAsync(await MakeContextAsync("@for"));
-            
-            Assert.Equal(new QsIdentifierToken("for"), token.Token);
         }
 
         [Fact]
@@ -100,7 +91,7 @@ namespace QuickSC
         {
             var context = await MakeContextAsync("  \"aaa bbb \"  ");
             var lexer = new QsLexer();
-            var result0 = await lexer.LexNormalModeAsync(context);
+            var result0 = await lexer.LexNormalModeAsync(context, false);
             var result1 = await lexer.LexStringModeAsync(result0.Context);
             var result2 = await lexer.LexStringModeAsync(result1.Context);
 
@@ -167,7 +158,7 @@ namespace QuickSC
         public async Task TestLexEscapedString()
         {
             var lexer = new QsLexer();
-            var context = await MakeContextAsync("aaa bbb ${ccc} ddd");
+            var context = await MakeContextAsync("aaa bbb ${ccc} ddd"); // TODO: "aaa bbb ${ ccc \r\n } ddd" 는 에러
 
             var tokens = new List<QsToken>();
             var result = await lexer.LexStringModeAsync(context);
@@ -176,10 +167,10 @@ namespace QuickSC
             result = await lexer.LexStringModeAsync(result.Context);
             tokens.Add(result.Token);
 
-            result = await lexer.LexNormalModeAsync(result.Context);
+            result = await lexer.LexNormalModeAsync(result.Context, false);
             tokens.Add(result.Token);
 
-            result = await lexer.LexNormalModeAsync(result.Context);
+            result = await lexer.LexNormalModeAsync(result.Context, false);
             tokens.Add(result.Token);
 
             result = await lexer.LexStringModeAsync(result.Context);
@@ -204,7 +195,7 @@ namespace QuickSC
             var context = await MakeContextAsync("\"aaa bbb ${\"xxx ${ddd}\"} ddd\"");
 
             var tokens = new List<QsToken>();
-            var result = await lexer.LexNormalModeAsync(context);
+            var result = await lexer.LexNormalModeAsync(context, false);
             tokens.Add(result.Token); // "
 
             result = await lexer.LexStringModeAsync(result.Context);
@@ -213,7 +204,7 @@ namespace QuickSC
             result = await lexer.LexStringModeAsync(result.Context);
             tokens.Add(result.Token); // ${
 
-            result = await lexer.LexNormalModeAsync(result.Context);
+            result = await lexer.LexNormalModeAsync(result.Context, false);
             tokens.Add(result.Token); // "
 
             result = await lexer.LexStringModeAsync(result.Context);
@@ -222,16 +213,16 @@ namespace QuickSC
             result = await lexer.LexStringModeAsync(result.Context);
             tokens.Add(result.Token); // ${
 
-            result = await lexer.LexNormalModeAsync(result.Context);
+            result = await lexer.LexNormalModeAsync(result.Context, false);
             tokens.Add(result.Token); // ddd
 
-            result = await lexer.LexNormalModeAsync(result.Context);
+            result = await lexer.LexNormalModeAsync(result.Context, false);
             tokens.Add(result.Token); // }
 
             result = await lexer.LexStringModeAsync(result.Context);
             tokens.Add(result.Token); // "
 
-            result = await lexer.LexNormalModeAsync(result.Context);
+            result = await lexer.LexNormalModeAsync(result.Context, false);
             tokens.Add(result.Token); // }
 
             result = await lexer.LexStringModeAsync(result.Context);
@@ -245,7 +236,7 @@ namespace QuickSC
                 QsDoubleQuoteToken.Instance,
                 new QsTextToken("aaa bbb "),
                 QsDollarLBraceToken.Instance,
-                
+
                 QsDoubleQuoteToken.Instance,
 
                 new QsTextToken("xxx "),
@@ -267,10 +258,78 @@ namespace QuickSC
             var lexer = new QsLexer();
             var context = await MakeContextAsync("1234"); // 나머지는 지원 안함
 
-            var result = await lexer.LexNormalModeAsync(context);
+            var result = await lexer.LexNormalModeAsync(context, false);
             var expectedToken = new QsIntToken(1234);
 
             Assert.Equal(expectedToken, result.Token);
+        }
+
+        [Fact]
+        public async Task TestLexComment()
+        {
+            var lexer = new QsLexer();
+            var context = await MakeContextAsync("  // e s \r\n// \r// \n1234"); // 나머지는 지원 안함
+
+            var tokens = new List<QsToken>();
+
+            var result = await lexer.LexWhitespaceAsync(context, false);
+            tokens.Add(result.Token);
+
+            result = await lexer.LexNewLineAsync(result.Context);
+            tokens.Add(result.Token);
+
+            result = await lexer.LexWhitespaceAsync(result.Context, false);
+            tokens.Add(result.Token);
+
+            result = await lexer.LexNewLineAsync(result.Context);
+            tokens.Add(result.Token);
+
+            result = await lexer.LexWhitespaceAsync(result.Context, false);
+            tokens.Add(result.Token);
+
+            result = await lexer.LexNewLineAsync(result.Context);
+            tokens.Add(result.Token);
+
+            result = await lexer.LexIntAsync(result.Context);
+            tokens.Add(result.Token);
+
+            var expectedTokens = new QsToken[] {
+                QsWhitespaceToken.Instance,
+                QsNewLineToken.Instance,
+                QsWhitespaceToken.Instance,
+                QsNewLineToken.Instance,
+                QsWhitespaceToken.Instance,
+                QsNewLineToken.Instance,
+                new QsIntToken(1234)
+            };
+
+            Assert.Equal(expectedTokens, tokens);
+        }
+
+        [Fact]
+        public async Task TestLexNextLine()
+        {
+            var lexer = new QsLexer();
+            var context = await MakeContextAsync("1234 \\ // comment \r\n 55"); // 나머지는 지원 안함
+
+            var tokens = new List<QsToken>();
+
+            var result = await lexer.LexIntAsync(context);
+            tokens.Add(result.Token);
+
+            result = await lexer.LexWhitespaceAsync(result.Context, false);
+            tokens.Add(result.Token);
+
+            result = await lexer.LexIntAsync(result.Context);
+            tokens.Add(result.Token);
+
+            var expectedTokens = new QsToken[] {
+                new QsIntToken(1234),
+                QsWhitespaceToken.Instance,                
+                new QsIntToken(55)
+            };
+
+            Assert.Equal(expectedTokens, tokens);
         }
     }
 }

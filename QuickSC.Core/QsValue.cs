@@ -32,7 +32,7 @@ namespace QuickSC
 
         public static bool operator ==(QsBoolValue? left, QsBoolValue? right)
         {
-            return EqualityComparer<QsBoolValue>.Default.Equals(left, right);
+            return EqualityComparer<QsBoolValue?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsBoolValue? left, QsBoolValue? right)
@@ -59,7 +59,7 @@ namespace QuickSC
 
         public static bool operator ==(QsIntValue? left, QsIntValue? right)
         {
-            return EqualityComparer<QsIntValue>.Default.Equals(left, right);
+            return EqualityComparer<QsIntValue?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsIntValue? left, QsIntValue? right)
@@ -86,7 +86,7 @@ namespace QuickSC
 
         public static bool operator ==(QsStringValue? left, QsStringValue? right)
         {
-            return EqualityComparer<QsStringValue>.Default.Equals(left, right);
+            return EqualityComparer<QsStringValue?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsStringValue? left, QsStringValue? right)

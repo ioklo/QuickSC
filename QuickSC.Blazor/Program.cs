@@ -26,15 +26,17 @@ namespace QuickSC.Blazor
         {
             StringBuilder sb = new StringBuilder();
 
-            public void Execute(string nameStr, ImmutableArray<string> argStrs)
+            public void Execute(string text)
             {
-                if (nameStr == "echo")
+                text = text.Trim();
+
+                if (text.StartsWith("echo "))
                 {
-                    sb.AppendLine(string.Join(' ', argStrs));
+                    sb.Append(text.Substring(5).Replace("\\n", "\n"));
                 }
                 else
                 {
-                    sb.AppendLine($"알 수 없는 명령어 입니다: {nameStr}");
+                    sb.AppendLine($"알 수 없는 명령어 입니다: {text}");
                 }
             }
 
@@ -44,25 +46,32 @@ namespace QuickSC.Blazor
         [JSInvokable]
         public static async ValueTask<string> RunAsync(string input)
         {
-            var lexer = new QsLexer();
-            var parser = new QsParser(lexer);
-            var buffer = new QsBuffer(new StringReader(input));
-            var pos = await buffer.MakePosition().NextAsync();
-            var parserContext = QsParserContext.Make(QsLexerContext.Make(pos));
+            try
+            {
+                var lexer = new QsLexer();
+                var parser = new QsParser(lexer);
+                var buffer = new QsBuffer(new StringReader(input));
+                var pos = await buffer.MakePosition().NextAsync();
+                var parserContext = QsParserContext.Make(QsLexerContext.Make(pos)).AddType("int").AddType("bool").AddType("string");
 
-            var scriptResult = await parser.ParseScriptAsync(parserContext);
-            if (!scriptResult.HasValue)
-                return "에러 (파싱 실패)";
+                var scriptResult = await parser.ParseScriptAsync(parserContext);
+                if (!scriptResult.HasValue)
+                    return "에러 (파싱 실패)";
 
-            var demoCmdProvider = new QsDemoCommandProvider();
+                var demoCmdProvider = new QsDemoCommandProvider();
 
-            var evaluator = new QsEvaluator(demoCmdProvider);
-            var evalContext = QsEvalContext.Make();
-            var newEvalContext = evaluator.EvaluateScript(scriptResult.Elem, evalContext);
-            if (newEvalContext == null)
-                return "에러 (실행 실패)";
+                var evaluator = new QsEvaluator(demoCmdProvider);
+                var evalContext = QsEvalContext.Make();
+                var newEvalContext = evaluator.EvaluateScript(scriptResult.Elem, evalContext);
+                if (newEvalContext == null)
+                    return "에러 (실행 실패)";
 
-            return demoCmdProvider.GetOutput();
+                return demoCmdProvider.GetOutput();
+            }
+            catch
+            {
+                return "에러";
+            }
         }
     }
 }
