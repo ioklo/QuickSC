@@ -152,32 +152,58 @@ namespace QuickSC
                 return QsExpParseResult.Invalid;
 
             context = expResult.Context;
+            QsExp exp = expResult.Elem;
 
-            QsUnaryOpKind? opKind = null;
-
-            // NOTICE: Postfix Unary는 중첩시키지 않고 한개만 쓰기로 한다...
-            var lexResult = await lexer.LexNormalModeAsync(context.LexerContext, true);
-            if (lexResult.HasValue)
+            while (true)
             {
+                // Unary일수도 있고, ()일수도 있다
+                var lexResult = await lexer.LexNormalModeAsync(context.LexerContext, true);
+                if (!lexResult.HasValue) break;
+
+                (QsToken Token, QsUnaryOpKind OpKind)? primaryInfo = null;
                 foreach (var info in primaryInfos)
-                {
                     if (info.Token == lexResult.Token)
                     {
-                        opKind = info.OpKind;
-                        context = context.Update(lexResult.Context);
+                        // TODO: postfix++이 두번 이상 나타나지 않도록 한다
+                        primaryInfo = info;
                         break;
                     }
+
+                if (primaryInfo.HasValue)
+                {
+                    context = context.Update(lexResult.Context);
+
+                    // Fold
+                    exp = new QsUnaryOpExp(primaryInfo.Value.OpKind, exp);
+                    continue;
                 }
+
+                // (..., ... )
+                if (Accept<QsLParenToken>(lexResult, ref context))
+                {   
+                    var args = ImmutableArray.CreateBuilder<QsExp>();
+                    while (!Accept<QsRParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                    {
+                        if (0 < args.Count)
+                            if (!Accept<QsCommaToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                                return QsExpParseResult.Invalid;
+
+                        var argResult = await ParseExpAsync(context);
+                        if (!argResult.HasValue)
+                            return QsExpParseResult.Invalid;
+
+                        context = argResult.Context;
+                        args.Add(argResult.Elem);
+                    }
+
+                    exp = new QsCallExp(new QsExpCallExpCallable(exp), args.ToImmutable());
+                    continue;
+                }
+
+                break;
             }
 
-            if (opKind.HasValue)
-            {
-                return new QsExpParseResult(new QsUnaryOpExp(opKind.Value, expResult.Elem), context);
-            }
-            else
-            {
-                return expResult;
-            }
+            return new QsExpParseResult(exp, context);
         }
         #endregion
 

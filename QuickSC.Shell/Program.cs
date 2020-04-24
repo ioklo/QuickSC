@@ -9,6 +9,51 @@ namespace QuickSC.Shell
     {
         static async Task Main(string[] args)
         {
+            try
+            {
+                var lexer = new QsLexer();
+                var parser = new QsParser(lexer);
+
+                var cmdProvider = new QsCmdCommandProvider();
+                var evaluator = new QsEvaluator(cmdProvider);
+                var evalContext = QsEvalContext.Make();
+
+                var input = @"
+int F(int i, string j)
+{
+    @echo $i $j
+    return 3 + i;
+}
+
+var x = F(3, ""hi"");
+@echo $x
+";
+                var buffer = new QsBuffer(new StringReader(input));
+                var pos = await buffer.MakePosition().NextAsync();
+                var parserContext = QsParserContext.Make(QsLexerContext.Make(pos));
+
+                var scriptResult = await parser.ParseScriptAsync(parserContext);
+                if (!scriptResult.HasValue)
+                {
+                    Console.WriteLine("파싱에 실패했습니다");
+                    return;
+                }
+
+                var newEvalContext = evaluator.EvaluateScript(scriptResult.Elem, evalContext);
+                if (!newEvalContext.HasValue)
+                {
+                    Console.WriteLine("실행에 실패했습니다");
+                    return;
+                }
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+
+        static async Task Main2(string[] args)
+        {
             var lexer = new QsLexer();
             var stmtParser = new QsStmtParser(lexer);
 
@@ -47,7 +92,7 @@ namespace QuickSC.Shell
 
                     var buffer = new QsBuffer(new StringReader(sb.ToString()));
                     var pos = await buffer.MakePosition().NextAsync();
-                    var parserContext = QsParserContext.Make(QsLexerContext.Make(pos)).AddType("int").AddType("string");
+                    var parserContext = QsParserContext.Make(QsLexerContext.Make(pos));
 
                     sb.Clear();
 

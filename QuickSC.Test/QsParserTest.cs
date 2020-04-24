@@ -16,7 +16,7 @@ namespace QuickSC
             var buffer = new QsBuffer(new StringReader(input));
             var bufferPos = await buffer.MakePosition().NextAsync();
             var lexerContext = QsLexerContext.Make(bufferPos);
-            return QsParserContext.Make(lexerContext).AddType("int").AddType("bool").AddType("string");
+            return QsParserContext.Make(lexerContext);
         }
 
         [Fact]
@@ -30,6 +30,25 @@ namespace QuickSC
             var expected = new QsScript(new QsStmtScriptElement(new QsCommandStmt(new QsStringExp(new QsTextStringExpElement("ls -al")))));
 
             Assert.Equal(expected, script.Elem);
+        }
+
+        [Fact]
+        public async Task TestParseFuncDeclAsync()
+        {
+            var lexer = new QsLexer();
+            var parser = new QsParser(lexer);
+            var context = await MakeContextAsync("void Func(int x, params string y, int z) { int a = 0; }");
+            var funcDecl = await parser.ParseFuncDeclAsync(context);
+
+            var expected = new QsFuncDecl(
+                new QsTypeIdExp("void"),
+                "Func", 1,
+                new QsBlockStmt(new QsVarDeclStmt(new QsVarDecl("int", new QsVarDeclElement("a", new QsIntLiteralExp(0))))),
+                new QsFuncDeclParam(new QsTypeIdExp("int"), "x"),
+                new QsFuncDeclParam(new QsTypeIdExp("string"), "y"),
+                new QsFuncDeclParam(new QsTypeIdExp("int"), "z"));
+
+            Assert.Equal(expected, funcDecl.Elem);
         }
 
         [Fact]

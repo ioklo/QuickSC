@@ -81,17 +81,17 @@ namespace QuickSC
         {
             var lexer = new QsLexer();
             var expParser = new QsExpParser(lexer);
-            var context = await MakeContextAsync("(c % d)++");
+            var context = await MakeContextAsync("(c++(e, f) % d)++");
 
             var expResult = await expParser.ParsePrimaryExpAsync(context);
 
             var expected = new QsUnaryOpExp(QsUnaryOpKind.PostfixInc,
                 new QsBinaryOpExp(QsBinaryOpKind.Modulo,
-                    new QsIdentifierExp("c"),
+                    new QsCallExp(new QsExpCallExpCallable(new QsUnaryOpExp(QsUnaryOpKind.PostfixInc, new QsIdentifierExp("c"))), new QsIdentifierExp("e"), new QsIdentifierExp("f")),
                     new QsIdentifierExp("d")));
 
             Assert.Equal(expected, expResult.Elem);
-        }
+        }        
 
 
         [Fact]

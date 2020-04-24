@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using QuickSC.Syntax;
 
@@ -168,10 +169,10 @@ namespace QuickSC
 
         QsEvalResult<QsValue> EvaluateBinaryOpExp(QsBinaryOpExp exp, QsEvalContext context)
         {
-            var operandResult0 = EvaluateExp(exp.OperandExp0, context);
+            var operandResult0 = EvaluateExp(exp.Operand0, context);
             if (!operandResult0.HasValue) return QsEvalResult<QsValue>.Invalid;
 
-            var operandResult1 = EvaluateExp(exp.OperandExp1, operandResult0.Context);
+            var operandResult1 = EvaluateExp(exp.Operand1, operandResult0.Context);
             if (!operandResult1.HasValue) return QsEvalResult<QsValue>.Invalid;
 
             switch (exp.Kind)
@@ -385,7 +386,90 @@ namespace QuickSC
 
             throw new NotImplementedException();
         }
-        
+
+        // TODO: QsFuncDecl을 직접 사용하지 않고, QsModule에서 정의한 Func을 사용해야 한다
+        QsEvalResult<QsFuncDecl> EvaluateCallExpCallable(QsCallExpCallable callable, QsEvalContext context)
+        {
+            // 타입 체커를 통해서 미리 계산된 func가 있는 경우,
+            if (callable is QsFuncCallExpCallable funcCallable)
+            {
+                return new QsEvalResult<QsFuncDecl>(funcCallable.FuncDecl, context);
+            }
+            // TODO: 타입체커가 있으면 이 부분은 없어져야 한다
+            else if (callable is QsExpCallExpCallable expCallable)            
+            {                
+                if (expCallable.Exp is QsIdentifierExp idExp)
+                {
+                    // 일단 idExp가 variable로 존재하는지 봐야 한다
+                    if (!context.HasVar(idExp.Value))
+                    {
+                        var func = context.GetFunc(idExp.Value);
+                        if (func == null)
+                            return QsEvalResult<QsFuncDecl>.Invalid;
+
+                        return new QsEvalResult<QsFuncDecl>(func, context);
+                    }                    
+                }
+
+                var expCallableResult = EvaluateExp(expCallable.Exp, context);
+                if (!expCallableResult.HasValue)
+                    return QsEvalResult<QsFuncDecl>.Invalid;
+                context = expCallableResult.Context;
+
+                var callableValue = expCallableResult.Value as QsCallableValue;
+                if (callableValue == null)
+                    return QsEvalResult<QsFuncDecl>.Invalid;
+
+                return new QsEvalResult<QsFuncDecl>(callableValue.FuncDecl, context);
+            }
+
+            return QsEvalResult<QsFuncDecl>.Invalid;
+        }
+
+        QsEvalResult<QsValue> EvaluateCallExp(QsCallExp exp, QsEvalContext context)
+        {
+            var callableResult = EvaluateCallExpCallable(exp.Callable, context);
+            if (!callableResult.HasValue)
+                return QsEvalResult<QsValue>.Invalid;
+            context = callableResult.Context;
+            var funcDecl = callableResult.Value;
+
+            int paramIndex = 0;
+            var args = ImmutableDictionary.CreateBuilder<string, QsValue>();
+            foreach (var arg in exp.Args)
+            {
+                var argResult = EvaluateExp(arg, context);
+                if (!argResult.HasValue)
+                    return QsEvalResult<QsValue>.Invalid;
+                context = argResult.Context;
+
+                args.Add(funcDecl.Params[paramIndex].Name, argResult.Value);
+                paramIndex++;
+            }
+
+            // 프레임 전환 
+            var prevVars = context.Vars;
+            context = context.SetVars(args.ToImmutable());            
+            
+            var bodyResult = EvaluateStmt(funcDecl.Body, context);
+            if (!bodyResult.HasValue)
+                return QsEvalResult<QsValue>.Invalid;
+            context = bodyResult.Value;
+
+            context = context.SetVars(prevVars);
+
+            if (context.FlowControl is QsReturnEvalFlowControl returnFlowControl)
+            {
+                context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                return new QsEvalResult<QsValue>(returnFlowControl.Value, context);
+            }
+            else
+            {
+                context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                return new QsEvalResult<QsValue>(QsNullValue.Instance, context);
+            }
+        }
+
         QsEvalResult<QsValue> EvaluateExp(QsExp exp, QsEvalContext context)
         {
             return exp switch
@@ -396,6 +480,7 @@ namespace QuickSC
                 QsStringExp stringExp => EvaluateStringExp(stringExp, context),
                 QsUnaryOpExp unaryOpExp => EvaluateUnaryOpExp(unaryOpExp, context),
                 QsBinaryOpExp binaryOpExp => EvaluateBinaryOpExp(binaryOpExp, context),
+                QsCallExp callExp => EvaluateCallExp(callExp, context),
 
                 _ => throw new NotImplementedException()
             };
@@ -523,18 +608,22 @@ namespace QuickSC
 
                 context = bodyStmtResult.Value;
 
-                if (context.LoopControl == QsEvalContextLoopControl.Break)
+                if (context.FlowControl == QsBreakEvalFlowControl.Instance)
                 {
-                    context = context.SetLoopControl(QsEvalContextLoopControl.None);
+                    context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
                     break;
                 }
-                else if (context.LoopControl == QsEvalContextLoopControl.Continue)
+                else if (context.FlowControl == QsContinueEvalFlowControl.Instance)
                 {
-                    context = context.SetLoopControl(QsEvalContextLoopControl.None);
+                    context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                }
+                else if (context.FlowControl is QsReturnEvalFlowControl)
+                {
+                    break;
                 }
                 else
                 {
-                    Debug.Assert(context.LoopControl == QsEvalContextLoopControl.None);
+                    Debug.Assert(context.FlowControl == QsNoneEvalFlowControl.Instance);
                 }
 
                 if (forStmt.ContinueExp != null)
@@ -552,12 +641,31 @@ namespace QuickSC
 
         QsEvalContext? EvaluateContinueStmt(QsContinueStmt continueStmt, QsEvalContext context)
         {
-            return context.SetLoopControl(QsEvalContextLoopControl.Continue);
+            return context.SetFlowControl(QsContinueEvalFlowControl.Instance);
         }
 
         QsEvalContext? EvaluateBreakStmt(QsBreakStmt breakStmt, QsEvalContext context)
         {
-            return context.SetLoopControl(QsEvalContextLoopControl.Break);
+            return context.SetFlowControl(QsBreakEvalFlowControl.Instance);
+        }
+
+        QsEvalContext? EvaluateReturnStmt(QsReturnStmt returnStmt, QsEvalContext context)
+        {
+            QsValue returnValue;
+            if (returnStmt.Value != null)
+            {
+                var returnValueResult = EvaluateExp(returnStmt.Value, context);
+                if (!returnValueResult.HasValue)
+                    return null;
+
+                returnValue = returnValueResult.Value;
+            }
+            else
+            {
+                returnValue = QsNullValue.Instance;
+            }
+
+            return context.SetFlowControl(new QsReturnEvalFlowControl(returnValue));
         }
 
         QsEvalContext? EvaluateBlockStmt(QsBlockStmt blockStmt, QsEvalContext context)
@@ -571,7 +679,7 @@ namespace QuickSC
 
                 context = stmtResult.Value;
 
-                if (context.LoopControl != QsEvalContextLoopControl.None)
+                if (context.FlowControl != QsNoneEvalFlowControl.Instance)
                     return context.SetVars(prevVars);
             }
 
@@ -597,14 +705,24 @@ namespace QuickSC
                 QsForStmt forStmt => EvaluateForStmt(forStmt, context),
                 QsContinueStmt continueStmt => EvaluateContinueStmt(continueStmt, context),
                 QsBreakStmt breakStmt => EvaluateBreakStmt(breakStmt, context),
+                QsReturnStmt returnStmt => EvaluateReturnStmt(returnStmt, context),
                 QsBlockStmt blockStmt => EvaluateBlockStmt(blockStmt, context),
                 QsExpStmt expStmt => EvaluateExpStmt(expStmt, context),
                 _ => throw new NotImplementedException()
             };
-        }        
-
+        }
+        
         public QsEvalContext? EvaluateScript(QsScript script, QsEvalContext context)
         {
+            // decl 부터 먼저 처리
+            foreach (var elem in script.Elements)
+            {
+                if (elem is QsFuncDeclScriptElement funcDeclElem)
+                {
+                    context = context.AddFunc(funcDeclElem.FuncDecl);
+                }
+            }
+
             foreach(var elem in script.Elements)
             {
                 if (elem is QsStmtScriptElement statementElem)
@@ -614,7 +732,11 @@ namespace QuickSC
 
                     context = result.Value;
                 }
-                else
+                else if (elem is QsFuncDeclScriptElement funcDeclElem)
+                {
+                    continue;
+                }
+                else 
                 {
                     return null;
                 }

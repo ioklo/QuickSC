@@ -24,7 +24,7 @@ namespace QuickSC
         {
             var lexer = new QsLexer();
             var parser = new QsStmtParser(lexer);
-            var context = (await MakeContextAsync("@echo ${a}bbb  ")).AddType("string");
+            var context = await MakeContextAsync("@echo ${a}bbb  ");
 
             var cmdStmt = await parser.ParseCommandStmtAsync(context);
 
@@ -49,7 +49,7 @@ namespace QuickSC
 xxx
 }
 ";
-            var context = (await MakeContextAsync(input)).AddType("string");
+            var context = await MakeContextAsync(input);
 
             var cmdStmt = await parser.ParseCommandStmtAsync(context);
 
@@ -68,7 +68,7 @@ xxx
         {
             var lexer = new QsLexer();
             var parser = new QsStmtParser(lexer);
-            var context = (await MakeContextAsync("string a = \"hello\";")).AddType("string");
+            var context = await MakeContextAsync("string a = \"hello\";");
 
             var varDeclStmt = await parser.ParseVarDeclStmtAsync(context);
 
@@ -84,7 +84,7 @@ xxx
         {
             var lexer = new QsLexer();
             var parser = new QsStmtParser(lexer);
-            var context = (await MakeContextAsync("if (b) {} else if (c) {} else {}")).AddType("string");
+            var context = await MakeContextAsync("if (b) {} else if (c) {} else {}");
 
             var ifStmt = await parser.ParseIfStmtAsync(context);
 

@@ -52,7 +52,7 @@ namespace QuickSC.Blazor
                 var parser = new QsParser(lexer);
                 var buffer = new QsBuffer(new StringReader(input));
                 var pos = await buffer.MakePosition().NextAsync();
-                var parserContext = QsParserContext.Make(QsLexerContext.Make(pos)).AddType("int").AddType("bool").AddType("string");
+                var parserContext = QsParserContext.Make(QsLexerContext.Make(pos));
 
                 var scriptResult = await parser.ParseScriptAsync(parserContext);
                 if (!scriptResult.HasValue)
@@ -68,9 +68,9 @@ namespace QuickSC.Blazor
 
                 return demoCmdProvider.GetOutput();
             }
-            catch
+            catch (Exception e)
             {
-                return "¿¡·¯";
+                return e.ToString();
             }
         }
     }

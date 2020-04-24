@@ -1,4 +1,5 @@
-﻿using System;
+﻿using QuickSC.Syntax;
+using System;
 using System.Collections.Generic;
 
 namespace QuickSC
@@ -92,6 +93,16 @@ namespace QuickSC
         public static bool operator !=(QsStringValue? left, QsStringValue? right)
         {
             return !(left == right);
+        }
+    }
+
+    public class QsCallableValue : QsValue
+    {
+        // TODO: Syntax직접 쓰지 않고, QsModule에서 정의한 Func를 써야 한다
+        public QsFuncDecl FuncDecl { get; set; }
+        public QsCallableValue(QsFuncDecl funcDecl)
+        {
+            FuncDecl = funcDecl;
         }
     }
 }

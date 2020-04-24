@@ -25,16 +25,6 @@ namespace QuickSC
         {
             return new QsParserContext(newContext, types);
         }
-
-        public QsParserContext AddType(string typeName)
-        {
-            return new QsParserContext(LexerContext, types.Add(typeName));
-        }
-
-        public bool HasType(string typeName)
-        {
-            return types.Contains(typeName);
-        }
     }
 
     public struct QsParseResult<TSyntaxElem>
@@ -94,16 +84,105 @@ namespace QuickSC
         {
             return lexResult.HasValue && lexResult.Token is TToken;
         }
-        #endregion        
-        
-        
+        #endregion
+
+        async ValueTask<QsParseResult<QsTypeExp>> ParseTypeIdExpAsync(QsParserContext context)
+        {
+            var idTokenResult = AcceptAndReturn<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
+            if (idTokenResult == null)
+                return QsParseResult<QsTypeExp>.Invalid;
+
+            return new QsParseResult<QsTypeExp>(new QsTypeIdExp(idTokenResult.Value), context);
+        }
+
+        async ValueTask<QsParseResult<QsTypeExp>> ParseTypeExpAsync(QsParserContext context)
+        {
+            // TODO: 일단 TypeId만
+            var typeIdExpResult = await ParseTypeIdExpAsync(context);
+            if (typeIdExpResult.HasValue)
+                return new QsParseResult<QsTypeExp>(typeIdExpResult.Elem, typeIdExpResult.Context);
+
+            return QsParseResult<QsTypeExp>.Invalid;
+        }
+
+        // int a, 
+        async ValueTask<QsParseResult<(QsFuncDeclParam FuncDeclParam, bool bVariadic)>> ParseFuncDeclParamAsync(QsParserContext context)
+        {
+            var bVariadic = Accept<QsParamsToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
+
+            var typeExpResult = await ParseTypeExpAsync(context);
+            if (!typeExpResult.HasValue)
+                return QsParseResult<(QsFuncDeclParam, bool)>.Invalid;
+
+            context = typeExpResult.Context;
+
+            var nameResult = AcceptAndReturn<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
+            if (nameResult == null)
+                return QsParseResult<(QsFuncDeclParam, bool)>.Invalid;
+
+            return new QsParseResult<(QsFuncDeclParam, bool)>((new QsFuncDeclParam(typeExpResult.Elem, nameResult.Value), bVariadic), context);
+        }
+
+        internal async ValueTask<QsParseResult<QsFuncDecl>> ParseFuncDeclAsync(QsParserContext context)
+        {
+            // <Async> <RetTypeName> <FuncName> <LPAREN> <ARGS> <RPAREN>
+            // LBRACE>
+            // [Stmt]
+            // <RBRACE>
+
+            var retTypeResult = await ParseTypeExpAsync(context);
+            if (!retTypeResult.HasValue)
+                return Invalid();
+            context = retTypeResult.Context;
+
+            var funcNameResult = AcceptAndReturn<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
+            if (funcNameResult == null)
+                return Invalid();
+
+            if (!Accept<QsLParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                return Invalid();
+
+            var funcDeclParams = ImmutableArray.CreateBuilder<QsFuncDeclParam>();
+            int? variadicParamIndex = null;
+            while (!Accept<QsRParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+            {
+                if (funcDeclParams.Count != 0)
+                    if (!Accept<QsCommaToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                        return Invalid();
+
+                var funcDeclParam = await ParseFuncDeclParamAsync(context);
+                if (!funcDeclParam.HasValue)
+                    return Invalid();
+
+                if (funcDeclParam.Elem.bVariadic)
+                    variadicParamIndex = funcDeclParams.Count;
+
+                funcDeclParams.Add(funcDeclParam.Elem.FuncDeclParam);
+                context = funcDeclParam.Context;                
+            }
+
+            var blockStmtResult = await stmtParser.ParseBlockStmtAsync(context);
+            if (!blockStmtResult.HasValue)
+                return Invalid();
+
+            context = blockStmtResult.Context;
+
+            return new QsParseResult<QsFuncDecl>(new QsFuncDecl(retTypeResult.Elem, funcNameResult.Value, funcDeclParams.ToImmutable(), variadicParamIndex, blockStmtResult.Elem), context);
+
+            static QsParseResult<QsFuncDecl> Invalid() => QsParseResult<QsFuncDecl>.Invalid;
+        }
+
         async ValueTask<QsParseResult<QsScriptElement>> ParseScriptElementAsync(QsParserContext context)
         {
+            var funcDeclResult = await ParseFuncDeclAsync(context);
+            if (funcDeclResult.HasValue)
+                return new QsParseResult<QsScriptElement>(new QsFuncDeclScriptElement(funcDeclResult.Elem), funcDeclResult.Context);
+
             var stmtResult = await stmtParser.ParseStmtAsync(context);
             if (stmtResult.HasValue) 
                 return new QsParseResult<QsScriptElement>(new QsStmtScriptElement(stmtResult.Elem), stmtResult.Context);
 
-            return new QsParseResult<QsScriptElement>();
+            return QsParseResult<QsScriptElement>.Invalid;
         }
 
         public async ValueTask<QsParseResult<QsScript>> ParseScriptAsync(QsParserContext context)

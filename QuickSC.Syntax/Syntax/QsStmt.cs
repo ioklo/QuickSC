@@ -301,6 +301,12 @@ namespace QuickSC.Syntax
         private QsBreakStmt() { }
     }
 
+    public class QsReturnStmt : QsStmt
+    {
+        public QsExp? Value { get; }
+        public QsReturnStmt(QsExp? value) { Value = value; }
+    }
+
     public class QsBlockStmt : QsStmt
     {
         public ImmutableArray<QsStmt> Stmts { get; }

@@ -134,27 +134,27 @@ namespace QuickSC.Syntax
     public class QsBinaryOpExp : QsExp
     {
         public QsBinaryOpKind Kind { get; }
-        public QsExp OperandExp0 { get; }
-        public QsExp OperandExp1 { get; }
+        public QsExp Operand0 { get; }
+        public QsExp Operand1 { get; }
         
-        public QsBinaryOpExp(QsBinaryOpKind kind, QsExp operandExp0, QsExp operandExp1)
+        public QsBinaryOpExp(QsBinaryOpKind kind, QsExp operand0, QsExp operand1)
         {
             Kind = kind;
-            OperandExp0 = operandExp0;
-            OperandExp1 = operandExp1;
+            Operand0 = operand0;
+            Operand1 = operand1;
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsBinaryOpExp exp &&
                    Kind == exp.Kind &&
-                   EqualityComparer<QsExp>.Default.Equals(OperandExp0, exp.OperandExp0) &&
-                   EqualityComparer<QsExp>.Default.Equals(OperandExp1, exp.OperandExp1);
+                   EqualityComparer<QsExp>.Default.Equals(Operand0, exp.Operand0) &&
+                   EqualityComparer<QsExp>.Default.Equals(Operand1, exp.Operand1);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Kind, OperandExp0, OperandExp1);
+            return HashCode.Combine(Kind, Operand0, Operand1);
         }
 
         public static bool operator ==(QsBinaryOpExp? left, QsBinaryOpExp? right)
@@ -196,6 +196,107 @@ namespace QuickSC.Syntax
         }
 
         public static bool operator !=(QsUnaryOpExp? left, QsUnaryOpExp? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public abstract class QsCallExpCallable
+    {
+    }
+
+    public class QsFuncCallExpCallable : QsCallExpCallable
+    {
+        public QsFuncDecl FuncDecl { get; }
+        public QsFuncCallExpCallable(QsFuncDecl funcDecl) { FuncDecl = funcDecl; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsFuncCallExpCallable callable &&
+                   EqualityComparer<QsFuncDecl>.Default.Equals(FuncDecl, callable.FuncDecl);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(FuncDecl);
+        }
+
+        public static bool operator ==(QsFuncCallExpCallable? left, QsFuncCallExpCallable? right)
+        {
+            return EqualityComparer<QsFuncCallExpCallable?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsFuncCallExpCallable? left, QsFuncCallExpCallable? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public class QsExpCallExpCallable : QsCallExpCallable
+    {
+        public QsExp Exp { get; }
+        public QsExpCallExpCallable(QsExp exp) { Exp = exp; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsExpCallExpCallable callable &&
+                   EqualityComparer<QsExp>.Default.Equals(Exp, callable.Exp);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Exp);
+        }
+
+        public static bool operator ==(QsExpCallExpCallable? left, QsExpCallExpCallable? right)
+        {
+            return EqualityComparer<QsExpCallExpCallable?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsExpCallExpCallable? left, QsExpCallExpCallable? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    // MemberCallExp는 따로 
+    public class QsCallExp : QsExp
+    {
+        public QsCallExpCallable Callable { get; }
+
+        // TODO: params, out, 등 처리를 하려면 QsExp가 아니라 다른거여야 한다
+        public ImmutableArray<QsExp> Args { get; }
+
+        public QsCallExp(QsCallExpCallable callable, ImmutableArray<QsExp> args)
+        {
+            Callable = callable;
+            Args = args;
+        }
+
+        public QsCallExp(QsCallExpCallable callable, params QsExp[] args)
+        {
+            Callable = callable;
+            Args = ImmutableArray.Create(args);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsCallExp exp &&
+                   EqualityComparer<QsCallExpCallable>.Default.Equals(Callable, exp.Callable) &&
+                   Enumerable.SequenceEqual(Args, exp.Args);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Callable, Args);
+        }
+
+        public static bool operator ==(QsCallExp? left, QsCallExp? right)
+        {
+            return EqualityComparer<QsCallExp?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsCallExp? left, QsCallExp? right)
         {
             return !(left == right);
         }

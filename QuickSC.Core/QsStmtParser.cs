@@ -99,10 +99,6 @@ namespace QuickSC
             if (typeIdResult == null)
                 return Invalid();
 
-            // var 이면 무사 통과
-            if (typeIdResult.Value != "var" && !context.HasType(typeIdResult.Value))
-                return Invalid();
-
             var elems = ImmutableArray.CreateBuilder<QsVarDeclElement>();
             do
             {
@@ -238,6 +234,26 @@ namespace QuickSC
                 return QsParseResult<QsBreakStmt>.Invalid;
 
             return new QsParseResult<QsBreakStmt>(QsBreakStmt.Instance, context);
+        }
+
+        internal async ValueTask<QsParseResult<QsReturnStmt>> ParseReturnStmtAsync(QsParserContext context)
+        {
+            if (!Accept<QsReturnToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                return QsParseResult<QsReturnStmt>.Invalid;
+
+            var valueResult = await expParser.ParseExpAsync(context);
+
+            QsExp? returnValue = null;
+            if (valueResult.HasValue)
+            {
+                context = valueResult.Context;
+                returnValue = valueResult.Elem;
+            }
+
+            if (!Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                return QsParseResult<QsReturnStmt>.Invalid;
+
+            return new QsParseResult<QsReturnStmt>(new QsReturnStmt(returnValue), context);
         }
 
         internal async ValueTask<QsParseResult<QsBlockStmt>> ParseBlockStmtAsync(QsParserContext context)
@@ -391,6 +407,10 @@ namespace QuickSC
             var breakStmtResult = await ParseBreakStmtAsync(context);
             if (breakStmtResult.HasValue)
                 return Result(breakStmtResult);
+
+            var returnStmtResult = await ParseReturnStmtAsync(context);
+            if (returnStmtResult.HasValue)
+                return Result(returnStmtResult);
 
             var varDeclResult = await ParseVarDeclStmtAsync(context);
             if (varDeclResult.HasValue)

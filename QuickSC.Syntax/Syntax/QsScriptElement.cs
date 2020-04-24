@@ -7,6 +7,36 @@ namespace QuickSC.Syntax
     {
     }
 
+    public class QsFuncDeclScriptElement : QsScriptElement
+    {
+        public QsFuncDecl FuncDecl { get; }
+        public QsFuncDeclScriptElement(QsFuncDecl funcDecl)
+        {
+            FuncDecl = funcDecl;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsFuncDeclScriptElement element &&
+                   EqualityComparer<QsFuncDecl>.Default.Equals(FuncDecl, element.FuncDecl);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(FuncDecl);
+        }
+
+        public static bool operator ==(QsFuncDeclScriptElement? left, QsFuncDeclScriptElement? right)
+        {
+            return EqualityComparer<QsFuncDeclScriptElement?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsFuncDeclScriptElement? left, QsFuncDeclScriptElement? right)
+        {
+            return !(left == right);
+        }
+    }
+
     public class QsStmtScriptElement : QsScriptElement
     {
         public QsStmt Stmt { get; }
