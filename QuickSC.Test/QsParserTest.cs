@@ -63,7 +63,9 @@ for (int i = 0; i < 5; i++)
 {
     if (i % 2 == 0)
         sum = sum + i;
-    else @{ echo hi }
+    else @{ 
+        echo hi 
+    }
 }
 
 @echo $sum Completed!
@@ -86,7 +88,7 @@ for (int i = 0; i < 5; i++)
                                     new QsBinaryOpExp(QsBinaryOpKind.Assign,
                                         new QsIdentifierExp("sum"),
                                         new QsBinaryOpExp(QsBinaryOpKind.Add, new QsIdentifierExp("sum"), new QsIdentifierExp("i")))),
-                                new QsCommandStmt(new QsStringExp(new QsTextStringExpElement(" echo hi "))))))),
+                                new QsCommandStmt(new QsStringExp(new QsTextStringExpElement("        echo hi "))))))),
                 new QsStmtScriptElement(new QsCommandStmt(new QsStringExp(
                     new QsTextStringExpElement("echo "),
                     new QsExpStringExpElement(new QsIdentifierExp("sum")),

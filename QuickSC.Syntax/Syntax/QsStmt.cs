@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 
 namespace QuickSC.Syntax
@@ -16,11 +17,13 @@ namespace QuickSC.Syntax
 
         public QsCommandStmt(ImmutableArray<QsStringExp> commands)
         {
+            Debug.Assert(0 < commands.Length);
             Commands = commands;
         }
 
         public QsCommandStmt(params QsStringExp[] commands)
         {
+            Debug.Assert(0 < commands.Length);
             Commands = ImmutableArray.Create(commands);
         }
 
@@ -346,6 +349,12 @@ namespace QuickSC.Syntax
         }
     }
     
+    public class QsBlankStmt : QsStmt
+    {
+        public static QsBlankStmt Instance { get; } = new QsBlankStmt();
+        private QsBlankStmt() { }
+    }
+
     public class QsExpStmt : QsStmt
     {
         public QsExp Exp { get; }

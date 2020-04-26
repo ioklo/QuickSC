@@ -15,7 +15,7 @@ namespace QuickSC
         QsExpParser expParser;
 
         #region Utilities
-        bool Accept<TToken>(QsLexResult lexResult, ref QsParserContext context)
+        bool Accept<TToken>(QsLexResult lexResult, ref QsParserContext context) where TToken : QsToken
         {
             if (lexResult.HasValue && lexResult.Token is TToken)
             {
@@ -227,7 +227,7 @@ namespace QuickSC
 
         internal async ValueTask<QsParseResult<QsBreakStmt>> ParseBreakStmtAsync(QsParserContext context)
         {
-            if (!Accept<QsContinueToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+            if (!Accept<QsBreakToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                 return QsParseResult<QsBreakStmt>.Invalid;
 
             if (!Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
@@ -277,6 +277,14 @@ namespace QuickSC
             }
 
             return new QsParseResult<QsBlockStmt>(new QsBlockStmt(stmts.ToImmutable()), context);
+        }
+
+        internal async ValueTask<QsParseResult<QsBlankStmt>> ParseBlankStmtAsync(QsParserContext context)
+        {
+            if (!Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                return QsParseResult<QsBlankStmt>.Invalid;
+
+            return new QsParseResult<QsBlankStmt>(QsBlankStmt.Instance, context);
         }
 
         // TODO: Assign, Call만 가능하게 해야 한다
@@ -339,11 +347,7 @@ namespace QuickSC
 
                 return QsParseResult<QsStringExp>.Invalid;
             }
-
-            // 지금까지 모아놓은거 또 flush
-            if (stringElems.Count == 0)
-                return QsParseResult<QsStringExp>.Invalid;
-
+            
             return new QsParseResult<QsStringExp>(new QsStringExp(stringElems.ToImmutable()), context);
         }
 
@@ -369,13 +373,18 @@ namespace QuickSC
                     var singleCommandResult = await ParseSingleCommandAsync(context, true);
                     if (singleCommandResult.HasValue)
                     {
-                        // singleCommand Skip 조건
-                        if (singleCommandResult.Elem.Elements.Length != 1 ||
-                            !(singleCommandResult.Elem.Elements[0] is QsTextStringExpElement textElem) ||
-                            !string.IsNullOrWhiteSpace(textElem.Text))
-                            commands.Add(singleCommandResult.Elem);
-
                         context = singleCommandResult.Context;
+
+                        // singleCommand Skip 조건
+                        if (singleCommandResult.Elem.Elements.Length == 0)
+                            continue;
+
+                        if (singleCommandResult.Elem.Elements.Length == 1 &&
+                            singleCommandResult.Elem.Elements[0] is QsTextStringExpElement textElem &&
+                            string.IsNullOrWhiteSpace(textElem.Text))
+                            continue;
+
+                        commands.Add(singleCommandResult.Elem);
                         continue;
                     }
 
@@ -387,15 +396,19 @@ namespace QuickSC
             else // 싱글 커맨드, 엔터가 나오면 끝난다
             {
                 var singleCommandResult = await ParseSingleCommandAsync(context, false);
-                if (singleCommandResult.HasValue)
+                if (singleCommandResult.HasValue && 0 < singleCommandResult.Elem.Elements.Length)
                     return new QsParseResult<QsCommandStmt>(new QsCommandStmt(singleCommandResult.Elem), singleCommandResult.Context);
             }
 
             return QsParseResult<QsCommandStmt>.Invalid;
-        }
+        }        
 
         public async ValueTask<QsParseResult<QsStmt>> ParseStmtAsync(QsParserContext context)
         {
+            var blankStmtResult = await ParseBlankStmtAsync(context);
+            if (blankStmtResult.HasValue)
+                return Result(blankStmtResult);
+
             var blockStmtResult = await ParseBlockStmtAsync(context);
             if (blockStmtResult.HasValue)
                 return Result(blockStmtResult);

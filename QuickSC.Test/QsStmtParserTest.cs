@@ -11,21 +11,24 @@ namespace QuickSC
 {
     public class QsStmtParserTest
     {
-        async ValueTask<QsParserContext> MakeContextAsync(string input)        
+        async ValueTask<(QsStmtParser, QsParserContext)> PrepareAsync(string input)
         {
+            var lexer = new QsLexer();
+            var parser = new QsStmtParser(lexer);
+
             var buffer = new QsBuffer(new StringReader(input));
             var bufferPos = await buffer.MakePosition().NextAsync();
             var lexerContext = QsLexerContext.Make(bufferPos);
-            return QsParserContext.Make(lexerContext);
+            var context = QsParserContext.Make(lexerContext);
+
+            return (parser, context);
         }
 
         [Fact]
         async Task TestParseInlineCommandStmtAsync()
         {
-            var lexer = new QsLexer();
-            var parser = new QsStmtParser(lexer);
-            var context = await MakeContextAsync("@echo ${a}bbb  ");
-
+            (var parser, var context) = await PrepareAsync("@echo ${a}bbb  ");
+            
             var cmdStmt = await parser.ParseCommandStmtAsync(context);
 
             var expected = new QsCommandStmt(
@@ -40,16 +43,13 @@ namespace QuickSC
         [Fact]
         async Task TestParseBlockCommandStmtAsync()
         {
-            var lexer = new QsLexer();
-            var parser = new QsStmtParser(lexer);
-
             var input = @"
 @{ 
     echo ${ a } bbb   
 xxx
 }
-";
-            var context = await MakeContextAsync(input);
+";          
+            (var parser, var context) = await PrepareAsync(input);
 
             var cmdStmt = await parser.ParseCommandStmtAsync(context);
 
@@ -66,10 +66,8 @@ xxx
         [Fact]
         async Task TestParseVarDeclStmtAsync()
         {
-            var lexer = new QsLexer();
-            var parser = new QsStmtParser(lexer);
-            var context = await MakeContextAsync("string a = \"hello\";");
-
+            (var parser, var context) = await PrepareAsync("string a = \"hello\";");
+            
             var varDeclStmt = await parser.ParseVarDeclStmtAsync(context);
 
             var expected = new QsVarDeclStmt(new QsVarDecl("string",
@@ -77,15 +75,12 @@ xxx
 
             Assert.Equal(expected, varDeclStmt.Elem);
         }
-
-
+        
         [Fact]
         async Task TestParseIfStmtAsync()
         {
-            var lexer = new QsLexer();
-            var parser = new QsStmtParser(lexer);
-            var context = await MakeContextAsync("if (b) {} else if (c) {} else {}");
-
+            (var parser, var context) = await PrepareAsync("if (b) {} else if (c) {} else {}");
+            
             var ifStmt = await parser.ParseIfStmtAsync(context);
 
             var expected = new QsIfStmt(new QsIdentifierExp("b"),
@@ -98,33 +93,78 @@ xxx
         }
 
         [Fact]
-        Task TestParseForStmtAsync()
+        async Task TestParseForStmtAsync()
         {
-            throw new NotImplementedException();
+            (var parser, var context) = await PrepareAsync(@"
+for (f(); g; h + g) ;
+");
+
+            var result = await parser.ParseForStmtAsync(context);
+
+            var expected = new QsForStmt(
+                new QsExpForStmtInitializer(new QsCallExp(new QsExpCallExpCallable(new QsIdentifierExp("f")))),
+                new QsIdentifierExp("g"),
+                new QsBinaryOpExp(QsBinaryOpKind.Add, new QsIdentifierExp("h"), new QsIdentifierExp("g")),
+                QsBlankStmt.Instance);
+
+            Assert.Equal(expected, result.Elem);
         }
 
         [Fact]
-        Task TestParseContinueStmtAsync()
+        async Task TestParseContinueStmtAsync()
         {
-            throw new NotImplementedException();
+            (var parser, var context) = await PrepareAsync(@"continue;");
+            var continueResult = await parser.ParseContinueStmtAsync(context);
+
+            Assert.Equal(QsContinueStmt.Instance, continueResult.Elem);
         }
 
         [Fact]
-        Task TestParseBreakStmtAsync()
+        async Task TestParseBreakStmtAsync()
         {
-            throw new NotImplementedException();
+            (var parser, var context) = await PrepareAsync(@"break;");
+            var breakResult = await parser.ParseBreakStmtAsync(context);
+
+            Assert.Equal(QsBreakStmt.Instance, breakResult.Elem);
         }
 
         [Fact]
-        Task TestParseBlockStmtAsync()
+        async Task TestParseBlockStmtAsync()
         {
-            throw new NotImplementedException();
+            (var parser, var context) = await PrepareAsync(@"{ { } { ; } ; }");
+            var blockResult = await parser.ParseBlockStmtAsync(context);
+
+            var expected = new QsBlockStmt(
+                new QsBlockStmt(),
+                new QsBlockStmt(QsBlankStmt.Instance),
+                QsBlankStmt.Instance);
+
+            Assert.Equal(expected, blockResult.Elem);
         }
 
         [Fact]
-        Task TestParseExpStmtAsync()
+        async Task TestParseBlankStmtAsync()
         {
-            throw new NotImplementedException();
+            (var parser, var context) = await PrepareAsync("  ;  ");
+            var blankResult = await parser.ParseBlankStmtAsync(context);
+
+            Assert.Equal(QsBlankStmt.Instance, blankResult.Elem);
+        }
+
+        [Fact]
+        async Task TestParseExpStmtAsync()
+        {
+            (var parser, var context) = await PrepareAsync("a = b * c(1);");
+            var expResult = await parser.ParseExpStmtAsync(context);
+
+            var expected = new QsExpStmt(new QsBinaryOpExp(QsBinaryOpKind.Assign,
+                new QsIdentifierExp("a"),
+                new QsBinaryOpExp(QsBinaryOpKind.Multiply,
+                    new QsIdentifierExp("b"),
+                    new QsCallExp(new QsExpCallExpCallable(new QsIdentifierExp("c")), new QsIntLiteralExp(1)))));
+                
+
+            Assert.Equal(expected, expResult.Elem);
         }
     }
 }
