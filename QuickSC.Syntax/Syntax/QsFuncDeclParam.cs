@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace QuickSC.Syntax
 {
     // int a
-    public class QsFuncDeclParam
+    public struct QsFuncDeclParam
     {
         public QsTypeExp Type { get; }
         public string Name { get; }
@@ -28,12 +28,12 @@ namespace QuickSC.Syntax
             return HashCode.Combine(Type, Name);
         }
 
-        public static bool operator ==(QsFuncDeclParam? left, QsFuncDeclParam? right)
+        public static bool operator ==(QsFuncDeclParam left, QsFuncDeclParam right)
         {
-            return EqualityComparer<QsFuncDeclParam?>.Default.Equals(left, right);
+            return left.Equals(right);
         }
 
-        public static bool operator !=(QsFuncDeclParam? left, QsFuncDeclParam? right)
+        public static bool operator !=(QsFuncDeclParam left, QsFuncDeclParam right)
         {
             return !(left == right);
         }

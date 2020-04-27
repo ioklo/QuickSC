@@ -11,20 +11,23 @@ namespace QuickSC
 {
     public class QsExpParserTest
     {
-        async ValueTask<QsParserContext> MakeContextAsync(string input)        
+        async ValueTask<(QsExpParser, QsParserContext)> PrepareAsync(string input)
         {
+            var lexer = new QsLexer();
+            var parser = new QsParser(lexer);
             var buffer = new QsBuffer(new StringReader(input));
             var bufferPos = await buffer.MakePosition().NextAsync();
             var lexerContext = QsLexerContext.Make(bufferPos);
-            return QsParserContext.Make(lexerContext);
+            var parserContext = QsParserContext.Make(lexerContext);
+
+            return (parser.expParser, parserContext);
         }
 
         [Fact]
         public async Task TestParseIdentifierExpAsync()
         {
-            var lexer = new QsLexer();
-            var expParser = new QsExpParser(lexer);
-            var context = await MakeContextAsync("x");
+            (var expParser, var context) = await PrepareAsync("x");
+
             var expResult = await expParser.ParseExpAsync(context);
 
             Assert.Equal(new QsIdentifierExp("x"), expResult.Elem);
@@ -33,9 +36,9 @@ namespace QuickSC
         [Fact]
         public async Task TestParseStringExpAsync()
         {
-            var lexer = new QsLexer();
-            var expParser = new QsExpParser(lexer);
-            var context = await MakeContextAsync("\"aaa bbb ${\"xxx ${ddd}\"} ddd\"");
+            var input = "\"aaa bbb ${\"xxx ${ddd}\"} ddd\"";
+            (var expParser, var context) = await PrepareAsync(input);
+
             var expResult = await expParser.ParseExpAsync(context);
 
             var expected = new QsStringExp(
@@ -52,10 +55,9 @@ namespace QuickSC
         [InlineData("true", true)]
         [InlineData("false", false)]
         public async Task TestParseBoolAsync(string input, bool bExpectedResult)
-        {
-            var lexer = new QsLexer();
-            var expParser = new QsExpParser(lexer);
-            var context = await MakeContextAsync(input);
+        {   
+            (var expParser, var context) = await PrepareAsync(input); 
+            
             var expResult = await expParser.ParseExpAsync(context);
 
             var expected = new QsBoolLiteralExp(bExpectedResult);
@@ -66,9 +68,10 @@ namespace QuickSC
         [Fact]
         public async Task TestParseIntAsync()
         {
-            var lexer = new QsLexer();
-            var expParser = new QsExpParser(lexer);
-            var context = await MakeContextAsync("1234");
+            var input = "1234";
+
+            (var expParser, var context) = await PrepareAsync(input);
+
             var expResult = await expParser.ParseExpAsync(context);
 
             var expected = new QsIntLiteralExp(1234);
@@ -79,9 +82,8 @@ namespace QuickSC
         [Fact]
         public async Task TestParsePrimaryExpAsync()
         {
-            var lexer = new QsLexer();
-            var expParser = new QsExpParser(lexer);
-            var context = await MakeContextAsync("(c++(e, f) % d)++");
+            var input = "(c++(e, f) % d)++";
+            (var expParser, var context) = await PrepareAsync(input);
 
             var expResult = await expParser.ParsePrimaryExpAsync(context);
 
@@ -93,13 +95,32 @@ namespace QuickSC
             Assert.Equal(expected, expResult.Elem);
         }        
 
+        [Fact]
+        public async Task TestParseLambdaExpAsync()
+        {
+            var input = "a = b => (c, int d) => e";
+            (var expParser, var context) = await PrepareAsync(input);
+
+            var expResult = await expParser.ParseExpAsync(context);
+
+            var expected = new QsBinaryOpExp(QsBinaryOpKind.Assign,
+                new QsIdentifierExp("a"),
+                new QsLambdaExp(
+                    new QsReturnStmt(
+                        new QsLambdaExp(
+                            new QsReturnStmt(new QsIdentifierExp("e")),
+                            new QsLambdaExpParam(null, "c"),
+                            new QsLambdaExpParam(new QsTypeIdExp("int"), "d"))),
+                    new QsLambdaExpParam(null, "b")));
+
+            Assert.Equal(expected, expResult.Elem);
+        }
 
         [Fact]
         public async Task TestParseComplexExpAsync()
         {
-            var lexer = new QsLexer();
-            var expParser = new QsExpParser(lexer);
-            var context = await MakeContextAsync("a = b = !!(c % d)++ * e + f - g / h % i == 3 != false");
+            var input = "a = b = !!(c % d)++ * e + f - g / h % i == 3 != false";
+            (var expParser, var context) = await PrepareAsync(input);
             
             var expResult = await expParser.ParseExpAsync(context);
 

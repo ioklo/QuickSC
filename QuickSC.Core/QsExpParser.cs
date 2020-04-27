@@ -14,10 +14,12 @@ namespace QuickSC
 
     class QsExpParser
     {
+        QsParser parser; // parentComponent
         QsLexer lexer;
 
-        public QsExpParser(QsLexer lexer)
+        public QsExpParser(QsParser parser, QsLexer lexer)
         {
+            this.parser = parser;
             this.lexer = lexer;
         }
 
@@ -318,6 +320,11 @@ namespace QuickSC
         {
             ValueTask<QsExpParseResult> ParseBaseExpAsync(QsParserContext context) => ParseEqualityExpAsync(context);
 
+            // a => b를 파싱했을 때 a가 리턴되는 경우를 피하려면 순서상 람다가 먼저
+            var lambdaResult = await ParseLambdaExpAsync(context);
+            if (lambdaResult.HasValue)
+                return new QsExpParseResult(lambdaResult.Elem, lambdaResult.Context);
+
             var expResult0 = await ParseBaseExpAsync(context);
             if (!expResult0.HasValue)
                 return QsExpParseResult.Invalid;
@@ -338,8 +345,74 @@ namespace QuickSC
 
         #endregion
 
-        public ValueTask<QsExpParseResult> ParseExpAsync(QsParserContext context)
+        #region LambdaExpression, Right Assoc
+        async ValueTask<QsExpParseResult> ParseLambdaExpAsync(QsParserContext context)
         {
+            var parameters = ImmutableArray.CreateBuilder<QsLambdaExpParam>();
+
+            // (), (a, b)
+            // (int a)
+            // a
+            var idResult = AcceptAndReturn<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
+            if (idResult != null )
+            {
+                parameters.Add(new QsLambdaExpParam(null, idResult.Value));
+            }
+            else if (Accept<QsLParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+            {
+                while(!Accept<QsRParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                {
+                    if (0 < parameters.Count)
+                        if (!Accept<QsCommaToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                            return Invalid();
+
+                    // id id or id
+                    var firstIdResult = AcceptAndReturn<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
+                    if (firstIdResult == null)
+                        return Invalid();
+
+                    var secondIdResult = AcceptAndReturn<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
+                    if( secondIdResult == null )
+                        parameters.Add(new QsLambdaExpParam(null, firstIdResult.Value));
+                    else
+                        parameters.Add(new QsLambdaExpParam(new QsTypeIdExp(firstIdResult.Value), secondIdResult.Value));
+                }
+            }
+
+            // =>
+            if (!Accept<QsEqualGreaterThanToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                return Invalid();
+
+            // exp => return exp;
+            // { ... }
+            QsStmt body;
+            if (Peek<QsLBraceToken>(await lexer.LexNormalModeAsync(context.LexerContext, true)))
+            {
+                var stmtBodyResult = await parser.ParseStmtAsync(context);
+                if (!stmtBodyResult.HasValue)
+                    return Invalid();
+                context = stmtBodyResult.Context;
+
+                body = stmtBodyResult.Elem;
+            }
+            else
+            {
+                var expBodyResult = await parser.ParseExpAsync(context);
+                if (!expBodyResult.HasValue)
+                    return Invalid();
+                context = expBodyResult.Context;
+
+                body = new QsReturnStmt(expBodyResult.Elem);
+            }
+
+            return new QsExpParseResult(new QsLambdaExp(parameters.ToImmutable(), body), context);
+
+            static QsExpParseResult Invalid() => QsExpParseResult.Invalid;
+        }
+        #endregion
+
+        public ValueTask<QsExpParseResult> ParseExpAsync(QsParserContext context)
+        {   
             return ParseAssignExpAsync(context);
         }
 

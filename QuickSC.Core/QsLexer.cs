@@ -129,8 +129,10 @@ namespace QuickSC
                 ("--", () => QsMinusMinusToken.Instance),
                 ("<=", () => QsLessThanEqualToken.Instance),
                 (">=", () => QsGreaterThanEqualToken.Instance),
+                ("=>", () => QsEqualGreaterThanToken.Instance),
                 ("==", () => QsEqualEqualToken.Instance),
                 ("!=", () => QsExclEqualToken.Instance),
+                
 
                 ("@", () => QsExecToken.Instance),
                 ("<", () => QsLessThanToken.Instance),

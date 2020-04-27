@@ -48,13 +48,25 @@ namespace QuickSC
 
     public class QsParser
     {
-        QsLexer lexer;        
-        QsStmtParser stmtParser;
+        QsLexer lexer;
+        internal QsExpParser expParser;
+        internal QsStmtParser stmtParser;
 
         public QsParser(QsLexer lexer)
         {
-            this.lexer = lexer;            
-            stmtParser = new QsStmtParser(lexer);
+            this.lexer = lexer;
+            expParser = new QsExpParser(this, lexer);
+            stmtParser = new QsStmtParser(this, lexer);
+        }
+
+        public ValueTask<QsParseResult<QsExp>> ParseExpAsync(QsParserContext context)
+        {
+            return expParser.ParseExpAsync(context);
+        }
+
+        public ValueTask<QsParseResult<QsStmt>> ParseStmtAsync(QsParserContext context)
+        {
+            return stmtParser.ParseStmtAsync(context);
         }
 
         #region Utilities

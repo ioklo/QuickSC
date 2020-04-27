@@ -16,6 +16,7 @@ namespace QuickSC.Token
     public class QsMinusMinusToken : QsToken { public static QsMinusMinusToken Instance { get; } = new QsMinusMinusToken(); private QsMinusMinusToken() { } } // --
     public class QsLessThanEqualToken : QsToken { public static QsLessThanEqualToken Instance { get; } = new QsLessThanEqualToken(); private QsLessThanEqualToken() { } } // <=
     public class QsGreaterThanEqualToken : QsToken { public static QsGreaterThanEqualToken Instance { get; } = new QsGreaterThanEqualToken(); private QsGreaterThanEqualToken() { } } // >=    
+    public class QsEqualGreaterThanToken : QsToken { public static QsEqualGreaterThanToken Instance { get; } = new QsEqualGreaterThanToken(); private QsEqualGreaterThanToken() { } } // =>
 
     public class QsLessThanToken : QsToken { public static QsLessThanToken Instance { get; } = new QsLessThanToken(); private QsLessThanToken() { } } // <
     public class QsGreaterThanToken : QsToken { public static QsGreaterThanToken Instance { get; } = new QsGreaterThanToken(); private QsGreaterThanToken() { } } // >

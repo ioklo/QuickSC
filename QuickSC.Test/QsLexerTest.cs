@@ -47,14 +47,48 @@ namespace QuickSC
         public async Task TestLexSymbols()
         {
             var lexer = new QsLexer();
-            var context = await MakeContextAsync(", ; =");
+            var context = await MakeContextAsync(
+                "if else for continue break exec params return " + 
+                "++ -- <= >= => == != " +
+                "@ < > ; , = { } ( ) + - * / % !");
 
             var tokens = await ProcessNormalAsync(lexer, context);
             var expectedTokens = new QsToken[]
             {
-                QsCommaToken.Instance,
+                QsIfToken.Instance,
+                QsElseToken.Instance,
+                QsForToken.Instance,
+                QsContinueToken.Instance,
+                QsBreakToken.Instance,
+                QsExecToken.Instance,
+                QsParamsToken.Instance,
+                QsReturnToken.Instance,
+                QsPlusPlusToken.Instance,
+                QsMinusMinusToken.Instance,
+                QsLessThanEqualToken.Instance,
+                QsGreaterThanEqualToken.Instance,
+                QsEqualGreaterThanToken.Instance,
+                QsEqualEqualToken.Instance,
+                QsExclEqualToken.Instance,
+
+
+                QsExecToken.Instance,
+                QsLessThanToken.Instance,
+                QsGreaterThanToken.Instance,
                 QsSemiColonToken.Instance,
+                QsCommaToken.Instance,
                 QsEqualToken.Instance,
+                QsLBraceToken.Instance,
+                QsRBraceToken.Instance,
+                QsLParenToken.Instance,
+                QsRParenToken.Instance,
+
+                QsPlusToken.Instance,
+                QsMinusToken.Instance,
+                QsStarToken.Instance,
+                QsSlashToken.Instance,
+                QsPercentToken.Instance,
+                QsExclToken.Instance
             };
 
             Assert.Equal(expectedTokens, tokens);

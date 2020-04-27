@@ -14,14 +14,14 @@ namespace QuickSC
         async ValueTask<(QsStmtParser, QsParserContext)> PrepareAsync(string input)
         {
             var lexer = new QsLexer();
-            var parser = new QsStmtParser(lexer);
+            var parser = new QsParser(lexer);
 
             var buffer = new QsBuffer(new StringReader(input));
             var bufferPos = await buffer.MakePosition().NextAsync();
             var lexerContext = QsLexerContext.Make(bufferPos);
             var context = QsParserContext.Make(lexerContext);
 
-            return (parser, context);
+            return (parser.stmtParser, context);
         }
 
         [Fact]

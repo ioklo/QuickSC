@@ -55,7 +55,7 @@ var x = F(3, ""hi"");
         static async Task Main2(string[] args)
         {
             var lexer = new QsLexer();
-            var stmtParser = new QsStmtParser(lexer);
+            var parser = new QsParser(lexer);
 
             var cmdProvider = new QsCmdCommandProvider();
             var evaluator = new QsEvaluator(cmdProvider);
@@ -96,7 +96,7 @@ var x = F(3, ""hi"");
 
                     sb.Clear();
 
-                    var stmtResult = await stmtParser.ParseStmtAsync(parserContext);
+                    var stmtResult = await parser.ParseStmtAsync(parserContext);
                     if (!stmtResult.HasValue)
                     {
                         Console.WriteLine("파싱에 실패했습니다");

@@ -301,4 +301,79 @@ namespace QuickSC.Syntax
             return !(left == right);
         }
     }
+
+    public struct QsLambdaExpParam
+    {
+        public QsTypeExp? Type { get; }
+        public string Name { get; }
+
+        public QsLambdaExpParam(QsTypeExp? type, string name)
+        {
+            Type = type;
+            Name = name;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsLambdaExpParam param &&
+                   EqualityComparer<QsTypeExp?>.Default.Equals(Type, param.Type) &&
+                   Name == param.Name;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Type, Name);
+        }
+
+        public static bool operator ==(QsLambdaExpParam left, QsLambdaExpParam right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(QsLambdaExpParam left, QsLambdaExpParam right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public class QsLambdaExp : QsExp
+    {
+        public ImmutableArray<QsLambdaExpParam> Params { get; }
+        public QsStmt Body { get; }
+
+        public QsLambdaExp(ImmutableArray<QsLambdaExpParam> parameters, QsStmt body)
+        {
+            Params = parameters;
+            Body = body;
+        }
+
+        public QsLambdaExp(QsStmt body, params QsLambdaExpParam[] parameters)
+        {
+            Params = ImmutableArray.Create(parameters);
+            Body = body;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsLambdaExp exp &&
+                   Enumerable.SequenceEqual(Params, exp.Params) &&
+                   EqualityComparer<QsStmt>.Default.Equals(Body, exp.Body);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Params, Body);
+        }
+
+        public static bool operator ==(QsLambdaExp? left, QsLambdaExp? right)
+        {
+            return EqualityComparer<QsLambdaExp?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsLambdaExp? left, QsLambdaExp? right)
+        {
+            return !(left == right);
+        }
+    }
+        
 }

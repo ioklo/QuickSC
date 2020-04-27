@@ -308,6 +308,27 @@ namespace QuickSC.Syntax
     {
         public QsExp? Value { get; }
         public QsReturnStmt(QsExp? value) { Value = value; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsReturnStmt stmt &&
+                   EqualityComparer<QsExp?>.Default.Equals(Value, stmt.Value);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
+
+        public static bool operator ==(QsReturnStmt? left, QsReturnStmt? right)
+        {
+            return EqualityComparer<QsReturnStmt>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsReturnStmt? left, QsReturnStmt? right)
+        {
+            return !(left == right);
+        }
     }
 
     public class QsBlockStmt : QsStmt
