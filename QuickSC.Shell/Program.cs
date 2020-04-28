@@ -16,31 +16,31 @@ namespace QuickSC.Shell
 
                 var cmdProvider = new QsCmdCommandProvider();
                 var evaluator = new QsEvaluator(cmdProvider);
-                var evalContext = QsEvalContext.Make();
-
-                //                var input = @"
-                //int i = 7;
-
-                //int F(int i, string j)
-                //{
-                //    @echo $i $j
-                //    i = i + 3;
-                //    return i;
-                //}
-
-                //var x = F(3, ""hi"");
-                //@echo $x
-                //";
-
+                var evalContext = QsEvalContext.Make();               
                 var input = @"
-int x = 3;
-var f = i => {
-    @echo $i $x
-    x++;
-};
+int jobCount = 0; // no guard for contention
 
-f(2);
-f(3);
+task 
+{
+    jobCount++;
+    @timeout 4 /nobreak > nul 
+    @echo Completed 1!
+    jobCount--;
+}
+
+task 
+{
+    jobCount++;
+    @timeout 2 /nobreak > nul 
+    @echo Completed 2!
+    jobCount--;
+}
+
+for(int i = 0 ; i < 6; i++)
+@{
+    timeout 1 /nobreak > nul 
+    echo ${i+1} sec $jobCount jobs left
+}
 ";
                 var buffer = new QsBuffer(new StringReader(input));
                 var pos = await buffer.MakePosition().NextAsync();

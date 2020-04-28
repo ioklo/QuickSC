@@ -375,5 +375,4 @@ namespace QuickSC.Syntax
             return !(left == right);
         }
     }
-        
 }

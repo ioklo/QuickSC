@@ -301,6 +301,19 @@ namespace QuickSC
             return new QsParseResult<QsExpStmt>(new QsExpStmt(expResult.Elem), context);
         }
 
+        async ValueTask<QsParseResult<QsTaskStmt>> ParseTaskStmtAsync(QsParserContext context)
+        {
+            if (!Accept<QsTaskToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                return QsParseResult<QsTaskStmt>.Invalid;
+            
+            var stmtResult = await parser.ParseStmtAsync(context);
+            if (!stmtResult.HasValue) return QsParseResult<QsTaskStmt>.Invalid; 
+            context = stmtResult.Context;
+
+            return new QsParseResult<QsTaskStmt>(new QsTaskStmt(stmtResult.Elem), context);
+        }
+
+
         async ValueTask<QsParseResult<QsStringExp>> ParseSingleCommandAsync(QsParserContext context, bool bStopRBrace)
         {
             var stringElems = ImmutableArray.CreateBuilder<QsStringExpElement>();
@@ -401,7 +414,10 @@ namespace QuickSC
             }
 
             return QsParseResult<QsCommandStmt>.Invalid;
-        }        
+        }
+
+        
+
 
         public async ValueTask<QsParseResult<QsStmt>> ParseStmtAsync(QsParserContext context)
         {
@@ -441,9 +457,13 @@ namespace QuickSC
             if (expStmtResult.HasValue)
                 return Result(expStmtResult);
 
+            var taskStmtResult = await ParseTaskStmtAsync(context);
+            if (taskStmtResult.HasValue)
+                return Result(taskStmtResult);
+
             var cmdResult = await ParseCommandStmtAsync(context);
             if (cmdResult.HasValue)
-                return Result(cmdResult);
+                return Result(cmdResult);            
 
             throw new NotImplementedException();
 

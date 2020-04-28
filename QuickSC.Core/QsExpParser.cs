@@ -415,7 +415,7 @@ namespace QuickSC
         {   
             return ParseAssignExpAsync(context);
         }
-
+        
         async ValueTask<QsExpParseResult> ParseParenExpAsync(QsParserContext context)
         {
             if (!Accept<QsLParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))

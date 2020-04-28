@@ -42,6 +42,7 @@ namespace QuickSC.Token
     public class QsContinueToken : QsToken { public static QsContinueToken Instance { get; } = new QsContinueToken(); private QsContinueToken() { } } // continue
     public class QsBreakToken : QsToken { public static QsBreakToken Instance { get; } = new QsBreakToken(); private QsBreakToken() { } } // break
     public class QsExecToken : QsToken { public static QsExecToken Instance { get; } = new QsExecToken(); private QsExecToken() { } } // exec
+    public class QsTaskToken : QsToken { public static QsTaskToken Instance { get; } = new QsTaskToken(); private QsTaskToken() { } }
     public class QsParamsToken : QsToken { public static QsParamsToken Instance { get; } = new QsParamsToken(); private QsParamsToken() { } }    // if 
     public class QsReturnToken : QsToken { public static QsReturnToken Instance { get; } = new QsReturnToken(); private QsReturnToken() { } }    // if 
 

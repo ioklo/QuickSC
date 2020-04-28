@@ -322,7 +322,7 @@ namespace QuickSC.Syntax
 
         public static bool operator ==(QsReturnStmt? left, QsReturnStmt? right)
         {
-            return EqualityComparer<QsReturnStmt>.Default.Equals(left, right);
+            return EqualityComparer<QsReturnStmt?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsReturnStmt? left, QsReturnStmt? right)
@@ -404,5 +404,11 @@ namespace QuickSC.Syntax
         {
             return !(left == right);
         }
+    }
+
+    public class QsTaskStmt : QsStmt
+    {
+        public QsStmt Body { get; }
+        public QsTaskStmt(QsStmt body) { Body = body; }
     }
 }

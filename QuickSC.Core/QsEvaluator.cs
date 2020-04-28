@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using QuickSC.Syntax;
 
 namespace QuickSC
@@ -557,9 +558,8 @@ namespace QuickSC
                 new QsValue<QsCallable>( // TODO: not QsValue<QsLambdaCallable> 실수하기 쉬운 지점
                     new QsLambdaCallable(exp, captures.ToImmutable())), 
                 context);
-
         }
-
+        
         QsEvalResult<QsValue> EvaluateExp(QsExp exp, QsEvalContext context)
         {
             return exp switch
@@ -785,6 +785,45 @@ namespace QuickSC
             return expResult.Context;
         }
 
+        QsEvalContext? EvaluateTaskStmt(QsTaskStmt taskStmt, QsEvalContext context)
+        {
+            var captureResult = capturer.CaptureStmt(taskStmt.Body, QsCaptureContext.Make());
+            if (!captureResult.HasValue) return null;
+
+            var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
+            foreach (var needCapture in captureResult.Value.NeedCaptures)
+            {
+                var name = needCapture.Key;
+                var kind = needCapture.Value;
+
+                var origValue = context.GetValue(name);
+                if (origValue == null) return null;
+
+                QsValue value;
+                if (kind == QsCaptureContextCaptureKind.Copy)
+                {
+                    value = origValue.MakeCopy();
+                }
+                else
+                {
+                    Debug.Assert(kind == QsCaptureContextCaptureKind.Ref);
+                    value = origValue;
+                }
+
+                captures.Add(name, value);
+            }
+
+            var newContext = QsEvalContext.Make();
+            newContext = newContext.SetVars(captures.ToImmutable());
+
+            Task.Run(() =>
+            {
+                EvaluateStmt(taskStmt.Body, newContext);
+            });
+
+            return context;
+        }
+
         // TODO: 임시 public, REPL용이 따로 있어야 할 것 같다
         public QsEvalContext? EvaluateStmt(QsStmt stmt, QsEvalContext context)
         {
@@ -799,6 +838,7 @@ namespace QuickSC
                 QsReturnStmt returnStmt => EvaluateReturnStmt(returnStmt, context),
                 QsBlockStmt blockStmt => EvaluateBlockStmt(blockStmt, context),
                 QsExpStmt expStmt => EvaluateExpStmt(expStmt, context),
+                QsTaskStmt taskStmt => EvaluateTaskStmt(taskStmt, context),
                 _ => throw new NotImplementedException()
             };
         }

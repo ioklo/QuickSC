@@ -123,6 +123,7 @@ namespace QuickSC
                 ("continue", () => QsContinueToken.Instance),
                 ("break", () => QsBreakToken.Instance),
                 ("exec", () => QsExecToken.Instance),
+                ("task", () => QsTaskToken.Instance),
                 ("params", () => QsParamsToken.Instance),
                 ("return", () => QsReturnToken.Instance),
                 ("++", () => QsPlusPlusToken.Instance),
