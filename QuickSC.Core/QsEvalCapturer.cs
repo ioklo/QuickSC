@@ -209,6 +209,17 @@ namespace QuickSC
             return context.UpdateBoundVars(prevBoundVars);
         }
 
+        public QsCaptureContext? CaptureAwaitStmt(QsAwaitStmt stmt, QsCaptureContext context)
+        {
+            var prevBoundVars = context.BoundVars;
+
+            var stmtResult = CaptureStmt(stmt.Body, context);
+            if (!stmtResult.HasValue) return null;
+            context = stmtResult.Value;
+
+            return context.UpdateBoundVars(prevBoundVars);
+        }
+
         public QsCaptureContext? CaptureStmt(QsStmt stmt, QsCaptureContext context)
         {
             return stmt switch
@@ -223,6 +234,7 @@ namespace QuickSC
                 QsBlockStmt blockStmt => CaptureBlockStmt(blockStmt, context),
                 QsExpStmt expStmt => CaptureExpStmt(expStmt, context),
                 QsTaskStmt taskStmt => CaptureTaskStmt(taskStmt, context),
+                QsAwaitStmt awaitStmt => CaptureAwaitStmt(awaitStmt, context),
 
                 _ => throw new NotImplementedException()
             };

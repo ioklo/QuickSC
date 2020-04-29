@@ -126,6 +126,9 @@ namespace QuickSC
                 ("task", () => QsTaskToken.Instance),
                 ("params", () => QsParamsToken.Instance),
                 ("return", () => QsReturnToken.Instance),
+                ("async", () => QsAsyncToken.Instance),
+                ("await", () => QsAwaitToken.Instance),
+
                 ("++", () => QsPlusPlusToken.Instance),
                 ("--", () => QsMinusMinusToken.Instance),
                 ("<=", () => QsLessThanEqualToken.Instance),

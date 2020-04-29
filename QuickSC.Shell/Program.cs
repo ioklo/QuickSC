@@ -7,6 +7,43 @@ namespace QuickSC.Shell
 {
     class Program
     {
+        class QsDemoCommandProvider : IQsCommandProvider
+        {
+            StringBuilder sb = new StringBuilder();
+
+            public async Task ExecuteAsync(string text)
+            {
+                try
+                {
+                    text = text.Trim();
+
+                    if (text.StartsWith("echo "))
+                    {
+                        Console.WriteLine(text.Substring(5).Replace("\\n", "\n"));
+                    }
+                    else if (text.StartsWith("sleep "))
+                    {
+                        int i = int.Parse(text.Substring(6));
+
+                        Console.WriteLine($"{i}초를 쉽니다");
+                        await Task.Delay(i * 1000);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"알 수 없는 명령어 입니다: {text}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.ToString());
+                }
+
+                // return Task.CompletedTask;
+            }
+
+            public string GetOutput() => sb.ToString();
+        }
+
         static async Task Main(string[] args)
         {
             try
@@ -14,33 +51,31 @@ namespace QuickSC.Shell
                 var lexer = new QsLexer();
                 var parser = new QsParser(lexer);
 
-                var cmdProvider = new QsCmdCommandProvider();
+                var cmdProvider = new QsDemoCommandProvider();
                 var evaluator = new QsEvaluator(cmdProvider);
                 var evalContext = QsEvalContext.Make();               
                 var input = @"
 int jobCount = 0; // no guard for contention
 
-task 
+async void Sleep(int i)
 {
-    jobCount++;
-    @timeout 4 /nobreak > nul 
-    @echo Completed 1!
-    jobCount--;
+    // @timeout $i /nobreak > nul
+    @sleep $i
 }
 
-task 
+async void Func()
 {
-    jobCount++;
-    @timeout 2 /nobreak > nul 
-    @echo Completed 2!
-    jobCount--;
+    for (int i = 0; i < 4; i++)
+    {
+        Sleep(1);
+        @echo ${i} sec
+    }
 }
 
-for(int i = 0 ; i < 6; i++)
-@{
-    timeout 1 /nobreak > nul 
-    echo ${i+1} sec $jobCount jobs left
-}
+Func(); // 일단 synchronous 하게 
+@echo hello
+// TODO: await { async Func(); } 테스트
+
 ";
                 var buffer = new QsBuffer(new StringReader(input));
                 var pos = await buffer.MakePosition().NextAsync();
@@ -53,7 +88,7 @@ for(int i = 0 ; i < 6; i++)
                     return;
                 }
 
-                var newEvalContext = evaluator.EvaluateScript(scriptResult.Elem, evalContext);
+                var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);
                 if (!newEvalContext.HasValue)
                 {
                     Console.WriteLine("실행에 실패했습니다");
@@ -117,7 +152,7 @@ for(int i = 0 ; i < 6; i++)
                         continue;
                     }
 
-                    var newEvalContext = evaluator.EvaluateStmt(stmtResult.Elem, evalContext);
+                    var newEvalContext = await evaluator.EvaluateStmtAsync(stmtResult.Elem, evalContext);
                     if (!newEvalContext.HasValue)
                     {
                         Console.WriteLine("실행에 실패했습니다");

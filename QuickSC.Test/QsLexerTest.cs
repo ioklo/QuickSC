@@ -48,7 +48,7 @@ namespace QuickSC
         {
             var lexer = new QsLexer();
             var context = await MakeContextAsync(
-                "if else for continue break exec params return " + 
+                "if else for continue break exec task params return async await " + 
                 "++ -- <= >= => == != " +
                 "@ < > ; , = { } ( ) + - * / % !");
 
@@ -61,8 +61,12 @@ namespace QuickSC
                 QsContinueToken.Instance,
                 QsBreakToken.Instance,
                 QsExecToken.Instance,
+                QsTaskToken.Instance,
                 QsParamsToken.Instance,
                 QsReturnToken.Instance,
+                QsAsyncToken.Instance,
+                QsAwaitToken.Instance,
+
                 QsPlusPlusToken.Instance,
                 QsMinusMinusToken.Instance,
                 QsLessThanEqualToken.Instance,

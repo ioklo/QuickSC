@@ -36,15 +36,17 @@ namespace QuickSC.Token
     public class QsPercentToken : QsToken { public static QsPercentToken Instance { get; } = new QsPercentToken(); private QsPercentToken() { } } // %    
     public class QsExclToken : QsToken { public static QsExclToken Instance { get; } = new QsExclToken(); private QsExclToken() { } } // !    
     
-    public class QsIfToken : QsToken { public static QsIfToken Instance { get; } = new QsIfToken(); private QsIfToken() { } }    // if 
-    public class QsElseToken : QsToken { public static QsElseToken Instance { get; } = new QsElseToken(); private QsElseToken() { } }  // else 
-    public class QsForToken : QsToken { public static QsForToken Instance { get; } = new QsForToken(); private QsForToken() { } }  // for
-    public class QsContinueToken : QsToken { public static QsContinueToken Instance { get; } = new QsContinueToken(); private QsContinueToken() { } } // continue
-    public class QsBreakToken : QsToken { public static QsBreakToken Instance { get; } = new QsBreakToken(); private QsBreakToken() { } } // break
-    public class QsExecToken : QsToken { public static QsExecToken Instance { get; } = new QsExecToken(); private QsExecToken() { } } // exec
+    public class QsIfToken : QsToken { public static QsIfToken Instance { get; } = new QsIfToken(); private QsIfToken() { } }
+    public class QsElseToken : QsToken { public static QsElseToken Instance { get; } = new QsElseToken(); private QsElseToken() { } }
+    public class QsForToken : QsToken { public static QsForToken Instance { get; } = new QsForToken(); private QsForToken() { } }
+    public class QsContinueToken : QsToken { public static QsContinueToken Instance { get; } = new QsContinueToken(); private QsContinueToken() { } }
+    public class QsBreakToken : QsToken { public static QsBreakToken Instance { get; } = new QsBreakToken(); private QsBreakToken() { } }
+    public class QsExecToken : QsToken { public static QsExecToken Instance { get; } = new QsExecToken(); private QsExecToken() { } }
     public class QsTaskToken : QsToken { public static QsTaskToken Instance { get; } = new QsTaskToken(); private QsTaskToken() { } }
-    public class QsParamsToken : QsToken { public static QsParamsToken Instance { get; } = new QsParamsToken(); private QsParamsToken() { } }    // if 
-    public class QsReturnToken : QsToken { public static QsReturnToken Instance { get; } = new QsReturnToken(); private QsReturnToken() { } }    // if 
+    public class QsParamsToken : QsToken { public static QsParamsToken Instance { get; } = new QsParamsToken(); private QsParamsToken() { } }
+    public class QsReturnToken : QsToken { public static QsReturnToken Instance { get; } = new QsReturnToken(); private QsReturnToken() { } }
+    public class QsAsyncToken : QsToken { public static QsAsyncToken Instance { get; } = new QsAsyncToken(); private QsAsyncToken() { } }
+    public class QsAwaitToken : QsToken { public static QsAwaitToken Instance { get; } = new QsAwaitToken(); private QsAwaitToken() { } }
 
     public class QsWhitespaceToken : QsToken { public static QsWhitespaceToken Instance { get; } = new QsWhitespaceToken(); private QsWhitespaceToken() { } } // \s
     public class QsNewLineToken : QsToken { public static QsNewLineToken Instance { get; } = new QsNewLineToken(); private QsNewLineToken() { } }     // \r \n \r\n

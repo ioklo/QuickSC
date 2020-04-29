@@ -141,6 +141,11 @@ namespace QuickSC
             // LBRACE>
             // [Stmt]
             // <RBRACE>
+            QsFuncKind funcKind;
+            if (Accept<QsAsyncToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                funcKind = QsFuncKind.Async;
+            else
+                funcKind = QsFuncKind.Sync;
 
             var retTypeResult = await ParseTypeExpAsync(context);
             if (!retTypeResult.HasValue)
@@ -179,7 +184,7 @@ namespace QuickSC
 
             context = blockStmtResult.Context;
 
-            return new QsParseResult<QsFuncDecl>(new QsFuncDecl(retTypeResult.Elem, funcNameResult.Value, funcDeclParams.ToImmutable(), variadicParamIndex, blockStmtResult.Elem), context);
+            return new QsParseResult<QsFuncDecl>(new QsFuncDecl(funcKind, retTypeResult.Elem, funcNameResult.Value, funcDeclParams.ToImmutable(), variadicParamIndex, blockStmtResult.Elem), context);
 
             static QsParseResult<QsFuncDecl> Invalid() => QsParseResult<QsFuncDecl>.Invalid;
         }

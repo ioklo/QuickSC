@@ -26,18 +26,34 @@ namespace QuickSC.Blazor
         {
             StringBuilder sb = new StringBuilder();
 
-            public void Execute(string text)
+            public async Task ExecuteAsync(string text)
             {
-                text = text.Trim();
+                try
+                {
+                    text = text.Trim();
 
-                if (text.StartsWith("echo "))
-                {
-                    sb.Append(text.Substring(5).Replace("\\n", "\n"));
+                    if (text.StartsWith("echo "))
+                    {
+                        sb.Append(text.Substring(5).Replace("\\n", "\n"));
+                    }
+                    else if (text.StartsWith("sleep "))
+                    {
+                        int i = int.Parse(text.Substring(6));
+
+                        sb.Append($"{i}초를 쉽니다");
+                        await Task.Delay(i * 1000);
+                    }
+                    else
+                    {
+                        sb.AppendLine($"알 수 없는 명령어 입니다: {text}");
+                    }
                 }
-                else
+                catch (Exception e)
                 {
-                    sb.AppendLine($"알 수 없는 명령어 입니다: {text}");
+                    sb.AppendLine(e.ToString());
                 }
+
+                // return Task.CompletedTask;
             }
 
             public string GetOutput() => sb.ToString();
@@ -62,7 +78,7 @@ namespace QuickSC.Blazor
 
                 var evaluator = new QsEvaluator(demoCmdProvider);
                 var evalContext = QsEvalContext.Make();
-                var newEvalContext = evaluator.EvaluateScript(scriptResult.Elem, evalContext);
+                var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);
                 if (newEvalContext == null)
                     return "에러 (실행 실패)";
 
