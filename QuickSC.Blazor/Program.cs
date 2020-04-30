@@ -7,11 +7,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using System.IO;
 using System.Collections.Immutable;
+using System.Threading;
 
 namespace QuickSC.Blazor
 {
     public class Program
     {
+        static IJSRuntime? jsRuntime;
+
         public static async Task Main(string[] args)
         {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -19,48 +22,54 @@ namespace QuickSC.Blazor
 
             builder.Services.AddBaseAddressHttpClient();
 
-            await builder.Build().RunAsync();
+            var host = builder.Build();
+            jsRuntime = host.Services.GetService<IJSRuntime>();
+
+            await host.RunAsync();
+        }
+
+        static async Task WriteAsync(string msg)
+        {
+            await jsRuntime.InvokeVoidAsync("writeConsole", msg);
         }
 
         class QsDemoCommandProvider : IQsCommandProvider
         {
-            StringBuilder sb = new StringBuilder();
+            public QsDemoCommandProvider()
+            {   
+            }            
 
             public async Task ExecuteAsync(string text)
-            {
+            {   
                 try
                 {
                     text = text.Trim();
 
                     if (text.StartsWith("echo "))
                     {
-                        sb.Append(text.Substring(5).Replace("\\n", "\n"));
+                        await WriteAsync(text.Substring(5).Replace("\\n", "\n"));
                     }
                     else if (text.StartsWith("sleep "))
                     {
-                        int i = int.Parse(text.Substring(6));
-
-                        sb.Append($"{i}초를 쉽니다");
-                        await Task.Delay(i * 1000);
+                        var d = double.Parse(text.Substring(6));
+                        await Task.Delay((int)(1000 * d));
                     }
                     else
                     {
-                        sb.AppendLine($"알 수 없는 명령어 입니다: {text}");
+                        await WriteAsync($"알 수 없는 명령어 입니다: {text}\n");
                     }
                 }
                 catch (Exception e)
                 {
-                    sb.AppendLine(e.ToString());
+                    await WriteAsync(e.ToString() + "\n");
                 }
 
                 // return Task.CompletedTask;
             }
-
-            public string GetOutput() => sb.ToString();
         }
 
         [JSInvokable]
-        public static async ValueTask<string> RunAsync(string input)
+        public static async Task<bool> RunAsync(string input)
         {
             try
             {
@@ -72,7 +81,10 @@ namespace QuickSC.Blazor
 
                 var scriptResult = await parser.ParseScriptAsync(parserContext);
                 if (!scriptResult.HasValue)
-                    return "에러 (파싱 실패)";
+                {
+                    await WriteAsync("에러 (파싱 실패)");
+                    return false;
+                }
 
                 var demoCmdProvider = new QsDemoCommandProvider();
 
@@ -80,13 +92,17 @@ namespace QuickSC.Blazor
                 var evalContext = QsEvalContext.Make();
                 var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);
                 if (newEvalContext == null)
-                    return "에러 (실행 실패)";
+                {
+                    await WriteAsync("에러 (실행 실패)");
+                    return false;
+                }
 
-                return demoCmdProvider.GetOutput();
+                return true;
             }
             catch (Exception e)
             {
-                return e.ToString();
+                await WriteAsync(e.ToString());
+                return false;
             }
         }
     }

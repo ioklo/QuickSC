@@ -37,8 +37,7 @@ namespace QuickSC
         public ImmutableDictionary<string, QsFuncDecl> Funcs { get; }
         public ImmutableDictionary<string, QsValue> Vars { get; }
         public QsEvalFlowControl FlowControl { get; }
-        public ImmutableArray<Task> Tasks { get; }
-        public QsFuncKind FuncKind { get; }
+        public ImmutableArray<Task> Tasks { get; }        
 
         public static QsEvalContext Make()
         {
@@ -46,57 +45,49 @@ namespace QuickSC
                 ImmutableDictionary<string, QsFuncDecl>.Empty, 
                 ImmutableDictionary<string, QsValue>.Empty, 
                 QsNoneEvalFlowControl.Instance,
-                ImmutableArray<Task>.Empty,
-                QsFuncKind.Async);
+                ImmutableArray<Task>.Empty);
         }
 
         private QsEvalContext(
             ImmutableDictionary<string, QsFuncDecl> funcs, 
             ImmutableDictionary<string, QsValue> vars, 
             QsEvalFlowControl flowControl,
-            ImmutableArray<Task> tasks,
-            QsFuncKind funcKind)
+            ImmutableArray<Task> tasks)
         {
             this.Funcs = funcs;
             this.Vars = vars;
             this.FlowControl = flowControl;
             this.Tasks = tasks;
-            this.FuncKind = funcKind;
         }
 
         public QsEvalContext SetVars(ImmutableDictionary<string, QsValue> newVars)
         {
-            return new QsEvalContext(Funcs, newVars, FlowControl, Tasks, FuncKind);
+            return new QsEvalContext(Funcs, newVars, FlowControl, Tasks);
         }
 
         public QsEvalContext SetFlowControl(QsEvalFlowControl newFlowControl)
         {
-            return new QsEvalContext(Funcs, Vars, newFlowControl, Tasks, FuncKind);
+            return new QsEvalContext(Funcs, Vars, newFlowControl, Tasks);
         }
 
         public QsEvalContext SetTasks(ImmutableArray<Task> newTasks)
         {
-            return new QsEvalContext(Funcs, Vars, FlowControl, newTasks, FuncKind);
+            return new QsEvalContext(Funcs, Vars, FlowControl, newTasks);
         }
-
-        public QsEvalContext SetFuncKind(QsFuncKind newFuncKind)
-        {
-            return new QsEvalContext(Funcs, Vars, FlowControl, Tasks, newFuncKind);
-        }
-
+        
         public QsEvalContext SetValue(string varName, QsValue value)
         {
-            return new QsEvalContext(Funcs, Vars.SetItem(varName, value), FlowControl, Tasks, FuncKind);
+            return new QsEvalContext(Funcs, Vars.SetItem(varName, value), FlowControl, Tasks);
         }
 
         public QsEvalContext AddFunc(QsFuncDecl funcDecl)
         {
-            return new QsEvalContext(Funcs.SetItem(funcDecl.Name, funcDecl), Vars, FlowControl, Tasks, FuncKind);
+            return new QsEvalContext(Funcs.SetItem(funcDecl.Name, funcDecl), Vars, FlowControl, Tasks);
         }
 
         public QsEvalContext AddTask(Task task)
         {
-            return new QsEvalContext(Funcs, Vars, FlowControl, Tasks.Add(task), FuncKind);
+            return new QsEvalContext(Funcs, Vars, FlowControl, Tasks.Add(task));
         }
 
         public QsValue? GetValue(string varName)

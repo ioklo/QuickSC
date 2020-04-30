@@ -338,18 +338,16 @@ namespace QuickSC.Syntax
 
     public class QsLambdaExp : QsExp
     {
-        public QsFuncKind Kind { get; }
         public ImmutableArray<QsLambdaExpParam> Params { get; }
         public QsStmt Body { get; }
 
-        public QsLambdaExp(QsFuncKind kind, ImmutableArray<QsLambdaExpParam> parameters, QsStmt body)
+        public QsLambdaExp(ImmutableArray<QsLambdaExpParam> parameters, QsStmt body)
         {
-            Kind = kind;
             Params = parameters;
             Body = body;
         }
 
-        public QsLambdaExp(QsFuncKind kind, QsStmt body, params QsLambdaExpParam[] parameters)
+        public QsLambdaExp(QsStmt body, params QsLambdaExpParam[] parameters)
         {
             Params = ImmutableArray.Create(parameters);
             Body = body;

@@ -98,18 +98,16 @@ namespace QuickSC
         [Fact]
         public async Task TestParseLambdaExpAsync()
         {
-            var input = "a = b => async (c, int d) => e";
+            var input = "a = b => (c, int d) => e";
             (var expParser, var context) = await PrepareAsync(input);
 
             var expResult = await expParser.ParseExpAsync(context);
 
             var expected = new QsBinaryOpExp(QsBinaryOpKind.Assign,
                 new QsIdentifierExp("a"),
-                new QsLambdaExp(
-                    QsFuncKind.Sync,
+                new QsLambdaExp(                    
                     new QsReturnStmt(
                         new QsLambdaExp(
-                            QsFuncKind.Async,
                             new QsReturnStmt(new QsIdentifierExp("e")),
                             new QsLambdaExpParam(null, "c"),
                             new QsLambdaExpParam(new QsTypeIdExp("int"), "d"))),

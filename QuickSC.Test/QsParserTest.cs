@@ -41,7 +41,6 @@ namespace QuickSC
             var funcDecl = await parser.ParseFuncDeclAsync(context);
 
             var expected = new QsFuncDecl(
-                QsFuncKind.Sync,
                 new QsTypeIdExp("void"),
                 "Func", 1,
                 new QsBlockStmt(new QsVarDeclStmt(new QsVarDecl("int", new QsVarDeclElement("a", new QsIntLiteralExp(0))))),

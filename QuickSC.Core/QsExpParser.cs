@@ -348,12 +348,6 @@ namespace QuickSC
         #region LambdaExpression, Right Assoc
         async ValueTask<QsExpParseResult> ParseLambdaExpAsync(QsParserContext context)
         {
-            QsFuncKind funcKind;
-            if (Accept<QsAsyncToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                funcKind = QsFuncKind.Async;
-            else
-                funcKind = QsFuncKind.Sync;
-
             var parameters = ImmutableArray.CreateBuilder<QsLambdaExpParam>();
 
             // (), (a, b)
@@ -411,7 +405,7 @@ namespace QuickSC
                 body = new QsReturnStmt(expBodyResult.Elem);
             }
 
-            return new QsExpParseResult(new QsLambdaExp(funcKind, parameters.ToImmutable(), body), context);
+            return new QsExpParseResult(new QsLambdaExp(parameters.ToImmutable(), body), context);
 
             static QsExpParseResult Invalid() => QsExpParseResult.Invalid;
         }

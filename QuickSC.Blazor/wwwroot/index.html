@@ -14,12 +14,16 @@
             window.editor.layout();
         }
 
+        window.writeConsole = function (text) {
+            var t = $('#result').text();
+            $('#result').text(t + text);
+        }
+
         async function onRunButtonClick() {
+            $('#result').text('');
 
             var code = window.editor.getValue();
-            var text = await DotNet.invokeMethodAsync('QuickSC.Blazor', 'RunAsync', code);
-
-            $('#result').text(text.result);
+            await DotNet.invokeMethodAsync('QuickSC.Blazor', 'RunAsync', code);
         }
     </script>
 </head>

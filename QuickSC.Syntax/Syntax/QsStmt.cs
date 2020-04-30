@@ -417,4 +417,10 @@ namespace QuickSC.Syntax
         public QsStmt Body { get; }
         public QsAwaitStmt(QsStmt body) { Body = body; }
     }
+
+    public class QsAsyncStmt : QsStmt
+    {
+        public QsStmt Body { get; }
+        public QsAsyncStmt(QsStmt body) { Body = body; }
+    }
 }

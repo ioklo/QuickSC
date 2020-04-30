@@ -57,13 +57,13 @@ namespace QuickSC.Shell
                 var input = @"
 int jobCount = 0; // no guard for contention
 
-async void Sleep(int i)
+void Sleep(int i)
 {
     // @timeout $i /nobreak > nul
     @sleep $i
 }
 
-async void Func()
+void Func()
 {
     for (int i = 0; i < 4; i++)
     {
@@ -72,7 +72,7 @@ async void Func()
     }
 }
 
-Func(); // 일단 synchronous 하게 
+Func();
 @echo hello
 // TODO: await { async Func(); } 테스트
 

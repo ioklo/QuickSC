@@ -13,16 +13,14 @@ namespace QuickSC.Syntax
     // a<T>(int b, params T x, int d);
     public class QsFuncDecl
     {
-        public QsFuncKind Kind { get; }
         public QsTypeExp RetType { get; }
         public string Name { get; }
         public ImmutableArray<QsFuncDeclParam> Params { get; }
         public int? VariadicParamIndex { get; } 
         public QsBlockStmt Body { get; }
 
-        public QsFuncDecl(QsFuncKind kind, QsTypeExp retType, string name, ImmutableArray<QsFuncDeclParam> parameters, int? variadicParamIndex, QsBlockStmt body)
+        public QsFuncDecl(QsTypeExp retType, string name, ImmutableArray<QsFuncDeclParam> parameters, int? variadicParamIndex, QsBlockStmt body)
         {
-            Kind = kind;
             RetType = retType;
             Name = name;
             Params = parameters;
@@ -30,9 +28,8 @@ namespace QuickSC.Syntax
             Body = body;
         }
 
-        public QsFuncDecl(QsFuncKind kind, QsTypeExp retType, string name, int? variadicParamIndex, QsBlockStmt body, params QsFuncDeclParam[] parameters)
+        public QsFuncDecl(QsTypeExp retType, string name, int? variadicParamIndex, QsBlockStmt body, params QsFuncDeclParam[] parameters)
         {
-            Kind = kind;
             RetType = retType;
             Name = name;
             Params = ImmutableArray.Create(parameters);
@@ -42,8 +39,7 @@ namespace QuickSC.Syntax
 
         public override bool Equals(object? obj)
         {
-            return obj is QsFuncDecl decl &&
-                   Kind == decl.Kind &&
+            return obj is QsFuncDecl decl &&                   
                    EqualityComparer<QsTypeExp>.Default.Equals(RetType, decl.RetType) &&
                    Name == decl.Name &&
                    Enumerable.SequenceEqual(Params, decl.Params) &&
@@ -53,7 +49,7 @@ namespace QuickSC.Syntax
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Kind, RetType, Name, Params, VariadicParamIndex, Body);
+            return HashCode.Combine(RetType, Name, Params, VariadicParamIndex, Body);
         }
 
         public static bool operator ==(QsFuncDecl? left, QsFuncDecl? right)

@@ -408,7 +408,6 @@ namespace QuickSC
         }
         
         async ValueTask<QsEvalResult<QsValue>> EvaluateCallableAsync(
-            QsFuncKind funcKind,
             ImmutableDictionary<string, QsValue> captures, 
             Func<int, string> GetParamName,
             QsStmt body, 
@@ -431,25 +430,19 @@ namespace QuickSC
             }
 
             // 프레임 전환 
-            var (prevVars, prevTasks, prevFuncKind) = (context.Vars, context.Tasks, context.FuncKind);
+            var (prevVars, prevTasks) = (context.Vars, context.Tasks);
             
             context = context
                 .SetVars(vars.ToImmutable())
-                .SetTasks(ImmutableArray<Task>.Empty)
-                .SetFuncKind(funcKind);
+                .SetTasks(ImmutableArray<Task>.Empty);
 
             // 현재 funcContext
-            QsEvalContext? bodyResult;
-            if (context.FuncKind == QsFuncKind.Async && funcKind == QsFuncKind.Async)
-                bodyResult = await EvaluateStmtAsync(body, context);
-            else
-                bodyResult = EvaluateStmtAsync(body, context).Result;
-
+            var bodyResult = await EvaluateStmtAsync(body, context);
             if (!bodyResult.HasValue)
                 return QsEvalResult<QsValue>.Invalid;
             context = bodyResult.Value;
 
-            context = context.SetVars(prevVars).SetTasks(prevTasks).SetFuncKind(funcKind);
+            context = context.SetVars(prevVars).SetTasks(prevTasks);
 
             if (context.FlowControl is QsReturnEvalFlowControl returnFlowControl)
             {
@@ -472,8 +465,7 @@ namespace QuickSC
 
             if (callableResult.Value is QsFuncCallable funcCallable)
             {
-                return await EvaluateCallableAsync(
-                    funcCallable.FuncDecl.Kind,
+                return await EvaluateCallableAsync(                    
                     ImmutableDictionary<string, QsValue>.Empty, // TODO: globalVariable 
                     paramIndex => funcCallable.FuncDecl.Params[paramIndex].Name,
                     funcCallable.FuncDecl.Body,
@@ -482,8 +474,7 @@ namespace QuickSC
             }
             else if (callableResult.Value is QsLambdaCallable lambdaCallable)
             {
-                return await EvaluateCallableAsync(
-                    lambdaCallable.Exp.Kind,
+                return await EvaluateCallableAsync(                    
                     lambdaCallable.Captures, 
                     paramIndex => lambdaCallable.Exp.Params[paramIndex].Name,
                     lambdaCallable.Exp.Body,
@@ -561,15 +552,7 @@ namespace QuickSC
                 var cmdText = ToString(cmdResult.Value);
                 if (cmdText == null) return null;
 
-                if (context.FuncKind == QsFuncKind.Async)
-                {
-                    await commandProvider.ExecuteAsync(cmdText).ConfigureAwait(false);
-                }
-                else
-                {
-                    Debug.Assert(context.FuncKind == QsFuncKind.Sync);
-                    commandProvider.ExecuteAsync(cmdText).Wait();
-                }
+                await commandProvider.ExecuteAsync(cmdText);
             }
             return context;
         }
@@ -814,17 +797,45 @@ namespace QuickSC
             if (!bodyResult.HasValue) return null;
             context = bodyResult.Value;
 
-            if (context.FuncKind == QsFuncKind.Async)
-            {
-                await Task.WhenAll(context.Tasks.ToArray());
-            }
-            else
-            {
-                Debug.Assert(context.FuncKind == QsFuncKind.Sync);
-                Task.WaitAll(context.Tasks.ToArray());
-            }
+            await Task.WhenAll(context.Tasks.ToArray());
 
             return context.SetTasks(prevTasks).SetVars(prevVars);
+        }
+
+        QsEvalContext? EvaluateAsyncStmt(QsAsyncStmt taskStmt, QsEvalContext context)
+        {
+            var captureResult = capturer.CaptureStmt(taskStmt.Body, QsCaptureContext.Make());
+            if (!captureResult.HasValue) return null;
+
+            var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
+            foreach (var needCapture in captureResult.Value.NeedCaptures)
+            {
+                var name = needCapture.Key;
+                var kind = needCapture.Value;
+
+                var origValue = context.GetValue(name);
+                if (origValue == null) return null;
+
+                QsValue value;
+                if (kind == QsCaptureContextCaptureKind.Copy)
+                {
+                    value = origValue.MakeCopy();
+                }
+                else
+                {
+                    Debug.Assert(kind == QsCaptureContextCaptureKind.Ref);
+                    value = origValue;
+                }
+
+                captures.Add(name, value);
+            }
+
+            var newContext = QsEvalContext.Make();
+            newContext = newContext.SetVars(captures.ToImmutable());
+
+            var task = EvaluateStmtAsync(taskStmt.Body, newContext).AsTask();
+
+            return context.AddTask(task);
         }
 
         // TODO: 임시 public, REPL용이 따로 있어야 할 것 같다
@@ -843,6 +854,7 @@ namespace QuickSC
                 QsExpStmt expStmt => await EvaluateExpStmtAsync(expStmt, context),
                 QsTaskStmt taskStmt => EvaluateTaskStmt(taskStmt, context),
                 QsAwaitStmt awaitStmt => await EvaluateAwaitStmtAsync(awaitStmt, context),
+                QsAsyncStmt asyncStmt => EvaluateAsyncStmt(asyncStmt, context),
                 _ => throw new NotImplementedException()
             };
         }
