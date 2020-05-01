@@ -117,6 +117,42 @@ namespace QuickSC
         }
 
         [Fact]
+        public async Task TestParseComplexMemberExpAsync()
+        {
+            var input = "a.b.c(1, \"str\").d";
+            (var expParser, var context) = await PrepareAsync(input);
+
+            var expResult = await expParser.ParseExpAsync(context);
+
+            var expected =
+                new QsMemberExp(
+                    new QsMemberCallExp(
+                        new QsMemberExp(new QsIdentifierExp("a"), "b"),
+                        new QsMemberFuncId("c"),
+                        new QsIntLiteralExp(1),
+                        new QsStringExp(new QsTextStringExpElement("str"))),
+                    "d");
+
+            Assert.Equal(expected, expResult.Elem);
+        }
+
+        [Fact]
+        public async Task TestParseListExpAsync()
+        {
+            var input = "[ 1, 2, 3 ]";
+            (var expParser, var context) = await PrepareAsync(input);
+
+            var expResult = await expParser.ParseExpAsync(context);
+
+            var expected = new QsListExp(
+                new QsIntLiteralExp(1),
+                new QsIntLiteralExp(2),
+                new QsIntLiteralExp(3));
+                
+            Assert.Equal(expected, expResult.Elem);
+        }
+
+        [Fact]
         public async Task TestParseComplexExpAsync()
         {
             var input = "a = b = !!(c % d)++ * e + f - g / h % i == 3 != false";

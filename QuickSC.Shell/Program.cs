@@ -55,27 +55,13 @@ namespace QuickSC.Shell
                 var evaluator = new QsEvaluator(cmdProvider);
                 var evalContext = QsEvalContext.Make();               
                 var input = @"
-int jobCount = 0; // no guard for contention
+var l = [];
+l.Add(""hello"");
+l.Add(""hi"");
+l.Add(""fish"");
+l.RemoveAt(1);
 
-void Sleep(int i)
-{
-    // @timeout $i /nobreak > nul
-    @sleep $i
-}
-
-void Func()
-{
-    for (int i = 0; i < 4; i++)
-    {
-        Sleep(1);
-        @echo ${i} sec
-    }
-}
-
-Func();
-@echo hello
-// TODO: await { async Func(); } 테스트
-
+@echo ${l[0]} ${l[1]}
 ";
                 var buffer = new QsBuffer(new StringReader(input));
                 var pos = await buffer.MakePosition().NextAsync();

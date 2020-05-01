@@ -113,7 +113,7 @@ namespace QuickSC
         {
             var parenExpResult = await ParseParenExpAsync(context);
             if (parenExpResult.HasValue)
-                return parenExpResult;
+                return parenExpResult;            
 
             var boolExpResult = await ParseBoolLiteralExpAsync(context);
             if (boolExpResult.HasValue)
@@ -127,6 +127,10 @@ namespace QuickSC
             if (stringExpResult.HasValue)
                 return new QsExpParseResult(stringExpResult.Elem, stringExpResult.Context);
 
+            var listExpResult = await ParseListExpAsync(context);
+            if (listExpResult.HasValue)
+                return new QsExpParseResult(listExpResult.Elem, listExpResult.Context);
+
             var idExpResult = await ParseIdentifierExpAsync(context);
             if (idExpResult.HasValue)
                 return idExpResult;
@@ -135,7 +139,6 @@ namespace QuickSC
         }
 
         #endregion
-
         
         #region Primary, Postfix Inc/Dec
         static (QsToken Token, QsUnaryOpKind OpKind)[] primaryInfos = new (QsToken Token, QsUnaryOpKind OpKind)[]
@@ -143,6 +146,29 @@ namespace QuickSC
             (QsPlusPlusToken.Instance, QsUnaryOpKind.PostfixInc),
             (QsMinusMinusToken.Instance, QsUnaryOpKind.PostfixDec),
         };
+
+        async ValueTask<QsParseResult<ImmutableArray<QsExp>>> ParseCallArgs(QsParserContext context)
+        {
+            if (!Accept<QsLParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                return QsParseResult<ImmutableArray<QsExp>>.Invalid;
+            
+            var args = ImmutableArray.CreateBuilder<QsExp>();
+            while (!Accept<QsRParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+            {
+                if (0 < args.Count)
+                    if (!Accept<QsCommaToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                        return QsParseResult<ImmutableArray<QsExp>>.Invalid;
+
+                var argResult = await ParseExpAsync(context);
+                if (!argResult.HasValue)
+                    return QsParseResult<ImmutableArray<QsExp>>.Invalid;
+
+                context = argResult.Context;
+                args.Add(argResult.Elem);
+            }
+
+            return new QsParseResult<ImmutableArray<QsExp>>(args.ToImmutable(), context);
+        }
 
         // TODO: 현재 Primary중 Postfix Unary만 구현했다.
         internal async ValueTask<QsExpParseResult> ParsePrimaryExpAsync(QsParserContext context)
@@ -180,25 +206,46 @@ namespace QuickSC
                     continue;
                 }
 
-                // (..., ... )
-                if (Accept<QsLParenToken>(lexResult, ref context))
-                {   
-                    var args = ImmutableArray.CreateBuilder<QsExp>();
-                    while (!Accept<QsRParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                // [ ... ]
+                if (Accept<QsLBracketToken>(lexResult, ref context))
+                {
+                    var indexResult = await ParseExpAsync(context);
+                    if (!indexResult.HasValue) return QsExpParseResult.Invalid;
+                    context = indexResult.Context;
+
+                    if (!Accept<QsRBracketToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                        return QsExpParseResult.Invalid;
+
+                    exp = new QsMemberCallExp(exp, new QsMemberFuncId(QsMemberFuncKind.Indexer), indexResult.Elem);
+                    continue;
+                }
+
+                // . id (..., ...)
+                if (Accept<QsDotToken>(lexResult, ref context))
+                {
+                    var idResult = AcceptAndReturn<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
+                    if (idResult == null) return QsExpParseResult.Invalid;
+
+                    var memberCallArgsResult = await ParseCallArgs(context);
+                    if (memberCallArgsResult.HasValue)
                     {
-                        if (0 < args.Count)
-                            if (!Accept<QsCommaToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                                return QsExpParseResult.Invalid;
-
-                        var argResult = await ParseExpAsync(context);
-                        if (!argResult.HasValue)
-                            return QsExpParseResult.Invalid;
-
-                        context = argResult.Context;
-                        args.Add(argResult.Elem);
+                        context = memberCallArgsResult.Context;
+                        exp = new QsMemberCallExp(exp, new QsMemberFuncId(idResult.Value), memberCallArgsResult.Elem);
+                        continue;
                     }
+                    else
+                    {
+                        exp = new QsMemberExp(exp, idResult.Value);
+                        continue;
+                    }
+                }
 
-                    exp = new QsCallExp(new QsExpCallExpCallable(exp), args.ToImmutable());
+                // (..., ... )
+                var callArgsResult = await ParseCallArgs(context);
+                if (callArgsResult.HasValue)
+                {
+                    context = callArgsResult.Context;
+                    exp = new QsCallExp(new QsExpCallExpCallable(exp), callArgsResult.Elem);
                     continue;
                 }
 
@@ -495,6 +542,28 @@ namespace QuickSC
             }
 
             return new QsStringExpParseResult(new QsStringExp(elems.ToImmutable()), context);
+        }
+
+        public async ValueTask<QsExpParseResult> ParseListExpAsync(QsParserContext context)
+        {
+            if (!Accept<QsLBracketToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                return QsExpParseResult.Invalid;
+
+            var elems = ImmutableArray.CreateBuilder<QsExp>();
+            while (!Accept<QsRBracketToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+            {
+                if (0 < elems.Count)
+                    if (!Accept<QsCommaToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                        return QsExpParseResult.Invalid;
+
+                var elemResult = await ParseExpAsync(context);
+                if (!elemResult.HasValue) return QsExpParseResult.Invalid;
+                context = elemResult.Context;
+
+                elems.Add(elemResult.Elem);
+            }
+
+            return new QsExpParseResult(new QsListExp(elems.ToImmutable()), context);
         }
 
         async ValueTask<QsExpParseResult> ParseIdentifierExpAsync(QsParserContext context)

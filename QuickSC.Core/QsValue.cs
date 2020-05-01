@@ -2,17 +2,23 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace QuickSC
 {
-    // placeholder
+    // runtime placeholder
     public abstract class QsValue
     {
         public abstract bool SetValue(QsValue v);
         public abstract QsValue MakeCopy();
+
+        // 뭘 리턴해야 하는거냐
+        public abstract QsCallable? GetMemberFuncs(QsMemberFuncId funcId);
+        public abstract QsValue? GetMemberValue(string varName);
     }
 
-    public class QsValue<T> : QsValue
+    public class QsValue<T> : QsValue where T : struct
     {
         public T Value { get; set; }
         public QsValue(T value)
@@ -35,6 +41,16 @@ namespace QuickSC
         {
             return new QsValue<T>(Value);
         }
+
+        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override QsValue GetMemberValue(string varName)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class QsNullValue : QsValue
@@ -51,6 +67,59 @@ namespace QuickSC
         {
             return Instance;
         }
+
+        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        {
+            throw new InvalidOperationException();
+        }
+
+        public override QsValue GetMemberValue(string varName)
+        {
+            throw new InvalidOperationException();
+        }
+    }
+    
+    public abstract class QsObject
+    {
+        public virtual QsCallable? GetMemberFuncs(QsMemberFuncId funcId) { return null; }
+        public virtual QsValue? GetMemberValue(string varName) { return null; }
+        
+    }    
+   
+    public class QsObjectValue : QsValue
+    {
+        public QsObject Object { get; private set; }
+
+        public QsObjectValue(QsObject obj)
+        {
+            Object = obj;
+        }
+
+        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        {
+            return Object.GetMemberFuncs(funcId);
+        }
+
+        public override QsValue? GetMemberValue(string varName)
+        {
+            return Object.GetMemberValue(varName);
+        }
+
+        public override QsValue MakeCopy()
+        {
+            return new QsObjectValue(Object);
+        }
+
+        public override bool SetValue(QsValue value)
+        {
+            if (value is QsObjectValue objValue)
+            {
+                Object = objValue.Object;
+                return true;
+            }
+
+            return false;
+        }
     }
 
     // Internal Structure
@@ -58,21 +127,13 @@ namespace QuickSC
     // null   : QsNullValue
     // int    : QsValue<int> 
     // bool   : QsValue<bool>
-    // int &  : QsRefValue, or QsValue<QsValue<int>>
-    // string : QsValue<QsString> or QsValue<string> // 이미 string이 c#에서 reftype이기 때문에 int, bool이랑 동작을 구분하지 않아도 된다
-    // class T -> { type: typeInfo, ... } : QsValue<QsRecord> // 
-    // func -> { captures..., Invoke: func }
-
-    //public class QsRecord
-    //{
-    //    public Dictionary<string, QsValue> Fields { get; }
-
-    //    public QsRecord()
-    //    {
-    //        Fields = new Dictionary<string, QsValue>();
-    //    }
-    //}
-
+    // int &  : QsRefValue(QsValue<int>)
+    // X &    : QsRefValue(QsValue) 
+    // string : QsObjectValue(QsStringObject) 
+    // class T -> { type: typeInfo, ... } : QsObjectValue(QsClassObject) // 
+    // { captures..., Invoke: func } 
+    // () => { }
+    
     public abstract class QsCallable
     {
     }
@@ -100,6 +161,16 @@ namespace QuickSC
             Exp = exp;
             Captures = captures;
         }
+    }
+
+    public class QsNativeCallable : QsCallable
+    {
+        public Func<QsValue, ImmutableArray<QsValue>, QsEvalContext, ValueTask<QsEvalResult<QsValue>>> Invoker { get; }
+        public QsNativeCallable(Func<QsValue, ImmutableArray<QsValue>, QsEvalContext, ValueTask<QsEvalResult<QsValue>>> invoker)
+        {
+            Invoker = invoker;
+        }
+
     }
 }
 

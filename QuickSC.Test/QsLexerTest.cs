@@ -50,7 +50,7 @@ namespace QuickSC
             var context = await MakeContextAsync(
                 "if else for continue break exec task params return async await " + 
                 "++ -- <= >= => == != " +
-                "@ < > ; , = { } ( ) + - * / % !");
+                "@ < > ; , = { } ( ) [ ] + - * / % ! .");
 
             var tokens = await ProcessNormalAsync(lexer, context);
             var expectedTokens = new QsToken[]
@@ -75,7 +75,6 @@ namespace QuickSC
                 QsEqualEqualToken.Instance,
                 QsExclEqualToken.Instance,
 
-
                 QsExecToken.Instance,
                 QsLessThanToken.Instance,
                 QsGreaterThanToken.Instance,
@@ -86,13 +85,16 @@ namespace QuickSC
                 QsRBraceToken.Instance,
                 QsLParenToken.Instance,
                 QsRParenToken.Instance,
+                QsLBracketToken.Instance,
+                QsRBracketToken.Instance,
 
                 QsPlusToken.Instance,
                 QsMinusToken.Instance,
                 QsStarToken.Instance,
                 QsSlashToken.Instance,
                 QsPercentToken.Instance,
-                QsExclToken.Instance
+                QsExclToken.Instance,
+                QsDotToken.Instance,
             };
 
             Assert.Equal(expectedTokens, tokens);

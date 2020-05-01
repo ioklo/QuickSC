@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -371,6 +372,170 @@ namespace QuickSC.Syntax
         }
 
         public static bool operator !=(QsLambdaExp? left, QsLambdaExp? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public enum QsMemberFuncKind
+    {
+        Normal,
+        Indexer,
+    }
+
+    public struct QsMemberFuncId
+    {
+        public QsMemberFuncKind Kind { get; }
+        public string Name { get; }
+
+        public QsMemberFuncId(QsMemberFuncKind kind)
+        {
+            Debug.Assert(kind != QsMemberFuncKind.Normal);
+
+            Kind = kind;
+            Name = string.Empty;
+        }
+
+        public QsMemberFuncId(string name)
+        {
+            Kind = QsMemberFuncKind.Normal;
+            Name = name;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsMemberFuncId id &&
+                   Kind == id.Kind &&
+                   Name == id.Name;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Kind, Name);
+        }
+
+        public static bool operator ==(QsMemberFuncId left, QsMemberFuncId right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(QsMemberFuncId left, QsMemberFuncId right)
+        {
+            return !(left == right);
+        }
+    }
+
+
+
+    public class QsMemberCallExp : QsExp
+    {
+        public QsExp Object { get; }
+        public QsMemberFuncId MemberFuncId { get; }
+        public ImmutableArray<QsExp> Args { get; }
+
+        public QsMemberCallExp(QsExp obj, QsMemberFuncId memberFuncId, ImmutableArray<QsExp> args)
+        {
+            Object = obj;
+            MemberFuncId = memberFuncId;
+            Args = args;
+        }
+
+        public QsMemberCallExp(QsExp obj, QsMemberFuncId memberFuncId, params QsExp[] args)
+        {
+            Object = obj;
+            MemberFuncId = memberFuncId;
+            Args = ImmutableArray.Create(args);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsMemberCallExp exp &&
+                   EqualityComparer<QsExp>.Default.Equals(Object, exp.Object) &&
+                   EqualityComparer<QsMemberFuncId>.Default.Equals(MemberFuncId, exp.MemberFuncId) &&
+                   Enumerable.SequenceEqual(Args, exp.Args);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Object, MemberFuncId, Args);
+        }
+
+        public static bool operator ==(QsMemberCallExp? left, QsMemberCallExp? right)
+        {
+            return EqualityComparer<QsMemberCallExp?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsMemberCallExp? left, QsMemberCallExp? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public class QsMemberExp : QsExp
+    {
+        public QsExp Object { get; }
+        public string MemberName { get; }
+
+        public QsMemberExp(QsExp obj, string memberName)
+        {
+            Object = obj;
+            MemberName = memberName;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsMemberExp exp &&
+                   EqualityComparer<QsExp>.Default.Equals(Object, exp.Object) &&
+                   MemberName == exp.MemberName;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Object, MemberName);
+        }
+
+        public static bool operator ==(QsMemberExp? left, QsMemberExp? right)
+        {
+            return EqualityComparer<QsMemberExp?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsMemberExp? left, QsMemberExp? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public class QsListExp : QsExp
+    {
+        public ImmutableArray<QsExp> Elems { get; }
+
+        public QsListExp(ImmutableArray<QsExp> elems)
+        {
+            Elems = elems;
+        }
+
+        public QsListExp(params QsExp[] elems)
+        {
+            Elems = ImmutableArray.Create(elems);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsListExp exp &&
+                   Enumerable.SequenceEqual(Elems, exp.Elems);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Elems);
+        }
+
+        public static bool operator ==(QsListExp? left, QsListExp? right)
+        {
+            return EqualityComparer<QsListExp?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsListExp? left, QsListExp? right)
         {
             return !(left == right);
         }

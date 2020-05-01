@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace QuickSC.Syntax
 {
-    // <Async> <RetTypeName> <FuncName> <LPAREN> <ARGS> <RPAREN>
+    // <RetTypeName> <FuncName> <LPAREN> <ARGS> <RPAREN>
     // LBRACE>
     // [Stmt]
     // <RBRACE>

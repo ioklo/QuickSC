@@ -28,6 +28,8 @@ namespace QuickSC.Token
     public class QsRBraceToken : QsToken { public static QsRBraceToken Instance { get; } = new QsRBraceToken(); private QsRBraceToken() { } } // }
     public class QsLParenToken : QsToken { public static QsLParenToken Instance { get; } = new QsLParenToken(); private QsLParenToken() { } } // (
     public class QsRParenToken : QsToken { public static QsRParenToken Instance { get; } = new QsRParenToken(); private QsRParenToken() { } } // )
+    public class QsLBracketToken : QsToken { public static QsLBracketToken Instance { get; } = new QsLBracketToken(); private QsLBracketToken() { } } // [
+    public class QsRBracketToken : QsToken { public static QsRBracketToken Instance { get; } = new QsRBracketToken(); private QsRBracketToken() { } } // ]
     
     public class QsPlusToken : QsToken { public static QsPlusToken Instance { get; } = new QsPlusToken(); private QsPlusToken() { } } // +
     public class QsMinusToken : QsToken { public static QsMinusToken Instance { get; } = new QsMinusToken(); private QsMinusToken() { } } // -
@@ -35,6 +37,7 @@ namespace QuickSC.Token
     public class QsSlashToken : QsToken { public static QsSlashToken Instance { get; } = new QsSlashToken(); private QsSlashToken() { } } // /    
     public class QsPercentToken : QsToken { public static QsPercentToken Instance { get; } = new QsPercentToken(); private QsPercentToken() { } } // %    
     public class QsExclToken : QsToken { public static QsExclToken Instance { get; } = new QsExclToken(); private QsExclToken() { } } // !    
+    public class QsDotToken : QsToken { public static QsDotToken Instance { get; } = new QsDotToken(); private QsDotToken() { } } // .
     
     public class QsIfToken : QsToken { public static QsIfToken Instance { get; } = new QsIfToken(); private QsIfToken() { } }
     public class QsElseToken : QsToken { public static QsElseToken Instance { get; } = new QsElseToken(); private QsElseToken() { } }

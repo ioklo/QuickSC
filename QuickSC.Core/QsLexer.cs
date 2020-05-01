@@ -89,6 +89,53 @@ namespace QuickSC
             return QsLexResult.Invalid;
         }
 
+        // 虐况靛 贸府
+        private static (string Text, Func<QsToken> Constructor)[] infos = new (string Text, Func<QsToken> Constructor)[]
+        {
+            ("if", () => QsIfToken.Instance),
+            ("else", () => QsElseToken.Instance),
+            ("for", () => QsForToken.Instance),
+            ("continue", () => QsContinueToken.Instance),
+            ("break", () => QsBreakToken.Instance),
+            ("exec", () => QsExecToken.Instance),
+            ("task", () => QsTaskToken.Instance),
+            ("params", () => QsParamsToken.Instance),
+            ("return", () => QsReturnToken.Instance),
+            ("async", () => QsAsyncToken.Instance),
+            ("await", () => QsAwaitToken.Instance),
+
+            ("++", () => QsPlusPlusToken.Instance),
+            ("--", () => QsMinusMinusToken.Instance),
+            ("<=", () => QsLessThanEqualToken.Instance),
+            (">=", () => QsGreaterThanEqualToken.Instance),
+            ("=>", () => QsEqualGreaterThanToken.Instance),
+            ("==", () => QsEqualEqualToken.Instance),
+            ("!=", () => QsExclEqualToken.Instance),
+
+
+            ("@", () => QsExecToken.Instance),
+            ("<", () => QsLessThanToken.Instance),
+            (">", () => QsGreaterThanToken.Instance),
+            (";", () => QsSemiColonToken.Instance),
+            (",", () => QsCommaToken.Instance),
+            ("=", () => QsEqualToken.Instance),
+            ("{", () => QsLBraceToken.Instance),
+            ("}", () => QsRBraceToken.Instance),
+            ("(", () => QsLParenToken.Instance),
+            (")", () => QsRParenToken.Instance),
+            ("[", () => QsLBracketToken.Instance),
+            ("]", () => QsRBracketToken.Instance),
+
+
+            ("+", () => QsPlusToken.Instance),
+            ("-", () => QsMinusToken.Instance),
+            ("*", () => QsStarToken.Instance),
+            ("/", () => QsSlashToken.Instance),
+            ("%", () => QsPercentToken.Instance),
+            ("!", () => QsExclToken.Instance),
+            (".", () => QsDotToken.Instance),
+        };
+
         public async ValueTask<QsLexResult> LexNormalModeAsync(QsLexerContext context, bool bSkipNewLine)
         {
             // 胶诺贸府
@@ -114,48 +161,7 @@ namespace QuickSC
             if (boolResult.HasValue)
                 return new QsLexResult(boolResult.Token, boolResult.Context);
 
-            // 虐况靛 贸府
-            var infos = new (string Text, Func<QsToken> Constructor)[]
-            {
-                ("if", () => QsIfToken.Instance),
-                ("else", () => QsElseToken.Instance),
-                ("for", () => QsForToken.Instance),
-                ("continue", () => QsContinueToken.Instance),
-                ("break", () => QsBreakToken.Instance),
-                ("exec", () => QsExecToken.Instance),
-                ("task", () => QsTaskToken.Instance),
-                ("params", () => QsParamsToken.Instance),
-                ("return", () => QsReturnToken.Instance),
-                ("async", () => QsAsyncToken.Instance),
-                ("await", () => QsAwaitToken.Instance),
-
-                ("++", () => QsPlusPlusToken.Instance),
-                ("--", () => QsMinusMinusToken.Instance),
-                ("<=", () => QsLessThanEqualToken.Instance),
-                (">=", () => QsGreaterThanEqualToken.Instance),
-                ("=>", () => QsEqualGreaterThanToken.Instance),
-                ("==", () => QsEqualEqualToken.Instance),
-                ("!=", () => QsExclEqualToken.Instance),
-                
-
-                ("@", () => QsExecToken.Instance),
-                ("<", () => QsLessThanToken.Instance),
-                (">", () => QsGreaterThanToken.Instance),
-                (";", () => QsSemiColonToken.Instance),
-                (",", () => QsCommaToken.Instance),
-                ("=", () => QsEqualToken.Instance),
-                ("{", () => QsLBraceToken.Instance),
-                ("}", () => QsRBraceToken.Instance),
-                ("(", () => QsLParenToken.Instance),
-                (")", () => QsRParenToken.Instance),
-
-                ("+", () => QsPlusToken.Instance),
-                ("-", () => QsMinusToken.Instance),
-                ("*", () => QsStarToken.Instance),
-                ("/", () => QsSlashToken.Instance),
-                ("%", () => QsPercentToken.Instance),
-                ("!", () => QsExclToken.Instance),
-            };
+            
 
             foreach (var info in infos)
             {
