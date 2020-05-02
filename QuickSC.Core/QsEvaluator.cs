@@ -906,6 +906,78 @@ namespace QuickSC
             return context.AddTask(task);
         }
 
+        async ValueTask<QsEvalContext?> EvaluateForeachStmtAsync(QsForeachStmt foreachStmt, QsEvalContext context)
+        {
+            var prevVars = context.Vars;
+            
+            var expResult = await EvaluateExpAsync(foreachStmt.Obj, context);
+            if (!expResult.HasValue) return null;
+            context = expResult.Context;
+
+            var objValue = expResult.Value as QsObjectValue;
+            if (objValue == null) return null;
+
+            var callable = objValue.GetMemberFuncs(new QsMemberFuncId("GetEnumerator"));
+            if (callable == null) return null;
+
+            var callableResult = await EvaluateCallableAsync(callable, objValue, ImmutableArray<QsValue>.Empty, context);
+            if (!callableResult.HasValue) return null;
+            context = callableResult.Context;
+
+            var enumeratorValue = callableResult.Value as QsObjectValue;
+            if (enumeratorValue == null) return null;
+
+            var moveNextFunc = enumeratorValue.GetMemberFuncs(new QsMemberFuncId("MoveNext"));
+            if (moveNextFunc == null) return null;
+
+            var getCurrentFunc = enumeratorValue.GetMemberFuncs(new QsMemberFuncId("GetCurrent"));
+            if (getCurrentFunc == null) return null;
+
+            while (true)
+            {
+                var moveNextResult = await EvaluateCallableAsync(moveNextFunc, enumeratorValue, ImmutableArray<QsValue>.Empty, context);
+                if (!moveNextResult.HasValue) return null;
+                context = moveNextResult.Context;
+
+                if (!(moveNextResult.Value is QsValue<bool> moveNextReturn)) return null;
+
+                if (!moveNextReturn.Value) break;
+
+                // GetCurrent
+                var getCurrentResult = await EvaluateCallableAsync(getCurrentFunc, enumeratorValue, ImmutableArray<QsValue>.Empty, context);
+                if (!getCurrentResult.HasValue) return null;
+                context = getCurrentResult.Context;
+
+                // NOTICE: COPY
+                context = context.SetValue(foreachStmt.VarName, getCurrentResult.Value.MakeCopy());
+
+                var bodyStmtResult = await EvaluateStmtAsync(foreachStmt.Body, context);
+                if (!bodyStmtResult.HasValue)
+                    return null;
+                context = bodyStmtResult.Value;
+
+                if (context.FlowControl == QsBreakEvalFlowControl.Instance)
+                {
+                    context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                    break;
+                }
+                else if (context.FlowControl == QsContinueEvalFlowControl.Instance)
+                {
+                    context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                }
+                else if (context.FlowControl is QsReturnEvalFlowControl)
+                {
+                    break;
+                }
+                else
+                {
+                    Debug.Assert(context.FlowControl == QsNoneEvalFlowControl.Instance);
+                }
+            }
+
+            return context.SetVars(prevVars);
+        }
+
         // TODO: 임시 public, REPL용이 따로 있어야 할 것 같다
         public async ValueTask<QsEvalContext?> EvaluateStmtAsync(QsStmt stmt, QsEvalContext context)
         {
@@ -923,6 +995,7 @@ namespace QuickSC
                 QsTaskStmt taskStmt => EvaluateTaskStmt(taskStmt, context),
                 QsAwaitStmt awaitStmt => await EvaluateAwaitStmtAsync(awaitStmt, context),
                 QsAsyncStmt asyncStmt => EvaluateAsyncStmt(asyncStmt, context),
+                QsForeachStmt foreachStmt => await EvaluateForeachStmtAsync(foreachStmt, context),
                 _ => throw new NotImplementedException()
             };
         }

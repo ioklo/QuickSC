@@ -83,6 +83,14 @@ namespace QuickSC
     {
         public virtual QsCallable? GetMemberFuncs(QsMemberFuncId funcId) { return null; }
         public virtual QsValue? GetMemberValue(string varName) { return null; }
+
+        protected static TObject? GetObject<TObject>(QsValue value) where TObject : QsObject
+        {
+            if (value is QsObjectValue objValue && objValue.Object is TObject obj)
+                return obj;
+
+            return null;
+        }
         
     }    
    
@@ -170,7 +178,6 @@ namespace QuickSC
         {
             Invoker = invoker;
         }
-
     }
 }
 

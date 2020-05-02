@@ -107,7 +107,7 @@ namespace QuickSC
             return new QsParseResult<QsTypeExp>(new QsTypeIdExp(idTokenResult.Value), context);
         }
 
-        async ValueTask<QsParseResult<QsTypeExp>> ParseTypeExpAsync(QsParserContext context)
+        public async ValueTask<QsParseResult<QsTypeExp>> ParseTypeExpAsync(QsParserContext context)
         {
             // TODO: 일단 TypeId만
             var typeIdExpResult = await ParseTypeIdExpAsync(context);

@@ -55,13 +55,16 @@ namespace QuickSC.Shell
                 var evaluator = new QsEvaluator(cmdProvider);
                 var evalContext = QsEvalContext.Make();               
                 var input = @"
-var l = [];
+var l = [1, 2, 3];
 l.Add(""hello"");
 l.Add(""hi"");
 l.Add(""fish"");
 l.RemoveAt(1);
 
-@echo ${l[0]} ${l[1]}
+foreach(var x in l)
+{
+    @echo $x
+}
 ";
                 var buffer = new QsBuffer(new StringReader(input));
                 var pos = await buffer.MakePosition().NextAsync();

@@ -70,7 +70,7 @@ xxx
             
             var varDeclStmt = await parser.ParseVarDeclStmtAsync(context);
 
-            var expected = new QsVarDeclStmt(new QsVarDecl("string",
+            var expected = new QsVarDeclStmt(new QsVarDecl(new QsTypeIdExp("string"),
                 new QsVarDeclElement("a", new QsStringExp(new QsTextStringExpElement("hello")))));
 
             Assert.Equal(expected, varDeclStmt.Elem);
@@ -165,6 +165,17 @@ for (f(); g; h + g) ;
                 
 
             Assert.Equal(expected, expResult.Elem);
+        }
+
+        [Fact]
+        async Task TestParseForeachStmtAsync()
+        {
+            var (parser, context) = await PrepareAsync("foreach( var x in l ) { } ");
+            var stmtResult = await parser.ParseForeachStmtAsync(context);
+
+            var expected = new QsForeachStmt(new QsTypeIdExp("var"), "x", new QsIdentifierExp("l"), new QsBlockStmt());
+
+            Assert.Equal(expected, stmtResult.Elem);
         }
     }
 }

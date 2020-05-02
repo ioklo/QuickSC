@@ -43,7 +43,7 @@ namespace QuickSC
             var expected = new QsFuncDecl(
                 new QsTypeIdExp("void"),
                 "Func", 1,
-                new QsBlockStmt(new QsVarDeclStmt(new QsVarDecl("int", new QsVarDeclElement("a", new QsIntLiteralExp(0))))),
+                new QsBlockStmt(new QsVarDeclStmt(new QsVarDecl(new QsTypeIdExp("int"), new QsVarDeclElement("a", new QsIntLiteralExp(0))))),
                 new QsFuncDeclParam(new QsTypeIdExp("int"), "x"),
                 new QsFuncDeclParam(new QsTypeIdExp("string"), "y"),
                 new QsFuncDeclParam(new QsTypeIdExp("int"), "z"));
@@ -74,9 +74,9 @@ for (int i = 0; i < 5; i++)
             var script = await parser.ParseScriptAsync(context);
 
             var expected = new QsScript(
-                new QsStmtScriptElement(new QsVarDeclStmt(new QsVarDecl("int", new QsVarDeclElement("sum", new QsIntLiteralExp(0))))),
+                new QsStmtScriptElement(new QsVarDeclStmt(new QsVarDecl(new QsTypeIdExp("int"), new QsVarDeclElement("sum", new QsIntLiteralExp(0))))),
                 new QsStmtScriptElement(new QsForStmt(
-                    new QsVarDeclForStmtInitializer(new QsVarDecl("int", new QsVarDeclElement("i", new QsIntLiteralExp(0)))),
+                    new QsVarDeclForStmtInitializer(new QsVarDecl(new QsTypeIdExp("int"), new QsVarDeclElement("i", new QsIntLiteralExp(0)))),
                     new QsBinaryOpExp(QsBinaryOpKind.LessThan, new QsIdentifierExp("i"), new QsIntLiteralExp(5)),
                     new QsUnaryOpExp(QsUnaryOpKind.PostfixInc, new QsIdentifierExp("i")),
                     new QsBlockStmt(

@@ -90,31 +90,31 @@ namespace QuickSC.Syntax
 
     public class QsVarDecl
     {
-        public string TypeName { get; }
+        public QsTypeExp Type { get; }
         public ImmutableArray<QsVarDeclElement> Elements { get; }
 
-        public QsVarDecl(string typeName, ImmutableArray<QsVarDeclElement> elems)
+        public QsVarDecl(QsTypeExp type, ImmutableArray<QsVarDeclElement> elems)
         {
-            TypeName = typeName;
+            Type = type;
             Elements = elems;
         }
 
-        public QsVarDecl(string typeName, params QsVarDeclElement[] elems)
+        public QsVarDecl(QsTypeExp type, params QsVarDeclElement[] elems)
         {
-            TypeName = typeName;
+            Type = type;
             Elements = ImmutableArray.Create(elems);
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsVarDecl decl &&
-                   TypeName == decl.TypeName &&
+                   EqualityComparer<QsTypeExp>.Default.Equals(Type, decl.Type) &&
                    Enumerable.SequenceEqual(Elements, decl.Elements);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(TypeName, Elements);
+            return HashCode.Combine(Type, Elements);
         }
 
         public static bool operator ==(QsVarDecl? left, QsVarDecl? right)
@@ -422,5 +422,45 @@ namespace QuickSC.Syntax
     {
         public QsStmt Body { get; }
         public QsAsyncStmt(QsStmt body) { Body = body; }
+    }
+
+    public class QsForeachStmt : QsStmt
+    {
+        public QsTypeExp Type { get; }
+        public string VarName { get; }
+        public QsExp Obj { get; }
+        public QsStmt Body { get; }
+
+        public QsForeachStmt(QsTypeExp type, string varName, QsExp obj, QsStmt body)
+        {
+            Type = type;
+            VarName = varName;
+            Obj = obj;
+            Body = body;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsForeachStmt stmt &&
+                   EqualityComparer<QsTypeExp>.Default.Equals(Type, stmt.Type) &&
+                   VarName == stmt.VarName &&
+                   EqualityComparer<QsExp>.Default.Equals(Obj, stmt.Obj) &&
+                   EqualityComparer<QsStmt>.Default.Equals(Body, stmt.Body);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Type, VarName, Obj, Body);
+        }
+
+        public static bool operator ==(QsForeachStmt? left, QsForeachStmt? right)
+        {
+            return EqualityComparer<QsForeachStmt?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsForeachStmt? left, QsForeachStmt? right)
+        {
+            return !(left == right);
+        }
     }
 }

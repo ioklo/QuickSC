@@ -90,20 +90,25 @@ namespace QuickSC
         }
 
         // 키워드 처리
-        private static (string Text, Func<QsToken> Constructor)[] infos = new (string Text, Func<QsToken> Constructor)[]
+        private static Dictionary<string, QsToken> keywordInfos = new Dictionary<string, QsToken>()
         {
-            ("if", () => QsIfToken.Instance),
-            ("else", () => QsElseToken.Instance),
-            ("for", () => QsForToken.Instance),
-            ("continue", () => QsContinueToken.Instance),
-            ("break", () => QsBreakToken.Instance),
-            ("exec", () => QsExecToken.Instance),
-            ("task", () => QsTaskToken.Instance),
-            ("params", () => QsParamsToken.Instance),
-            ("return", () => QsReturnToken.Instance),
-            ("async", () => QsAsyncToken.Instance),
-            ("await", () => QsAwaitToken.Instance),
+            { "foreach", QsForeachToken.Instance },
+            { "if", QsIfToken.Instance },
+            { "else", QsElseToken.Instance },
+            { "for", QsForToken.Instance },
+            { "continue", QsContinueToken.Instance },
+            { "break", QsBreakToken.Instance },
+            { "exec", QsExecToken.Instance },
+            { "task", QsTaskToken.Instance },
+            { "params", QsParamsToken.Instance },
+            { "return", QsReturnToken.Instance },
+            { "async", QsAsyncToken.Instance },
+            { "await", QsAwaitToken.Instance },
+            { "in", QsInToken.Instance },
+        };
 
+        private static (string Text, Func<QsToken> Constructor)[] infos = new (string Text, Func<QsToken> Constructor)[]
+        {   
             ("++", () => QsPlusPlusToken.Instance),
             ("--", () => QsMinusMinusToken.Instance),
             ("<=", () => QsLessThanEqualToken.Instance),
@@ -161,8 +166,6 @@ namespace QuickSC
             if (boolResult.HasValue)
                 return new QsLexResult(boolResult.Token, boolResult.Context);
 
-            
-
             foreach (var info in infos)
             {
                 var consumeResult = await ConsumeAsync(info.Text, context.Pos);
@@ -174,6 +177,11 @@ namespace QuickSC
                 return new QsLexResult(
                     QsDoubleQuoteToken.Instance, 
                     context.UpdatePos(await context.Pos.NextAsync()));
+
+            var keywordResult = await LexKeywordAsync(context);
+            if (keywordResult.HasValue)
+                return new QsLexResult(keywordResult.Token, keywordResult.Context);
+
 
             // Identifier 시도
             var idResult = await LexIdentifierAsync(context, true);
@@ -246,6 +254,26 @@ namespace QuickSC
 
             if (0 < sb.Length)
                 return new QsLexResult(new QsTextToken(sb.ToString()), context);
+
+            return QsLexResult.Invalid;
+        }
+
+        async ValueTask<QsLexResult> LexKeywordAsync(QsLexerContext context)
+        {
+            var sb = new StringBuilder();
+            QsBufferPosition curPos = context.Pos;
+
+            while (IsIdentifierLetter(curPos))
+            {
+                curPos.AppendTo(sb);
+                curPos = await curPos.NextAsync();
+            }
+
+            if (sb.Length == 0)
+                return QsLexResult.Invalid;
+
+            if (keywordInfos.TryGetValue(sb.ToString(), out var token))
+                return new QsLexResult(token, context.UpdatePos(curPos));            
 
             return QsLexResult.Invalid;
         }
