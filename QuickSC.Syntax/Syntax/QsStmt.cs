@@ -131,7 +131,7 @@ namespace QuickSC.Syntax
     // int a = 0, b, c;
     public class QsVarDeclStmt : QsStmt
     {
-        public QsVarDecl VarDecl { get; }        
+        public QsVarDecl VarDecl { get; }
 
         public QsVarDeclStmt(QsVarDecl varDecl)
         {
@@ -198,8 +198,8 @@ namespace QuickSC.Syntax
     }
 
     public abstract class QsForStmtInitializer { }
-    public class QsExpForStmtInitializer : QsForStmtInitializer 
-    { 
+    public class QsExpForStmtInitializer : QsForStmtInitializer
+    {
         public QsExp Exp { get; }
         public QsExpForStmtInitializer(QsExp exp) { Exp = exp; }
 
@@ -224,7 +224,7 @@ namespace QuickSC.Syntax
             return !(left == right);
         }
     }
-    public class QsVarDeclForStmtInitializer : QsForStmtInitializer 
+    public class QsVarDeclForStmtInitializer : QsForStmtInitializer
     {
         public QsVarDecl VarDecl { get; }
         public QsVarDeclForStmtInitializer(QsVarDecl varDecl) { VarDecl = varDecl; }
@@ -291,7 +291,7 @@ namespace QuickSC.Syntax
             return !(left == right);
         }
     }
-    
+
     public class QsContinueStmt : QsStmt
     {
         public static QsContinueStmt Instance { get; } = new QsContinueStmt();
@@ -369,7 +369,7 @@ namespace QuickSC.Syntax
             return !(left == right);
         }
     }
-    
+
     public class QsBlankStmt : QsStmt
     {
         public static QsBlankStmt Instance { get; } = new QsBlankStmt();
@@ -380,8 +380,8 @@ namespace QuickSC.Syntax
     {
         public QsExp Exp { get; }
         public QsExpStmt(QsExp exp)
-        { 
-            Exp = exp; 
+        {
+            Exp = exp;
         }
 
         public override bool Equals(object? obj)
@@ -459,6 +459,33 @@ namespace QuickSC.Syntax
         }
 
         public static bool operator !=(QsForeachStmt? left, QsForeachStmt? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public class QsYieldStmt : QsStmt
+    {
+        public QsExp Value { get; }
+        public QsYieldStmt(QsExp value) { Value = value; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsYieldStmt stmt &&
+                   EqualityComparer<QsExp>.Default.Equals(Value, stmt.Value);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
+
+        public static bool operator ==(QsYieldStmt? left, QsYieldStmt? right)
+        {
+            return EqualityComparer<QsYieldStmt?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsYieldStmt? left, QsYieldStmt? right)
         {
             return !(left == right);
         }

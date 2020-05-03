@@ -13,14 +13,16 @@ namespace QuickSC.Syntax
     // a<T>(int b, params T x, int d);
     public class QsFuncDecl
     {
+        public QsFuncKind FuncKind { get; }
         public QsTypeExp RetType { get; }
         public string Name { get; }
         public ImmutableArray<QsFuncDeclParam> Params { get; }
         public int? VariadicParamIndex { get; } 
         public QsBlockStmt Body { get; }
 
-        public QsFuncDecl(QsTypeExp retType, string name, ImmutableArray<QsFuncDeclParam> parameters, int? variadicParamIndex, QsBlockStmt body)
+        public QsFuncDecl(QsFuncKind funcKind, QsTypeExp retType, string name, ImmutableArray<QsFuncDeclParam> parameters, int? variadicParamIndex, QsBlockStmt body)
         {
+            FuncKind = funcKind;
             RetType = retType;
             Name = name;
             Params = parameters;
@@ -28,8 +30,9 @@ namespace QuickSC.Syntax
             Body = body;
         }
 
-        public QsFuncDecl(QsTypeExp retType, string name, int? variadicParamIndex, QsBlockStmt body, params QsFuncDeclParam[] parameters)
+        public QsFuncDecl(QsFuncKind funcKind, QsTypeExp retType, string name, int? variadicParamIndex, QsBlockStmt body, params QsFuncDeclParam[] parameters)
         {
+            FuncKind = funcKind;
             RetType = retType;
             Name = name;
             Params = ImmutableArray.Create(parameters);
@@ -40,6 +43,7 @@ namespace QuickSC.Syntax
         public override bool Equals(object? obj)
         {
             return obj is QsFuncDecl decl &&                   
+                   FuncKind == decl.FuncKind &&
                    EqualityComparer<QsTypeExp>.Default.Equals(RetType, decl.RetType) &&
                    Name == decl.Name &&
                    Enumerable.SequenceEqual(Params, decl.Params) &&

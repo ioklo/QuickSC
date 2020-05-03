@@ -297,6 +297,20 @@ namespace QuickSC
             return new QsParseResult<QsAsyncStmt>(new QsAsyncStmt(stmt!), context);
         }
 
+        async ValueTask<QsParseResult<QsYieldStmt>> ParseYieldStmtAsync(QsParserContext context)
+        {
+            if (!Accept<QsYieldToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                return QsParseResult<QsYieldStmt>.Invalid;
+
+            if (!Parse(await parser.ParseExpAsync(context), ref context, out var yieldValue))
+                return QsParseResult<QsYieldStmt>.Invalid;
+
+            if (!Accept<QsSemiColonToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                return QsParseResult<QsYieldStmt>.Invalid;
+
+            return new QsParseResult<QsYieldStmt>(new QsYieldStmt(yieldValue!), context);
+        }
+
         async ValueTask<QsParseResult<QsStringExp>> ParseSingleCommandAsync(QsParserContext context, bool bStopRBrace)
         {
             var stringElems = ImmutableArray.CreateBuilder<QsStringExpElement>();
@@ -468,6 +482,9 @@ namespace QuickSC
 
             if (Parse(await ParseForeachStmtAsync(context), ref context, out var foreachStmt))
                 return new QsParseResult<QsStmt>(foreachStmt!, context);
+
+            if (Parse(await ParseYieldStmtAsync(context), ref context, out var yieldStmt))
+                return new QsParseResult<QsStmt>(yieldStmt!, context);
 
             if (Parse(await ParseCommandStmtAsync(context), ref context, out var cmdStmt))
                 return new QsParseResult<QsStmt>(cmdStmt!, context);

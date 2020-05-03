@@ -137,10 +137,17 @@ namespace QuickSC
 
         internal async ValueTask<QsParseResult<QsFuncDecl>> ParseFuncDeclAsync(QsParserContext context)
         {
-            // <RetTypeName> <FuncName> <LPAREN> <ARGS> <RPAREN>
+            // <SEQ> <RetTypeName> <FuncName> <LPAREN> <ARGS> <RPAREN>
             // LBRACE>
             // [Stmt]
             // <RBRACE>            
+
+            QsFuncKind funcKind;
+            if (Accept<QsSeqToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                funcKind = QsFuncKind.Sequence;
+            else
+                funcKind = QsFuncKind.Normal;
+
             var retTypeResult = await ParseTypeExpAsync(context);
             if (!retTypeResult.HasValue)
                 return Invalid();
@@ -178,7 +185,15 @@ namespace QuickSC
 
             context = blockStmtResult.Context;
 
-            return new QsParseResult<QsFuncDecl>(new QsFuncDecl(retTypeResult.Elem, funcNameResult.Value, funcDeclParams.ToImmutable(), variadicParamIndex, blockStmtResult.Elem), context);
+            return new QsParseResult<QsFuncDecl>(
+                new QsFuncDecl(
+                    funcKind, 
+                    retTypeResult.Elem, 
+                    funcNameResult.Value, 
+                    funcDeclParams.ToImmutable(), 
+                    variadicParamIndex, 
+                    blockStmtResult.Elem), 
+                context);
 
             static QsParseResult<QsFuncDecl> Invalid() => QsParseResult<QsFuncDecl>.Invalid;
         }

@@ -105,6 +105,8 @@ namespace QuickSC
             { "async", QsAsyncToken.Instance },
             { "await", QsAwaitToken.Instance },
             { "in", QsInToken.Instance },
+            { "yield", QsYieldToken.Instance },
+            { "seq", QsSeqToken.Instance }
         };
 
         private static (string Text, Func<QsToken> Constructor)[] infos = new (string Text, Func<QsToken> Constructor)[]

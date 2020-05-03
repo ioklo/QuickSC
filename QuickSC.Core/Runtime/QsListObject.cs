@@ -7,61 +7,6 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    public class QsListEnumeratorObject : QsObject
-    {
-        int i;
-        List<QsValue> elems;
-
-        public QsListEnumeratorObject(List<QsValue> elems)
-        {
-            this.elems = elems;
-            i = -1;
-        }
-
-        static ValueTask<QsEvalResult<QsValue>> NativeMoveNext(QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)
-        {
-            var enumerator = GetObject<QsListEnumeratorObject>(thisValue);
-            if (enumerator == null) return new ValueTask<QsEvalResult<QsValue>>(QsEvalResult<QsValue>.Invalid);
-
-            if (enumerator.elems.Count <= enumerator.i + 1)
-                return new ValueTask<QsEvalResult<QsValue>>(new QsEvalResult<QsValue>(new QsValue<bool>(false), context));
-
-            enumerator.i++;
-            return new ValueTask<QsEvalResult<QsValue>>(new QsEvalResult<QsValue>(new QsValue<bool>(true), context));
-        }
-
-        static ValueTask<QsEvalResult<QsValue>> NativeGetCurrent(QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)
-        {
-            var enumerator = GetObject<QsListEnumeratorObject>(thisValue);
-            if (enumerator == null) return new ValueTask<QsEvalResult<QsValue>>(QsEvalResult<QsValue>.Invalid);
-
-            if (enumerator.elems.Count <= enumerator.i)
-                return new ValueTask<QsEvalResult<QsValue>>(QsEvalResult<QsValue>.Invalid);
-
-            // TODO: 여기 copy 해야 할 것 같음
-            return new ValueTask<QsEvalResult<QsValue>>(new QsEvalResult<QsValue>(enumerator.elems[enumerator.i], context));
-        }
-
-        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
-        {
-            if (funcId.Name == "MoveNext")
-            {
-                return new QsNativeCallable(NativeMoveNext);
-            }
-            else if (funcId.Name == "GetCurrent")
-            {
-                return new QsNativeCallable(NativeGetCurrent);
-            }
-
-            return null;
-        }
-
-        public override QsValue? GetMemberValue(string varName)
-        {
-            return null;
-        }
-    }
-
     // List
     public class QsListObject : QsObject
     {
@@ -71,7 +16,7 @@ namespace QuickSC.Runtime
         {
             Elems = elems;
         }
-
+        
         static ValueTask<QsEvalResult<QsValue>> NativeGetEnumerator(QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)
         {   
             var list = GetObject<QsListObject>(thisValue);
@@ -79,7 +24,7 @@ namespace QuickSC.Runtime
 
             // TODO: Runtime 메모리 관리자한테 new를 요청해야 합니다
             return new ValueTask<QsEvalResult<QsValue>>(new QsEvalResult<QsValue>(
-                new QsObjectValue(new QsListEnumeratorObject(list.Elems)), context));
+                new QsObjectValue(new QsEnumeratorObject(list.Elems.GetEnumerator())), context));
         }
 
         static ValueTask<QsEvalResult<QsValue>> NativeIndexer(QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)

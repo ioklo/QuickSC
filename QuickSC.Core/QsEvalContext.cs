@@ -31,6 +31,12 @@ namespace QuickSC
         public QsReturnEvalFlowControl(QsValue value) { Value = value; }
     }
 
+    public class QsYieldEvalFlowControl : QsEvalFlowControl
+    {
+        public QsValue Value { get; }
+        public QsYieldEvalFlowControl(QsValue value) { Value = value; }
+    }
+
     public struct QsEvalContext
     {
         // TODO: QsFuncDecl을 직접 사용하지 않고, QsModule에서 정의한 Func을 사용해야 한다        

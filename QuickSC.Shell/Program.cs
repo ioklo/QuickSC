@@ -55,13 +55,15 @@ namespace QuickSC.Shell
                 var evaluator = new QsEvaluator(cmdProvider);
                 var evalContext = QsEvalContext.Make();               
                 var input = @"
-var l = [1, 2, 3];
-l.Add(""hello"");
-l.Add(""hi"");
-l.Add(""fish"");
-l.RemoveAt(1);
+seq int func()
+{
+    yield 21;
+    yield 1;
+    yield 3;
+    yield 4;
+}
 
-foreach(var x in l)
+foreach(var x in func())
 {
     @echo $x
 }
@@ -141,14 +143,13 @@ foreach(var x in l)
                         continue;
                     }
 
-                    var newEvalContext = await evaluator.EvaluateStmtAsync(stmtResult.Elem, evalContext);
-                    if (!newEvalContext.HasValue)
+                    await foreach(var result in evaluator.EvaluateStmtAsync(stmtResult.Elem, evalContext))
                     {
-                        Console.WriteLine("실행에 실패했습니다");
-                        continue;
-                    }
+                        if (!result.HasValue)
+                            throw new Exception("실행에 실패했습니다");
 
-                    evalContext = newEvalContext.Value;
+                        evalContext = result.Value;
+                    }
                 }
                 catch (Exception e)
                 {
