@@ -23,10 +23,10 @@ namespace QuickSC.Shell
                     }
                     else if (text.StartsWith("sleep "))
                     {
-                        int i = int.Parse(text.Substring(6));
+                        double f = double.Parse(text.Substring(6));
 
-                        Console.WriteLine($"{i}초를 쉽니다");
-                        await Task.Delay(i * 1000);
+                        Console.WriteLine($"{f}초를 쉽니다");
+                        await Task.Delay((int)(f * 1000));
                     }
                     else
                     {
@@ -55,19 +55,44 @@ namespace QuickSC.Shell
                 var evaluator = new QsEvaluator(cmdProvider);
                 var evalContext = QsEvalContext.Make();               
                 var input = @"
-seq int func()
+int count = 0, sum = 0;
+
+await // local scope 안의 awaitable(async/task)을 모아서 기다립니다
 {
-    yield 21;
-    return;
-    yield 1;
-    yield 3;
-    yield 4;
+    async // 비동기 영역1
+    {
+        for(int i = 0; i < 4; i++)
+        {
+            count++;
+            @{
+                echo 1> $count \n
+                sleep 1
+            }
+        }
+    }
+
+    async // 비동기 영역2
+    {
+        @sleep 0.5
+
+        for(int i = 0; i < 4; i++)
+        {
+            count++;
+            @{
+                echo 2> $count \n
+                sleep 1
+            }
+        }
+    }
+
+    task // 동시 실행 영역..
+    {
+        for(int i = 0 ; i< 10; i++)
+            sum = sum + i;
+    }
 }
 
-foreach(var x in func())
-{
-    @echo $x
-}
+@echo 완료! $sum \n
 ";
                 var buffer = new QsBuffer(new StringReader(input));
                 var pos = await buffer.MakePosition().NextAsync();

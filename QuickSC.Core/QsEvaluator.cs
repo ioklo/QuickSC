@@ -994,9 +994,9 @@ namespace QuickSC
             yield return context.SetTasks(prevTasks).SetVars(prevVars);
         }
 
-        internal QsEvalContext? EvaluateAsyncStmt(QsAsyncStmt taskStmt, QsEvalContext context)
+        internal QsEvalContext? EvaluateAsyncStmt(QsAsyncStmt asyncStmt, QsEvalContext context)
         {
-            var captureResult = capturer.CaptureStmt(taskStmt.Body, QsCaptureContext.Make());
+            var captureResult = capturer.CaptureStmt(asyncStmt.Body, QsCaptureContext.Make());
             if (!captureResult.HasValue) return null;
 
             var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
@@ -1027,7 +1027,7 @@ namespace QuickSC
 
             Func<Task> asyncFunc = async () =>
             {
-                await foreach (var result in EvaluateStmtAsync(taskStmt.Body, newContext))
+                await foreach (var result in EvaluateStmtAsync(asyncStmt.Body, newContext))
                 {
                     if (!result.HasValue) return;
                     context = result.Value;
@@ -1161,7 +1161,7 @@ namespace QuickSC
                         yield return result;
                     break; 
                     
-                case QsAsyncStmt asyncStmt: EvaluateAsyncStmt(asyncStmt, context); break;
+                case QsAsyncStmt asyncStmt: yield return EvaluateAsyncStmt(asyncStmt, context); break;
                 case QsForeachStmt foreachStmt:
                     await foreach (var result in EvaluateForeachStmtAsync(foreachStmt, context))
                         yield return result;
