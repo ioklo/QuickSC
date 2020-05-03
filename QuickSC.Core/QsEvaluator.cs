@@ -905,12 +905,11 @@ namespace QuickSC
                         yield return context;
                         context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
                     }
-                }
-
-                if (context.FlowControl != QsNoneEvalFlowControl.Instance)
-                {
-                    yield return context.SetVars(prevVars);
-                    yield break;
+                    else if (context.FlowControl != QsNoneEvalFlowControl.Instance)
+                    {
+                        yield return context.SetVars(prevVars);
+                        yield break;
+                    }
                 }
             }
 
@@ -1147,16 +1146,16 @@ namespace QuickSC
                         yield return result;
                     break;
 
-                case QsContinueStmt continueStmt: EvaluateContinueStmt(continueStmt, context); break;
-                case QsBreakStmt breakStmt: EvaluateBreakStmt(breakStmt, context); break;
-                case QsReturnStmt returnStmt: await EvaluateReturnStmtAsync(returnStmt, context); break;
+                case QsContinueStmt continueStmt: yield return EvaluateContinueStmt(continueStmt, context); break;
+                case QsBreakStmt breakStmt: yield return EvaluateBreakStmt(breakStmt, context); break;
+                case QsReturnStmt returnStmt: yield return await EvaluateReturnStmtAsync(returnStmt, context); break;
                 case QsBlockStmt blockStmt:
                     await foreach (var result in EvaluateBlockStmtAsync(blockStmt, context))
                         yield return result;
                     break;
 
-                case QsExpStmt expStmt: await EvaluateExpStmtAsync(expStmt, context); break;
-                case QsTaskStmt taskStmt: EvaluateTaskStmt(taskStmt, context); break;
+                case QsExpStmt expStmt: yield return await EvaluateExpStmtAsync(expStmt, context); break;
+                case QsTaskStmt taskStmt: yield return EvaluateTaskStmt(taskStmt, context); break;
                 case QsAwaitStmt awaitStmt:
                     await foreach (var result in EvaluateAwaitStmtAsync(awaitStmt, context))
                         yield return result;

@@ -58,6 +58,7 @@ namespace QuickSC.Shell
 seq int func()
 {
     yield 21;
+    return;
     yield 1;
     yield 3;
     yield 4;
