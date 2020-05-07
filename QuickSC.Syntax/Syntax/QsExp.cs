@@ -425,8 +425,6 @@ namespace QuickSC.Syntax
         }
     }
 
-
-
     public class QsMemberCallExp : QsExp
     {
         public QsExp Object { get; }

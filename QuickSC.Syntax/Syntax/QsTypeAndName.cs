@@ -4,13 +4,13 @@ using System.Collections.Generic;
 namespace QuickSC.Syntax
 {
     // int a
-    public struct QsFuncDeclParam
+    public struct QsTypeAndName
     {
         public QsTypeExp Type { get; }
         public string Name { get; }
 
         // out int& a
-        public QsFuncDeclParam(QsTypeExp type, string name)
+        public QsTypeAndName(QsTypeExp type, string name)
         {
             Type = type;
             Name = name;
@@ -18,7 +18,7 @@ namespace QuickSC.Syntax
 
         public override bool Equals(object? obj)
         {
-            return obj is QsFuncDeclParam param &&
+            return obj is QsTypeAndName param &&
                    EqualityComparer<QsTypeExp>.Default.Equals(Type, param.Type) &&
                    Name == param.Name;
         }
@@ -28,12 +28,12 @@ namespace QuickSC.Syntax
             return HashCode.Combine(Type, Name);
         }
 
-        public static bool operator ==(QsFuncDeclParam left, QsFuncDeclParam right)
+        public static bool operator ==(QsTypeAndName left, QsTypeAndName right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(QsFuncDeclParam left, QsFuncDeclParam right)
+        public static bool operator !=(QsTypeAndName left, QsTypeAndName right)
         {
             return !(left == right);
         }

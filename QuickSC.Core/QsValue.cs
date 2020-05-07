@@ -1,5 +1,8 @@
 ﻿using QuickSC.Syntax;
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Threading.Tasks;
 
 namespace QuickSC
 {
@@ -25,6 +28,8 @@ namespace QuickSC
         // 뭘 리턴해야 하는거냐
         public abstract QsCallable? GetMemberFuncs(QsMemberFuncId funcId);
         public abstract QsValue? GetMemberValue(string varName);
+
+        public abstract bool IsType(QsType type);
     }
 
     public class QsValue<T> : QsValue where T : struct
@@ -53,15 +58,124 @@ namespace QuickSC
 
         public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
         {
-            throw new NotImplementedException();
+            return null;
         }
 
-        public override QsValue GetMemberValue(string varName)
+        public override QsValue? GetMemberValue(string varName)
         {
-            throw new NotImplementedException();
+            return null;
+        }
+
+        public override bool IsType(QsType type)
+        {
+            // struct에서  is 류가 사용가능하게 해야할 수 도 있다.
+            return false;
         }
     }
 
+    public class QsEnumValue : QsValue
+    {
+        public QsEnumElemType Type { get; }
+        ImmutableDictionary<string, QsValue> values;
+
+        public QsEnumValue(QsEnumElemType type, ImmutableDictionary<string, QsValue> values)
+        {
+            Type = type;
+            this.values = values;
+        }
+
+        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        {
+            return null;
+        }
+
+        public override QsValue? GetMemberValue(string varName)
+        {
+            if (values.TryGetValue(varName, out var value))
+                return value;
+
+            return null;
+        }
+
+        public override QsValue MakeCopy()
+        {
+            var newValues = ImmutableDictionary.CreateBuilder<string, QsValue>();
+
+            foreach (var v in values)
+                newValues.Add(v.Key, v.Value.MakeCopy());
+
+            return new QsEnumValue(Type, newValues.ToImmutable());
+        }
+
+        public override bool SetValue(QsValue v)
+        {
+            if (v is QsEnumValue recordValue)
+            {
+                this.values = recordValue.values;
+                return true;
+            }
+
+            return false;
+        }
+
+        public override bool IsType(QsType type)
+        {
+            QsType? curType = Type;
+
+            while(curType != null)
+            {
+                if (curType == type) return true;
+                curType = curType.GetBaseType();
+            }
+
+            return false;
+        }
+    }
+
+    public class QsTypeValue : QsValue
+    {
+        public QsType Type { get; private set; }
+
+        public QsTypeValue(QsType type)
+        {
+            Type = type;
+        }
+
+        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        {
+            if( funcId.Kind == QsMemberFuncKind.Normal)
+                return Type.GetMemberFuncs(funcId.Name);
+
+            return null;
+        }
+
+        public override QsValue? GetMemberValue(string varName)
+        {
+            return Type.GetMemberValue(varName);
+        }
+
+        public sealed override bool IsType(QsType type)
+        {
+            return QsTypeType.Instance == type;
+        }
+
+        public override QsValue MakeCopy()
+        {
+            return new QsTypeValue(Type);
+        }
+
+        public override bool SetValue(QsValue v)
+        {
+            if (v is QsTypeValue tv)
+            {
+                Type = tv.Type;
+                return true;
+            }
+
+            return false;
+        }
+    }
+    
     public class QsNullValue : QsValue
     {
         public static QsNullValue Instance { get; } = new QsNullValue();
@@ -86,6 +200,11 @@ namespace QuickSC
         {
             throw new InvalidOperationException();
         }
+
+        public override bool IsType(QsType type)
+        {
+            return false;
+        }
     }
     
     public abstract class QsObject
@@ -100,7 +219,6 @@ namespace QuickSC
 
             return null;
         }
-        
     }    
    
     public class QsObjectValue : QsValue
@@ -137,8 +255,12 @@ namespace QuickSC
 
             return false;
         }
-    }
 
+        public override bool IsType(QsType type)
+        {
+            throw new NotImplementedException();
+        }
+    }
     
 }
 

@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Xml.XPath;
 
 namespace QuickSC.Syntax
 {
     public abstract class QsStmt
     {
     }
-
+    
     // 명령어
     public class QsCommandStmt : QsStmt
     {
@@ -162,28 +163,31 @@ namespace QuickSC.Syntax
 
     public class QsIfStmt : QsStmt
     {
-        public QsExp CondExp { get; }
-        public QsStmt BodyStmt { get; }
-        public QsStmt? ElseBodyStmt { get; }
+        public QsExp Cond { get; }
+        public QsTypeExp? TestType { get; }
+        public QsStmt Body { get; }
+        public QsStmt? ElseBody { get; }
 
-        public QsIfStmt(QsExp condExp, QsStmt bodyStmt, QsStmt? elseBodyStmt)
+        public QsIfStmt(QsExp cond, QsTypeExp? testType, QsStmt body, QsStmt? elseBody)
         {
-            CondExp = condExp;
-            BodyStmt = bodyStmt;
-            ElseBodyStmt = elseBodyStmt;
+            Cond = cond;
+            TestType = testType;
+            Body = body;
+            ElseBody = elseBody;
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsIfStmt stmt &&
-                   EqualityComparer<QsExp>.Default.Equals(CondExp, stmt.CondExp) &&
-                   EqualityComparer<QsStmt>.Default.Equals(BodyStmt, stmt.BodyStmt) &&
-                   EqualityComparer<QsStmt?>.Default.Equals(ElseBodyStmt, stmt.ElseBodyStmt);
+                   EqualityComparer<QsExp>.Default.Equals(Cond, stmt.Cond) &&
+                   EqualityComparer<QsTypeExp?>.Default.Equals(TestType, stmt.TestType) &&
+                   EqualityComparer<QsStmt>.Default.Equals(Body, stmt.Body) &&
+                   EqualityComparer<QsStmt?>.Default.Equals(ElseBody, stmt.ElseBody);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(CondExp, BodyStmt, ElseBodyStmt);
+            return HashCode.Combine(Cond, Body, ElseBody);
         }
 
         public static bool operator ==(QsIfStmt? left, QsIfStmt? right)
@@ -197,6 +201,7 @@ namespace QuickSC.Syntax
         }
     }
 
+    
     public abstract class QsForStmtInitializer { }
     public class QsExpForStmtInitializer : QsForStmtInitializer
     {

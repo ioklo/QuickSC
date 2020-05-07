@@ -422,7 +422,7 @@ namespace QuickSC
                     if( secondIdResult == null )
                         parameters.Add(new QsLambdaExpParam(null, firstIdResult.Value));
                     else
-                        parameters.Add(new QsLambdaExpParam(new QsTypeIdExp(firstIdResult.Value), secondIdResult.Value));
+                        parameters.Add(new QsLambdaExpParam(new QsIdTypeExp(firstIdResult.Value), secondIdResult.Value));
                 }
             }
 

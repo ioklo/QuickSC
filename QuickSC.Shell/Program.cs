@@ -55,44 +55,19 @@ namespace QuickSC.Shell
                 var evaluator = new QsEvaluator(cmdProvider);
                 var evalContext = QsEvalContext.Make();               
                 var input = @"
-int count = 0, sum = 0;
-
-await // local scope 안의 awaitable(async/task)을 모아서 기다립니다
+enum MyEnum
 {
-    async // 비동기 영역1
-    {
-        for(int i = 0; i < 4; i++)
-        {
-            count++;
-            @{
-                echo 1> $count \n
-                sleep 1
-            }
-        }
-    }
-
-    async // 비동기 영역2
-    {
-        @sleep 0.5
-
-        for(int i = 0; i < 4; i++)
-        {
-            count++;
-            @{
-                echo 2> $count \n
-                sleep 1
-            }
-        }
-    }
-
-    task // 동시 실행 영역..
-    {
-        for(int i = 0 ; i< 10; i++)
-            sum = sum + i;
-    }
+    First,
+    Second (int i)
 }
 
-@echo 완료! $sum \n
+var f = MyEnum.First;
+var e = MyEnum.Second (2);
+
+if (e is MyEnum.Second)
+{
+    @echo hi
+}
 ";
                 var buffer = new QsBuffer(new StringReader(input));
                 var pos = await buffer.MakePosition().NextAsync();

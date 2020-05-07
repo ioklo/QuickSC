@@ -5,7 +5,7 @@ namespace QuickSC.Syntax
 {
     public abstract class QsScriptElement
     {
-    }
+    }    
 
     public class QsFuncDeclScriptElement : QsScriptElement
     {
@@ -66,4 +66,11 @@ namespace QuickSC.Syntax
             return !(left == right);
         }
     }
+
+    public class QsEnumDeclScriptElement : QsScriptElement
+    {
+        public QsEnumDecl EnumDecl { get; }
+        public QsEnumDeclScriptElement(QsEnumDecl enumDecl) { EnumDecl = enumDecl; }
+    }
+        
 }

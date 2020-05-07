@@ -54,6 +54,8 @@ namespace QuickSC.Token
     public class QsInToken : QsToken { public static QsInToken Instance { get; } = new QsInToken(); private QsInToken() { } }
     public class QsYieldToken : QsToken { public static QsYieldToken Instance { get; } = new QsYieldToken(); private QsYieldToken() { } }
     public class QsSeqToken : QsToken { public static QsSeqToken Instance { get; } = new QsSeqToken(); private QsSeqToken() { } }
+    public class QsEnumToken : QsToken { public static QsEnumToken Instance { get; } = new QsEnumToken(); private QsEnumToken() { } }
+    public class QsIsToken : QsToken { public static QsIsToken Instance { get; } = new QsIsToken(); private QsIsToken() { } }
 
     public class QsWhitespaceToken : QsToken { public static QsWhitespaceToken Instance { get; } = new QsWhitespaceToken(); private QsWhitespaceToken() { } } // \s
     public class QsNewLineToken : QsToken { public static QsNewLineToken Instance { get; } = new QsNewLineToken(); private QsNewLineToken() { } }     // \r \n \r\n

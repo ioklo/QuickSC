@@ -67,12 +67,13 @@ namespace QuickSC
             this.parser = parser;
             this.lexer = lexer;
         }
-
+        
         internal async ValueTask<QsParseResult<QsIfStmt>> ParseIfStmtAsync(QsParserContext context)
         {
             // if (exp) stmt => If(exp, stmt, null)
             // if (exp) stmt0 else stmt1 => If(exp, stmt0, stmt1)
             // if (exp0) if (exp1) stmt1 else stmt2 => If(exp0, If(exp1, stmt1, stmt2))
+            // if (exp is typeExp) 
 
             if (!Accept<QsIfToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                 return Invalid();
@@ -82,6 +83,12 @@ namespace QuickSC
 
             if (!Parse(await parser.ParseExpAsync(context), ref context, out var cond))            
                 return Invalid();
+
+            // 
+            QsTypeExp? condTestType = null;
+            if (Accept<QsIsToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                if (!Parse(await parser.ParseTypeExpAsync(context), ref context, out condTestType))
+                    return Invalid();
 
             if (!Accept<QsRParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                 return Invalid();
@@ -97,7 +104,7 @@ namespace QuickSC
                     return Invalid();
             }
 
-            return new QsParseResult<QsIfStmt>(new QsIfStmt(cond!, body!, elseBody), context);
+            return new QsParseResult<QsIfStmt>(new QsIfStmt(cond!, condTestType, body!, elseBody), context);
 
             static QsParseResult<QsIfStmt> Invalid() => QsParseResult<QsIfStmt>.Invalid;
         }

@@ -48,7 +48,7 @@ namespace QuickSC
         {
             var lexer = new QsLexer();
             var context = await MakeContextAsync(
-                "if else for continue break exec task params return async await foreach in yield seq " + 
+                "if else for continue break exec task params return async await foreach in yield seq enum is " + 
                 "++ -- <= >= => == != " +
                 "@ < > ; , = { } ( ) [ ] + - * / % ! .");
 
@@ -70,6 +70,8 @@ namespace QuickSC
                 QsInToken.Instance,
                 QsYieldToken.Instance,
                 QsSeqToken.Instance,
+                QsEnumToken.Instance,
+                QsIsToken.Instance,
 
                 QsPlusPlusToken.Instance,
                 QsMinusMinusToken.Instance,

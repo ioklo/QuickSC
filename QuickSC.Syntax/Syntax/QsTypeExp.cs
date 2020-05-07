@@ -7,14 +7,14 @@ namespace QuickSC.Syntax
     {   
     }
  
-    public class QsTypeIdExp : QsTypeExp
+    public class QsIdTypeExp : QsTypeExp
     {
         public string Name { get; }
-        public QsTypeIdExp(string name) { Name = name; }
+        public QsIdTypeExp(string name) { Name = name; }
 
         public override bool Equals(object? obj)
         {
-            return obj is QsTypeIdExp exp &&
+            return obj is QsIdTypeExp exp &&
                    Name == exp.Name;
         }
 
@@ -23,14 +23,26 @@ namespace QuickSC.Syntax
             return HashCode.Combine(Name);
         }
 
-        public static bool operator ==(QsTypeIdExp? left, QsTypeIdExp? right)
+        public static bool operator ==(QsIdTypeExp? left, QsIdTypeExp? right)
         {
-            return EqualityComparer<QsTypeIdExp?>.Default.Equals(left, right);
+            return EqualityComparer<QsIdTypeExp?>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(QsTypeIdExp? left, QsTypeIdExp? right)
+        public static bool operator !=(QsIdTypeExp? left, QsIdTypeExp? right)
         {
             return !(left == right);
+        }
+    }
+
+    public class QsMemberTypeExp : QsTypeExp
+    {
+        public QsTypeExp Parent { get; }
+        public string MemberName { get; }
+
+        public QsMemberTypeExp(QsTypeExp parent, string memberName)
+        {
+            Parent = parent;
+            MemberName = memberName;
         }
     }
 }

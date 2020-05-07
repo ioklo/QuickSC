@@ -42,14 +42,36 @@ namespace QuickSC
 
             var expected = new QsFuncDecl(
                 QsFuncKind.Normal,
-                new QsTypeIdExp("void"),
+                new QsIdTypeExp("void"),
                 "Func", 1,
-                new QsBlockStmt(new QsVarDeclStmt(new QsVarDecl(new QsTypeIdExp("int"), new QsVarDeclElement("a", new QsIntLiteralExp(0))))),
-                new QsFuncDeclParam(new QsTypeIdExp("int"), "x"),
-                new QsFuncDeclParam(new QsTypeIdExp("string"), "y"),
-                new QsFuncDeclParam(new QsTypeIdExp("int"), "z"));
+                new QsBlockStmt(new QsVarDeclStmt(new QsVarDecl(new QsIdTypeExp("int"), new QsVarDeclElement("a", new QsIntLiteralExp(0))))),
+                new QsTypeAndName(new QsIdTypeExp("int"), "x"),
+                new QsTypeAndName(new QsIdTypeExp("string"), "y"),
+                new QsTypeAndName(new QsIdTypeExp("int"), "z"));
 
             Assert.Equal(expected, funcDecl.Elem);
+        }
+
+        [Fact]
+        public async Task TestParseEnumDeclAsync()
+        {
+            var lexer = new QsLexer();
+            var parser = new QsParser(lexer);
+            var context = await MakeContextAsync(@"
+enum X
+{
+    First,
+    Second (int i),
+    Third
+}");
+            var enumDecl = await parser.ParseEnumDeclAsync(context);
+
+            var expected = new QsEnumDecl("X",
+                new QsEnumDeclElement("First"),
+                new QsEnumDeclElement("Second", new QsTypeAndName(new QsIdTypeExp("int"), "i")),
+                new QsEnumDeclElement("Third"));
+
+            Assert.Equal(expected, enumDecl.Elem);
         }
 
         [Fact]
@@ -75,9 +97,9 @@ for (int i = 0; i < 5; i++)
             var script = await parser.ParseScriptAsync(context);
 
             var expected = new QsScript(
-                new QsStmtScriptElement(new QsVarDeclStmt(new QsVarDecl(new QsTypeIdExp("int"), new QsVarDeclElement("sum", new QsIntLiteralExp(0))))),
+                new QsStmtScriptElement(new QsVarDeclStmt(new QsVarDecl(new QsIdTypeExp("int"), new QsVarDeclElement("sum", new QsIntLiteralExp(0))))),
                 new QsStmtScriptElement(new QsForStmt(
-                    new QsVarDeclForStmtInitializer(new QsVarDecl(new QsTypeIdExp("int"), new QsVarDeclElement("i", new QsIntLiteralExp(0)))),
+                    new QsVarDeclForStmtInitializer(new QsVarDecl(new QsIdTypeExp("int"), new QsVarDeclElement("i", new QsIntLiteralExp(0)))),
                     new QsBinaryOpExp(QsBinaryOpKind.LessThan, new QsIdentifierExp("i"), new QsIntLiteralExp(5)),
                     new QsUnaryOpExp(QsUnaryOpKind.PostfixInc, new QsIdentifierExp("i")),
                     new QsBlockStmt(
@@ -85,6 +107,7 @@ for (int i = 0; i < 5; i++)
                                 new QsBinaryOpExp(QsBinaryOpKind.Equal,
                                     new QsBinaryOpExp(QsBinaryOpKind.Modulo, new QsIdentifierExp("i"), new QsIntLiteralExp(2)),
                                     new QsIntLiteralExp(0)),
+                                null,
                                 new QsExpStmt(
                                     new QsBinaryOpExp(QsBinaryOpKind.Assign,
                                         new QsIdentifierExp("sum"),

@@ -70,7 +70,7 @@ xxx
             
             var varDeclStmt = await parser.ParseVarDeclStmtAsync(context);
 
-            var expected = new QsVarDeclStmt(new QsVarDecl(new QsTypeIdExp("string"),
+            var expected = new QsVarDeclStmt(new QsVarDecl(new QsIdTypeExp("string"),
                 new QsVarDeclElement("a", new QsStringExp(new QsTextStringExpElement("hello")))));
 
             Assert.Equal(expected, varDeclStmt.Elem);
@@ -84,8 +84,30 @@ xxx
             var ifStmt = await parser.ParseIfStmtAsync(context);
 
             var expected = new QsIfStmt(new QsIdentifierExp("b"),
+                null,
+                new QsBlockStmt(ImmutableArray<QsStmt>.Empty),                
+                new QsIfStmt(
+                    new QsIdentifierExp("c"),
+                    null,
+                    new QsBlockStmt(ImmutableArray<QsStmt>.Empty),
+                    new QsBlockStmt(ImmutableArray<QsStmt>.Empty)));
+
+            Assert.Equal(expected, ifStmt.Elem);
+        }
+
+        [Fact]
+        async Task TestParseIfStmtWithTestTypeAsync()
+        {
+            (var parser, var context) = await PrepareAsync("if (b is T) {} else if (c) {} else {}");
+
+            var ifStmt = await parser.ParseIfStmtAsync(context);
+
+            var expected = new QsIfStmt(new QsIdentifierExp("b"),
+                new QsIdTypeExp("T"),
                 new QsBlockStmt(ImmutableArray<QsStmt>.Empty),
-                new QsIfStmt(new QsIdentifierExp("c"),
+                new QsIfStmt(
+                    new QsIdentifierExp("c"),
+                    null,
                     new QsBlockStmt(ImmutableArray<QsStmt>.Empty),
                     new QsBlockStmt(ImmutableArray<QsStmt>.Empty)));
 
@@ -173,7 +195,7 @@ for (f(); g; h + g) ;
             var (parser, context) = await PrepareAsync("foreach( var x in l ) { } ");
             var stmtResult = await parser.ParseForeachStmtAsync(context);
 
-            var expected = new QsForeachStmt(new QsTypeIdExp("var"), "x", new QsIdentifierExp("l"), new QsBlockStmt());
+            var expected = new QsForeachStmt(new QsIdTypeExp("var"), "x", new QsIdentifierExp("l"), new QsBlockStmt());
 
             Assert.Equal(expected, stmtResult.Elem);
         }

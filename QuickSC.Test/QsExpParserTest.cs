@@ -110,7 +110,7 @@ namespace QuickSC
                         new QsLambdaExp(
                             new QsReturnStmt(new QsIdentifierExp("e")),
                             new QsLambdaExpParam(null, "c"),
-                            new QsLambdaExpParam(new QsTypeIdExp("int"), "d"))),
+                            new QsLambdaExpParam(new QsIdTypeExp("int"), "d"))),
                     new QsLambdaExpParam(null, "b")));
 
             Assert.Equal(expected, expResult.Elem);
