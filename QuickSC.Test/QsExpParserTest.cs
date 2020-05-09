@@ -89,7 +89,7 @@ namespace QuickSC
 
             var expected = new QsUnaryOpExp(QsUnaryOpKind.PostfixInc,
                 new QsBinaryOpExp(QsBinaryOpKind.Modulo,
-                    new QsCallExp(new QsExpCallExpCallable(new QsUnaryOpExp(QsUnaryOpKind.PostfixInc, new QsIdentifierExp("c"))), new QsIdentifierExp("e"), new QsIdentifierExp("f")),
+                    new QsCallExp(new QsUnaryOpExp(QsUnaryOpKind.PostfixInc, new QsIdentifierExp("c")), new QsIdentifierExp("e"), new QsIdentifierExp("f")),
                     new QsIdentifierExp("d")));
 
             Assert.Equal(expected, expResult.Elem);

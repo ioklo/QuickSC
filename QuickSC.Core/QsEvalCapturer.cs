@@ -371,13 +371,7 @@ namespace QuickSC
 
         QsCaptureContext? CaptureCallExp(QsCallExp callExp, QsCaptureContext context) 
         {
-            var callableResult = callExp.Callable switch
-            {
-                QsFuncCallExpCallable funcCallable => context,
-                QsExpCallExpCallable expCallable => CaptureExp(expCallable.Exp, context),
-                _ => throw new NotImplementedException()
-            };
-
+            var callableResult = CaptureExp(callExp.Callable, context);
             if (!callableResult.HasValue) return null;
             context = callableResult.Value;
 

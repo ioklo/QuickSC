@@ -55,19 +55,25 @@ namespace QuickSC.Shell
                 var evaluator = new QsEvaluator(cmdProvider);
                 var evalContext = QsEvalContext.Make();               
                 var input = @"
-enum MyEnum
+
+int a = 0;
+
+enum X 
 {
     First,
-    Second (int i)
+    Second
 }
 
-var f = MyEnum.First;
-var e = MyEnum.Second (2);
-
-if (e is MyEnum.Second)
+void Func(X x)
 {
-    @echo hi
+    if (x is First)
+        @echo hi
 }
+
+Func(First);
+
+@echo $a
+
 ";
                 var buffer = new QsBuffer(new StringReader(input));
                 var pos = await buffer.MakePosition().NextAsync();

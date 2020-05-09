@@ -77,48 +77,9 @@ namespace QuickSC
         {
             return stmtEvaluator.EvaluateStmtAsync(stmt, context);
         }
-
-        // context를 변경하지 않는다
-        internal QsType? EvaluateTypeExp(QsTypeExp typeExp, QsEvalContext context)
-        {
-            if (typeExp is QsIdTypeExp idTypeExp)
-            {
-                return context.GetType(idTypeExp.Name);
-            }
-            else if (typeExp is QsMemberTypeExp memberTypeExp)
-            {
-                var parentTypeValue = EvaluateTypeExp(memberTypeExp.Parent, context);
-                if (parentTypeValue == null) return null;
-
-                return parentTypeValue.GetMemberType(memberTypeExp.MemberName);
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        QsEvalContext? EvaluateEnumDecl(QsEnumDecl enumDecl, QsEvalContext context)
-        {
-            return context.AddGlobalVar(enumDecl.Name, new QsTypeValue(new QsEnumType(enumDecl)));
-        }
-
+        
         public async ValueTask<QsEvalContext?> EvaluateScriptAsync(QsScript script, QsEvalContext context)
         {
-            // enum 부터 먼저 처리
-            foreach (var elem in script.Elements)
-            {
-                if (elem is QsEnumDeclScriptElement enumDeclElem)
-                {
-                    var enumDeclResult = EvaluateEnumDecl(enumDeclElem.EnumDecl, context);
-                    if (!enumDeclResult.HasValue) return null;
-
-                    context = enumDeclResult.Value;
-                }
-
-                // TODO: global Vars도 여기서 처리..
-            }
-
             // 함수 처리
             foreach (var elem in script.Elements)
             {
@@ -144,6 +105,11 @@ namespace QuickSC
             }
 
             return context;
+        }
+
+        internal QsTypeInst InstantiateType(QsTypeValue testTypeValue, QsEvalContext context)
+        {
+            return new QsRawTypeInst(testTypeValue);
         }
     }
 }

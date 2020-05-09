@@ -202,79 +202,21 @@ namespace QuickSC.Syntax
         }
     }
 
-    public abstract class QsCallExpCallable
-    {
-    }
-
-    public class QsFuncCallExpCallable : QsCallExpCallable
-    {
-        public QsFuncDecl FuncDecl { get; }
-        public QsFuncCallExpCallable(QsFuncDecl funcDecl) { FuncDecl = funcDecl; }
-
-        public override bool Equals(object? obj)
-        {
-            return obj is QsFuncCallExpCallable callable &&
-                   EqualityComparer<QsFuncDecl>.Default.Equals(FuncDecl, callable.FuncDecl);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(FuncDecl);
-        }
-
-        public static bool operator ==(QsFuncCallExpCallable? left, QsFuncCallExpCallable? right)
-        {
-            return EqualityComparer<QsFuncCallExpCallable?>.Default.Equals(left, right);
-        }
-
-        public static bool operator !=(QsFuncCallExpCallable? left, QsFuncCallExpCallable? right)
-        {
-            return !(left == right);
-        }
-    }
-
-    public class QsExpCallExpCallable : QsCallExpCallable
-    {
-        public QsExp Exp { get; }
-        public QsExpCallExpCallable(QsExp exp) { Exp = exp; }
-
-        public override bool Equals(object? obj)
-        {
-            return obj is QsExpCallExpCallable callable &&
-                   EqualityComparer<QsExp>.Default.Equals(Exp, callable.Exp);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Exp);
-        }
-
-        public static bool operator ==(QsExpCallExpCallable? left, QsExpCallExpCallable? right)
-        {
-            return EqualityComparer<QsExpCallExpCallable?>.Default.Equals(left, right);
-        }
-
-        public static bool operator !=(QsExpCallExpCallable? left, QsExpCallExpCallable? right)
-        {
-            return !(left == right);
-        }
-    }
-
     // MemberCallExp는 따로 
     public class QsCallExp : QsExp
     {
-        public QsCallExpCallable Callable { get; }
+        public QsExp Callable { get; }
 
         // TODO: params, out, 등 처리를 하려면 QsExp가 아니라 다른거여야 한다
         public ImmutableArray<QsExp> Args { get; }
 
-        public QsCallExp(QsCallExpCallable callable, ImmutableArray<QsExp> args)
+        public QsCallExp(QsExp callable, ImmutableArray<QsExp> args)
         {
             Callable = callable;
             Args = args;
         }
 
-        public QsCallExp(QsCallExpCallable callable, params QsExp[] args)
+        public QsCallExp(QsExp callable, params QsExp[] args)
         {
             Callable = callable;
             Args = ImmutableArray.Create(args);
@@ -283,7 +225,7 @@ namespace QuickSC.Syntax
         public override bool Equals(object? obj)
         {
             return obj is QsCallExp exp &&
-                   EqualityComparer<QsCallExpCallable>.Default.Equals(Callable, exp.Callable) &&
+                   EqualityComparer<QsExp>.Default.Equals(Callable, exp.Callable) &&
                    Enumerable.SequenceEqual(Args, exp.Args);
         }
 

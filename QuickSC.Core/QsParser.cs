@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC
 {
+    // 백트래킹을 하는데는 immuatable이 편하기 때문에, Immutable로 간다
     public struct QsParserContext
     {
         public QsLexerContext LexerContext { get; }

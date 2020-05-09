@@ -88,10 +88,13 @@ namespace QuickSC
             }
             else
             {
-                var testType = evaluator.EvaluateTypeExp(stmt.TestType, context);
-                if (testType == null) { yield return null; yield break; }
+                // 타입체커가 미리 계산해 놓은 TypeValue를 가져온다
+                var testTypeValue = context.GetTypeValue(stmt.TestType);
+                if (testTypeValue == null) { yield return null; yield break; }
 
-                bTestPassed = condValue!.IsType(testType); // typeValue.GetTypeId는 Type의 TypeId일것이다
+                var testTypeInst = evaluator.InstantiateType(testTypeValue, context);
+
+                bTestPassed = condValue!.IsType(testTypeInst); // typeValue.GetTypeId는 Type의 TypeId일것이다
             }
 
             if (bTestPassed)

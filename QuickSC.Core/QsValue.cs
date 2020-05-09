@@ -29,7 +29,7 @@ namespace QuickSC
         public abstract QsCallable? GetMemberFuncs(QsMemberFuncId funcId);
         public abstract QsValue? GetMemberValue(string varName);
 
-        public abstract bool IsType(QsType type);
+        public abstract bool IsType(QsTypeInst typeInst);
     }
 
     public class QsValue<T> : QsValue where T : struct
@@ -75,12 +75,12 @@ namespace QuickSC
 
     public class QsEnumValue : QsValue
     {
-        public QsEnumElemType Type { get; }
+        public QsTypeInst TypeInst { get; }
         ImmutableDictionary<string, QsValue> values;
 
-        public QsEnumValue(QsEnumElemType type, ImmutableDictionary<string, QsValue> values)
+        public QsEnumValue(QsTypeInst typeInst, ImmutableDictionary<string, QsValue> values)
         {
-            Type = type;
+            TypeInst = typeInst;
             this.values = values;
         }
 
@@ -104,7 +104,7 @@ namespace QuickSC
             foreach (var v in values)
                 newValues.Add(v.Key, v.Value.MakeCopy());
 
-            return new QsEnumValue(Type, newValues.ToImmutable());
+            return new QsEnumValue(TypeInst, newValues.ToImmutable());
         }
 
         public override bool SetValue(QsValue v)
@@ -118,29 +118,29 @@ namespace QuickSC
             return false;
         }
 
-        public override bool IsType(QsType type)
+        public override bool IsType(QsTypeInst typeInst)
         {
-            QsType? curType = Type;
+            QsTypeInst? curTypeInst = TypeInst;
 
-            while(curType != null)
+            while(curTypeInst != null)
             {
-                if (curType == type) return true;
-                curType = curType.GetBaseType();
+                if (curTypeInst == typeInst) return true;
+                curTypeInst = curTypeInst.GetBaseTypeInst();
             }
 
             return false;
         }
     }
 
-    public class QsTypeValue : QsValue
+    public class QsTypeValueBak
     {
         public QsType Type { get; private set; }
 
-        public QsTypeValue(QsType type)
+        public QsTypeValueBak(QsType type)
         {
             Type = type;
         }
-
+        
         public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
         {
             if( funcId.Kind == QsMemberFuncKind.Normal)

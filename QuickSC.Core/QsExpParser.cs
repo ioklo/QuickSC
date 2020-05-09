@@ -245,7 +245,7 @@ namespace QuickSC
                 if (callArgsResult.HasValue)
                 {
                     context = callArgsResult.Context;
-                    exp = new QsCallExp(new QsExpCallExpCallable(exp), callArgsResult.Elem);
+                    exp = new QsCallExp(exp, callArgsResult.Elem);
                     continue;
                 }
 

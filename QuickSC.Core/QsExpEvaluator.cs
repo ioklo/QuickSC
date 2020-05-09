@@ -348,63 +348,46 @@ namespace QuickSC
         }
 
         // TODO: QsFuncDecl을 직접 사용하지 않고, QsModule에서 정의한 Func을 사용해야 한다
-        private async ValueTask<QsEvalResult<QsCallable>> EvaluateCallExpCallableAsync(QsCallExpCallable callable, QsEvalContext context)
+        private async ValueTask<QsEvalResult<QsCallable>> EvaluateCallExpCallableAsync(QsExp exp, QsEvalContext context)
         {
-            // 타입 체커를 통해서 미리 계산된 func가 있는 경우,
-            if (callable is QsFuncCallExpCallable funcCallable)
+            if (exp is QsIdentifierExp idExp)
             {
-                return new QsEvalResult<QsCallable>(new QsFuncCallable(funcCallable.FuncDecl), context);
-            }
-            // TODO: 타입체커가 있으면 이 부분은 없어져야 한다
-            else if (callable is QsExpCallExpCallable expCallable)
-            {
-                if (expCallable.Exp is QsIdentifierExp idExp)
+                // 일단 idExp가 variable로 존재하는지 봐야 한다
+                if (!context.HasVar(idExp.Value))
                 {
-                    // 일단 idExp가 variable로 존재하는지 봐야 한다
-                    if (!context.HasVar(idExp.Value))
-                    {
-                        var func = context.GetFunc(idExp.Value);
-                        if (func == null)
-                            return QsEvalResult<QsCallable>.Invalid;
+                    var func = context.GetFunc(idExp.Value);
 
-                        return new QsEvalResult<QsCallable>(new QsFuncCallable(func), context);
-                    }
+                    if (func == null)
+                        return QsEvalResult<QsCallable>.Invalid;
+
+                    return new QsEvalResult<QsCallable>(new QsFuncCallable(func), context);
                 }
-
-                var expCallableResult = await EvaluateExpAsync(expCallable.Exp, context);
-                if (!expCallableResult.HasValue)
-                    return QsEvalResult<QsCallable>.Invalid;
-                context = expCallableResult.Context;
-
-                if (expCallableResult.Value is QsObjectValue objValue && objValue.Object is QsLambdaObject lambdaObj)
-                    return new QsEvalResult<QsCallable>(lambdaObj.Callable, context);
-
-                return QsEvalResult<QsCallable>.Invalid;
             }
 
-            return QsEvalResult<QsCallable>.Invalid;
+            if (!Eval(await EvaluateExpAsync(exp, context), ref context, out var expCallable))
+                return QsEvalResult<QsCallable>.Invalid;
+
+            if (expCallable! is QsObjectValue objValue && objValue.Object is QsLambdaObject lambdaObj)
+                return new QsEvalResult<QsCallable>(lambdaObj.Callable, context);
+
+            return QsEvalResult<QsCallable>.Invalid;            
         }
 
         async ValueTask<QsEvalResult<QsValue>> EvaluateCallExpAsync(QsCallExp exp, QsEvalContext context)
         {
-            var callableResult = await EvaluateCallExpCallableAsync(exp.Callable, context);
-            if (!callableResult.HasValue)
+            if (!Eval(await EvaluateCallExpCallableAsync(exp.Callable, context), ref context, out var callable))
                 return QsEvalResult<QsValue>.Invalid;
-            context = callableResult.Context;
 
-            // 
             var args = ImmutableArray.CreateBuilder<QsValue>(exp.Args.Length);
             foreach (var argExp in exp.Args)
             {
-                var argResult = await EvaluateExpAsync(argExp, context);
-                if (!argResult.HasValue)
+                if (!Eval(await EvaluateExpAsync(argExp, context), ref context, out var arg))
                     return QsEvalResult<QsValue>.Invalid;
-                context = argResult.Context;
 
-                args.Add(argResult.Value);
+                args.Add(arg!);
             }
 
-            return await evaluator.EvaluateCallableAsync(callableResult.Value, QsNullValue.Instance, args.ToImmutable(), context);
+            return await evaluator.EvaluateCallableAsync(callable!, QsNullValue.Instance, args.ToImmutable(), context);
         }
 
         QsEvalResult<QsValue> EvaluateLambdaExp(QsLambdaExp exp, QsEvalContext context)

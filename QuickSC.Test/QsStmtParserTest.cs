@@ -124,7 +124,7 @@ for (f(); g; h + g) ;
             var result = await parser.ParseForStmtAsync(context);
 
             var expected = new QsForStmt(
-                new QsExpForStmtInitializer(new QsCallExp(new QsExpCallExpCallable(new QsIdentifierExp("f")))),
+                new QsExpForStmtInitializer(new QsCallExp(new QsIdentifierExp("f"))),
                 new QsIdentifierExp("g"),
                 new QsBinaryOpExp(QsBinaryOpKind.Add, new QsIdentifierExp("h"), new QsIdentifierExp("g")),
                 QsBlankStmt.Instance);
@@ -183,7 +183,7 @@ for (f(); g; h + g) ;
                 new QsIdentifierExp("a"),
                 new QsBinaryOpExp(QsBinaryOpKind.Multiply,
                     new QsIdentifierExp("b"),
-                    new QsCallExp(new QsExpCallExpCallable(new QsIdentifierExp("c")), new QsIntLiteralExp(1)))));
+                    new QsCallExp(new QsIdentifierExp("c"), new QsIntLiteralExp(1)))));
                 
 
             Assert.Equal(expected, expResult.Elem);

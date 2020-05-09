@@ -6,20 +6,26 @@ using System.Threading.Tasks;
 
 namespace QuickSC
 {
+    // Skeleton, StaticVariable은 QsTypeInst에서 얻을 수 있게 된다
     public abstract class QsType
     {
-        public abstract QsType? GetBaseType();
-
+        // TODO: ParamTypes
+        public abstract QsTypeValue? GetBaseTypeValue();
         public abstract QsType? GetMemberType(string name);
-        public abstract QsCallable? GetMemberFuncs(string name);
-        public abstract QsValue? GetMemberValue(string name);
-    }
+        public abstract QsTypeValue? GetMemberFuncTypeValues(string name);
+        public abstract QsTypeValue? GetMemberVarTypeValue(string name);
 
+        public int GetTypeParamCount()
+        {
+            return 0; // TODO: Implement
+        }
+    }
+    
     public class QsTypeType : QsType
     {
         public static QsTypeType Instance { get; } = new QsTypeType();
 
-        public override QsType? GetBaseType() 
+        public override QsTypeValue? GetBaseTypeValue() 
         {
             // TODO: ObjectType
             return null; 
@@ -30,7 +36,7 @@ namespace QuickSC
             throw new NotImplementedException();
         }
 
-        public override QsType? GetMemberType(string name)
+        public override QsType? GetMemberTypeValue(string name)
         {
             throw new NotImplementedException();
         }
@@ -50,12 +56,12 @@ namespace QuickSC
             this.baseType = baseType;
         }
 
-        public override QsType? GetBaseType()
+        public override QsType? GetBaseTypeValue()
         {
             return baseType;
         }
 
-        public override QsType? GetMemberType(string name)
+        public override QsType? GetMemberTypeValue(string name)
         {
             return null;
         }
@@ -120,7 +126,7 @@ namespace QuickSC
             return new ValueTask<QsEvalResult<QsValue>>(new QsEvalResult<QsValue>(new QsEnumValue(elemType, values.ToImmutable()), context));
         }
 
-        public override QsType? GetMemberType(string name)
+        public override QsType? GetMemberTypeValue(string name)
         {
             if (memberTypes.TryGetValue(name, out var memberType))
                 return memberType;
@@ -147,7 +153,7 @@ namespace QuickSC
             return null;
         }
 
-        public override QsType? GetBaseType()
+        public override QsType? GetBaseTypeValue()
         {
             return null;
         }

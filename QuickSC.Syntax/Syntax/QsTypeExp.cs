@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace QuickSC.Syntax
 {
@@ -36,13 +37,15 @@ namespace QuickSC.Syntax
 
     public class QsMemberTypeExp : QsTypeExp
     {
-        public QsTypeExp Parent { get; }
+        public QsTypeExp Parent { get; }        
         public string MemberName { get; }
+        public ImmutableArray<QsTypeExp> TypeArgs { get; }
 
-        public QsMemberTypeExp(QsTypeExp parent, string memberName)
+        public QsMemberTypeExp(QsTypeExp parent, string memberName, ImmutableArray<QsTypeExp> typeArgs)
         {
             Parent = parent;
             MemberName = memberName;
+            TypeArgs = typeArgs;
         }
     }
 }

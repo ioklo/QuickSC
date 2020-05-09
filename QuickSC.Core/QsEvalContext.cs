@@ -1,5 +1,6 @@
 ﻿using QuickSC.Syntax;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 
@@ -37,9 +38,19 @@ namespace QuickSC
         public QsYieldEvalFlowControl(QsValue value) { Value = value; }
     }
 
+    public class QsEvalStaticContext
+    {
+        public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValues { get; }
+        public QsEvalStaticContext(ImmutableDictionary<QsTypeExp, QsTypeValue> typeValues)
+        {
+            TypeValues = typeValues;
+        }
+    }
+
     public struct QsEvalContext
     {
         // TODO: QsFuncDecl을 직접 사용하지 않고, QsModule에서 정의한 Func을 사용해야 한다        
+        QsEvalStaticContext staticContext;
         public ImmutableDictionary<string, QsFuncDecl> Funcs { get; }
         public ImmutableDictionary<string, QsValue> GlobalVars { get; }
         public ImmutableDictionary<string, QsValue> Vars { get; }
@@ -87,7 +98,7 @@ namespace QuickSC
         {
             return new QsEvalContext(Funcs, GlobalVars, Vars, newFlowControl, Tasks, ThisValue, bGlobalScope);
         }
-
+        
         public QsEvalContext SetTasks(ImmutableArray<Task> newTasks)
         {
             return new QsEvalContext(Funcs, GlobalVars, Vars, FlowControl, newTasks, ThisValue, bGlobalScope);
@@ -130,11 +141,10 @@ namespace QuickSC
             return new QsEvalContext(Funcs, GlobalVars, Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
         }
 
-        public QsType? GetType(string typeName)
+        public QsTypeValue? GetTypeValue(QsTypeExp typeExp)
         {
-            if (GlobalVars.TryGetValue(typeName, out var value))
-                if (value is QsTypeValue typeValue)
-                    return typeValue.Type;
+            if (staticContext.TypeValues.TryGetValue(typeExp, out var typeValue))
+                return typeValue;
 
             return null;
         }
@@ -153,7 +163,7 @@ namespace QuickSC
 
         public bool HasVar(string varName)
         {
-            return Vars.ContainsKey(varName);
+            return Vars.ContainsKey(varName) || GlobalVars.ContainsKey(varName);
         }
 
         public QsFuncDecl? GetFunc(string funcName)
