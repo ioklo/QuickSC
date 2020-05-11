@@ -65,7 +65,10 @@ namespace QuickSC
                     value = QsNullValue.Instance;
                 }
 
-                context = context.SetValue(elem.VarName, value);
+                if (context.bGlobalScope)
+                    context = context.SetGlobalValue(elem.VarName, value);
+                else
+                    context = context.SetValue(elem.VarName, value);
             }
 
             return context;
@@ -73,6 +76,9 @@ namespace QuickSC
 
         internal async IAsyncEnumerable<QsEvalContext?> EvaluateIfStmtAsync(QsIfStmt stmt, QsEvalContext context)
         {
+            var bPrevGlobalScope = context.bGlobalScope;
+            context = context.SetGlobalScope(false);
+
             if (!Eval(await expEvaluator.EvaluateExpAsync(stmt.Cond, context), ref context, out var condValue))
             { 
                 yield return null; yield break; 
@@ -136,13 +142,14 @@ namespace QuickSC
                     }
                 }
             }
-
-            yield return context;
+            
+            yield return context.SetGlobalScope(bPrevGlobalScope);
         }
 
         internal async IAsyncEnumerable<QsEvalContext?> EvaluateForStmtAsync(QsForStmt forStmt, QsEvalContext context)
         {
-            var prevVars = context.Vars;
+            var (prevVars, bPrevGlobalScope) = (context.Vars, context.bGlobalScope);
+            context = context.SetGlobalScope(false);
 
             switch (forStmt.Initializer)
             {
@@ -238,7 +245,7 @@ namespace QuickSC
                 }
             }
 
-            yield return context.SetVars(prevVars);
+            yield return context.SetVars(prevVars).SetGlobalScope(bPrevGlobalScope);
         }
 
         internal QsEvalContext? EvaluateContinueStmt(QsContinueStmt continueStmt, QsEvalContext context)
@@ -272,7 +279,8 @@ namespace QuickSC
 
         internal async IAsyncEnumerable<QsEvalContext?> EvaluateBlockStmtAsync(QsBlockStmt blockStmt, QsEvalContext context)
         {
-            var prevVars = context.Vars;
+            var (prevVars, bPrevGlobalScope) = (context.Vars, context.bGlobalScope);
+            context = context.SetGlobalScope(false);
 
             foreach (var stmt in blockStmt.Stmts)
             {
@@ -298,7 +306,7 @@ namespace QuickSC
                 }
             }
 
-            yield return context.SetVars(prevVars);
+            yield return context.SetVars(prevVars).SetGlobalScope(bPrevGlobalScope);
         }
 
         internal async ValueTask<QsEvalContext?> EvaluateExpStmtAsync(QsExpStmt expStmt, QsEvalContext context)
@@ -321,6 +329,10 @@ namespace QuickSC
                 var kind = needCapture.Value;
 
                 var origValue = context.GetValue(name);
+
+                if (origValue == null)
+                    origValue = context.GetGlobalValue(name);
+
                 if (origValue == null) return null;
 
                 QsValue value;
@@ -337,8 +349,8 @@ namespace QuickSC
                 captures.Add(name, value);
             }
 
-            var newContext = QsEvalContext.Make();
-            newContext = newContext.SetVars(captures.ToImmutable());
+            var newContext = QsEvalContext.Make(context.StaticContext);
+            newContext = newContext.SetVars(captures.ToImmutable()).SetGlobalScope(false);
 
             var task = Task.Run(async () =>
             {
@@ -354,9 +366,8 @@ namespace QuickSC
 
         async IAsyncEnumerable<QsEvalContext?> EvaluateAwaitStmtAsync(QsAwaitStmt stmt, QsEvalContext context)
         {
-            var prevTasks = context.Tasks;
-            var prevVars = context.Vars;
-            context = context.SetTasks(ImmutableArray<Task>.Empty);
+            var (prevTasks, prevVars, bPrevGlobalScope) = (context.Tasks, context.Vars, context.bGlobalScope);
+            context = context.SetTasks(ImmutableArray<Task>.Empty).SetGlobalScope(false);
 
             await foreach (var result in EvaluateStmtAsync(stmt.Body, context))
             {
@@ -376,7 +387,7 @@ namespace QuickSC
 
             await Task.WhenAll(context.Tasks.ToArray());
 
-            yield return context.SetTasks(prevTasks).SetVars(prevVars);
+            yield return context.SetTasks(prevTasks).SetVars(prevVars).SetGlobalScope(bPrevGlobalScope);
         }
 
         internal QsEvalContext? EvaluateAsyncStmt(QsAsyncStmt asyncStmt, QsEvalContext context)
@@ -391,7 +402,12 @@ namespace QuickSC
                 var kind = needCapture.Value;
 
                 var origValue = context.GetValue(name);
-                if (origValue == null) return null;
+
+                if (origValue == null)
+                    origValue = context.GetGlobalValue(name);
+
+                if (origValue == null)
+                    return null;
 
                 QsValue value;
                 if (kind == QsCaptureContextCaptureKind.Copy)
@@ -407,8 +423,8 @@ namespace QuickSC
                 captures.Add(name, value);
             }
 
-            var newContext = QsEvalContext.Make();
-            newContext = newContext.SetVars(captures.ToImmutable());
+            var newContext = QsEvalContext.Make(context.StaticContext);
+            newContext = newContext.SetVars(captures.ToImmutable()).SetGlobalScope(false);
 
             Func<Task> asyncFunc = async () =>
             {
@@ -425,7 +441,8 @@ namespace QuickSC
 
         internal async IAsyncEnumerable<QsEvalContext?> EvaluateForeachStmtAsync(QsForeachStmt foreachStmt, QsEvalContext context)
         {
-            var prevVars = context.Vars;
+            var (prevVars, bPrevGlobalScope) = (context.Vars, context.bGlobalScope);
+            context = context.SetGlobalScope(false);
 
             var expResult = await expEvaluator.EvaluateExpAsync(foreachStmt.Obj, context);
             if (!expResult.HasValue) { yield return null; yield break; }
@@ -498,8 +515,8 @@ namespace QuickSC
                     Debug.Assert(context.FlowControl == QsNoneEvalFlowControl.Instance);
                 }
             }
-
-            yield return context.SetVars(prevVars);
+            
+            yield return context.SetVars(prevVars).SetGlobalScope(bPrevGlobalScope);
         }
 
         async IAsyncEnumerable<QsEvalContext?> EvaluateYieldStmtAsync(QsYieldStmt yieldStmt, QsEvalContext context)

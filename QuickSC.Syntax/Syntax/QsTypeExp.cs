@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace QuickSC.Syntax
 {
@@ -11,17 +12,20 @@ namespace QuickSC.Syntax
     public class QsIdTypeExp : QsTypeExp
     {
         public string Name { get; }
-        public QsIdTypeExp(string name) { Name = name; }
+        public ImmutableArray<QsTypeExp> TypeArgs { get; }
+        public QsIdTypeExp(string name, ImmutableArray<QsTypeExp> typeArgs) { Name = name; TypeArgs = typeArgs; }
+        public QsIdTypeExp(string name, params QsTypeExp[] typeArgs) { Name = name; TypeArgs = ImmutableArray.Create(typeArgs); }
 
         public override bool Equals(object? obj)
         {
             return obj is QsIdTypeExp exp &&
-                   Name == exp.Name;
+                   Name == exp.Name &&
+                   Enumerable.SequenceEqual(TypeArgs, exp.TypeArgs);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Name);
+            return HashCode.Combine(Name, TypeArgs);
         }
 
         public static bool operator ==(QsIdTypeExp? left, QsIdTypeExp? right)

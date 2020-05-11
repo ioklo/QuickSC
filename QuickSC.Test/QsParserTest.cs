@@ -67,6 +67,7 @@ enum X
             var enumDecl = await parser.ParseEnumDeclAsync(context);
 
             var expected = new QsEnumDecl("X",
+                ImmutableArray<string>.Empty,
                 new QsEnumDeclElement("First"),
                 new QsEnumDeclElement("Second", new QsTypeAndName(new QsIdTypeExp("int"), "i")),
                 new QsEnumDeclElement("Third"));

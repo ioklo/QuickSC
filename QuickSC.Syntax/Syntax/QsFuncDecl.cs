@@ -16,25 +16,34 @@ namespace QuickSC.Syntax
         public QsFuncKind FuncKind { get; }
         public QsTypeExp RetType { get; }
         public string Name { get; }
+        public ImmutableArray<string> TypeParams { get; }
         public ImmutableArray<QsTypeAndName> Params { get; }
         public int? VariadicParamIndex { get; } 
         public QsBlockStmt Body { get; }
 
-        public QsFuncDecl(QsFuncKind funcKind, QsTypeExp retType, string name, ImmutableArray<QsTypeAndName> parameters, int? variadicParamIndex, QsBlockStmt body)
+        public QsFuncDecl(
+            QsFuncKind funcKind, 
+            QsTypeExp retType, string name, ImmutableArray<string> typeParams, 
+            ImmutableArray<QsTypeAndName> parameters, int? variadicParamIndex, QsBlockStmt body)
         {
             FuncKind = funcKind;
             RetType = retType;
             Name = name;
+            TypeParams = typeParams;
             Params = parameters;
             VariadicParamIndex = variadicParamIndex;
             Body = body;
         }
 
-        public QsFuncDecl(QsFuncKind funcKind, QsTypeExp retType, string name, int? variadicParamIndex, QsBlockStmt body, params QsTypeAndName[] parameters)
+        public QsFuncDecl(
+            QsFuncKind funcKind, 
+            QsTypeExp retType, string name, ImmutableArray<string> typeParams, 
+            int? variadicParamIndex, QsBlockStmt body, params QsTypeAndName[] parameters)
         {
             FuncKind = funcKind;
             RetType = retType;
             Name = name;
+            TypeParams = typeParams;
             Params = ImmutableArray.Create(parameters);
             VariadicParamIndex = variadicParamIndex;
             Body = body;
@@ -46,6 +55,7 @@ namespace QuickSC.Syntax
                    FuncKind == decl.FuncKind &&
                    EqualityComparer<QsTypeExp>.Default.Equals(RetType, decl.RetType) &&
                    Name == decl.Name &&
+                   Enumerable.SequenceEqual(TypeParams, decl.TypeParams) &&
                    Enumerable.SequenceEqual(Params, decl.Params) &&
                    VariadicParamIndex == decl.VariadicParamIndex &&
                    EqualityComparer<QsBlockStmt>.Default.Equals(Body, decl.Body);

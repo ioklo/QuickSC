@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace QuickSC
@@ -9,124 +10,84 @@ namespace QuickSC
     // Skeleton, StaticVariable은 QsTypeInst에서 얻을 수 있게 된다
     public abstract class QsType
     {
-        // TODO: ParamTypes
+        public QsTypeId TypeId { get;  }
+        public QsType(QsTypeId typeId)
+        {
+            TypeId = typeId;
+        }
+        
+        public abstract ImmutableArray<string> GetTypeParams();
         public abstract QsTypeValue? GetBaseTypeValue();
         public abstract QsType? GetMemberType(string name);
-        public abstract QsTypeValue? GetMemberFuncTypeValues(string name);
-        public abstract QsTypeValue? GetMemberVarTypeValue(string name);
-
-        public int GetTypeParamCount()
-        {
-            return 0; // TODO: Implement
-        }
-    }
-    
-    public class QsTypeType : QsType
-    {
-        public static QsTypeType Instance { get; } = new QsTypeType();
-
-        public override QsTypeValue? GetBaseTypeValue() 
-        {
-            // TODO: ObjectType
-            return null; 
-        }
-
-        public override QsCallable? GetMemberFuncs(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override QsType? GetMemberTypeValue(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override QsValue? GetMemberValue(string name)
-        {
-            throw new NotImplementedException();
-        }
+        public abstract QsFuncType? GetMemberFuncType(QsMemberFuncId memberFuncId);
+        public abstract QsTypeValue? GetMemberVarTypeValue(string name);        
     }
 
-    public class QsEnumElemType : QsType
+    public struct QsDefaultTypeData
     {
-        QsEnumType baseType;
+        public QsTypeValue? BaseTypeValue { get; }
+        public ImmutableDictionary<string, QsType> MemberTypes { get; }
+        public ImmutableDictionary<QsMemberFuncId, QsFuncType> MemberFuncTypes { get; }
+        public ImmutableDictionary<string, QsTypeValue> MemberVarTypeValues { get; }
 
-        public QsEnumElemType(QsEnumType baseType)
+        public QsDefaultTypeData(
+            QsTypeValue? baseTypeValue,
+            ImmutableDictionary<string, QsType> memberTypes,
+            ImmutableDictionary<QsMemberFuncId, QsFuncType> memberFuncTypes,
+            ImmutableDictionary<string, QsTypeValue> memberVarTypeValues)
         {
-            this.baseType = baseType;
+            BaseTypeValue = baseTypeValue;
+            MemberTypes = memberTypes;
+            MemberFuncTypes = memberFuncTypes;
+            MemberVarTypeValues = memberVarTypeValues;
         }
 
-        public override QsType? GetBaseTypeValue()
+        public void Deconstruct(
+            out QsTypeValue? baseTypeValue,
+            out ImmutableDictionary<string, QsType> memberTypes,
+            out ImmutableDictionary<QsMemberFuncId, QsFuncType> memberFuncTypes,
+            out ImmutableDictionary<string, QsTypeValue> memberVarTypeValues)
         {
-            return baseType;
+            baseTypeValue = BaseTypeValue;
+            memberTypes = MemberTypes;
+            memberFuncTypes = MemberFuncTypes;
+            memberVarTypeValues = MemberVarTypeValues;
         }
+    };
 
-        public override QsType? GetMemberTypeValue(string name)
-        {
-            return null;
-        }
-
-        public override QsCallable? GetMemberFuncs(string name)
-        {
-            return null;
-        }
-
-        public override QsValue? GetMemberValue(string name)
-        {
-            return null;
-        }
-    }
-
-    // enum E { F, S(int i); } 
-    // => type E
-    // => type E.F : E (baseType E)
-    // => type E.S : E { int i; } (baseType E)
-    public class QsEnumType : QsType
+    public class QsDefaultType : QsType
     {
-        Dictionary<string, QsEnumElemType> memberTypes;
-        Dictionary<string, QsNativeCallable> memberFuncs;
-        Dictionary<string, QsValue> memberValues;
+        ImmutableArray<string> typeParams;
+        QsTypeValue? baseTypeValue;
+        ImmutableDictionary<string, QsType> memberTypes;
+        ImmutableDictionary<QsMemberFuncId, QsFuncType> memberFuncTypes;
+        ImmutableDictionary<string, QsTypeValue> memberVarTypeValues;
 
-        public QsEnumType(QsEnumDecl enumDecl)
+        // 거의 모든 TypeValue에서 thisTypeValue를 쓰기 때문에 lazy하게 선언해야 한다
+        public QsDefaultType(QsTypeId typeId, QsTypeValue? outer, ImmutableArray<string> typeParams, Func<QsNormalTypeValue, QsDefaultTypeData> Initializer)
+            : base(typeId)
         {
-            memberTypes = new Dictionary<string, QsEnumElemType>();
-            memberFuncs = new Dictionary<string, QsNativeCallable>();
-            memberValues = new Dictionary<string, QsValue>();
+            this.typeParams = typeParams;
 
-            foreach (var elem in enumDecl.Elems)
-            {
-                var memberType = new QsEnumElemType(this);
-                memberTypes.Add(elem.Name, memberType);
+            var thisTypeValue = new QsNormalTypeValue(
+                outer,
+                typeId,
+                typeParams.Select(typeParam => (QsTypeValue)new QsTypeVarTypeValue(this, typeParam)).ToImmutableArray());
 
-                if (0 < elem.Params.Length)
-                {
-                    var callable = new QsNativeCallable((thisValue, args, context) => NativeConstructor(elem, memberType, thisValue, args, context));
-                    memberFuncs.Add(elem.Name, callable);
-                }
-                else
-                {
-                    var value = new QsEnumValue(memberType, ImmutableDictionary<string, QsValue>.Empty);
-                    memberValues.Add(elem.Name, value);
-                }
-            }
+            (baseTypeValue, memberTypes, memberFuncTypes, memberVarTypeValues) = Initializer(thisTypeValue);
         }
 
-        static ValueTask<QsEvalResult<QsValue>> NativeConstructor(
-            QsEnumDeclElement elem, 
-            QsEnumElemType elemType, 
-            QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)
+        public override ImmutableArray<string> GetTypeParams()
         {
-            if (elem.Params.Length != args.Length)
-                return new ValueTask<QsEvalResult<QsValue>>(QsEvalResult<QsValue>.Invalid);
-
-            var values = ImmutableDictionary.CreateBuilder<string, QsValue>();
-            for (int i = 0; i < elem.Params.Length; i++)
-                values.Add(elem.Params[i].Name, args[i]);
-
-            return new ValueTask<QsEvalResult<QsValue>>(new QsEvalResult<QsValue>(new QsEnumValue(elemType, values.ToImmutable()), context));
+            return typeParams;
         }
 
-        public override QsType? GetMemberTypeValue(string name)
+        public override QsTypeValue? GetBaseTypeValue()
+        {
+            return baseTypeValue;
+        }
+
+        public override QsType? GetMemberType(string name)
         {
             if (memberTypes.TryGetValue(name, out var memberType))
                 return memberType;
@@ -134,29 +95,65 @@ namespace QuickSC
             return null;
         }
 
-        public override QsCallable? GetMemberFuncs(string funcName)
+        public override QsFuncType? GetMemberFuncType(QsMemberFuncId memberFuncId)
         {
-            if (memberFuncs.TryGetValue(funcName, out var callable))
-                return callable;
+            if (memberFuncTypes.TryGetValue(memberFuncId, out var funcType))
+                return funcType;
 
             return null;
         }
 
-        public override QsValue? GetMemberValue(string varName)
+        public override QsTypeValue? GetMemberVarTypeValue(string varName)
         {
-            if (memberValues.TryGetValue(varName, out var value))
+            if (memberVarTypeValues.TryGetValue(varName, out var value))
                 return value;
 
-            if (memberTypes.TryGetValue(varName, out var type))
-                return new QsTypeValue(type);
-
-            return null;
-        }
-
-        public override QsType? GetBaseTypeValue()
-        {
             return null;
         }
     }
+
+    // 'Func' 객체에 대한 TypeValue가 아니라 호출가능한 값의 타입이다
+    // void Func(int x) : int => void
+    // 
+    // class X<T>
+    //     List<T> Func(); -> (void => (null, List<>, [T]))
+    //     List<T> Func<U>(U u);     (U => (null, List<>, [T]))
+    // Runtime 'Func'에 대한 내용이 아니라, 호출이 가능한 함수에 대한 내용이다 (lambda일수도 있고)
+    public class QsFuncType : QsType
+    {
+        public bool bThisCall { get; } // thiscall이라면 첫번째 ArgType은 this type이다
+        public ImmutableArray<string> TypeParams { get; }
+        public QsTypeValue RetType { get; }
+        public ImmutableArray<QsTypeValue> ArgTypes { get; }
+
+        public QsFuncType(bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retType, ImmutableArray<QsTypeValue> argTypes)
+        {
+            this.bThisCall = bThisCall;
+            TypeParams = typeParams;
+            RetType = retType;
+            ArgTypes = argTypes;
+        }
+
+        public QsFuncType(bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retType, params QsTypeValue[] argTypes)
+        {
+            this.bThisCall = bThisCall;
+            TypeParams = typeParams;
+            RetType = retType;
+            ArgTypes = ImmutableArray.Create(argTypes);
+        }
+
+        public override ImmutableArray<string> GetTypeParams() => ImmutableArray<string>.Empty;
+        public override QsTypeValue? GetBaseTypeValue()
+        {
+            // TODO: Runtime 'Func<>' 이어야 한다
+            throw new NotImplementedException();
+        }
+
+        public override QsType? GetMemberType(string name) => null;
+        public override QsFuncType? GetMemberFuncType(QsMemberFuncId memberFuncId) => null;
+        public override QsTypeValue? GetMemberVarTypeValue(string name) => null;
+        
+    }        
+    
 }
 

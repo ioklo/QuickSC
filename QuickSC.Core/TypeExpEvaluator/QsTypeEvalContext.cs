@@ -1,25 +1,37 @@
-﻿using System;
+﻿using QuickSC.Syntax;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
 namespace QuickSC.TypeExpEvaluator
 {
-    class QsTypeEvalContext
+    public class QsTypeEvalContext
     {
-        ImmutableDictionary<string, QsTypeValue> types;
+        public ImmutableDictionary<QsTypeId, QsTypeSkeleton> TypeSkeletons { get; }
+        public ImmutableDictionary<(string Name, int TypeParamCount), QsTypeSkeleton> GlobalTypeSkeletons { get; }
+        public ImmutableDictionary<object, QsTypeId> TypeIdsByTypeDecl { get; } // TODO: 현재 안쓰인다
 
-        public QsTypeEvalContext(ImmutableDictionary<string, QsTypeValue> types)
+        public Dictionary<QsTypeExp, QsTypeValue> TypeExpTypeValues { get; }
+        public ImmutableDictionary<string, QsTypeValue> TypeEnv { get; set; }
+        public List<(object obj, string message)> Errors { get; }
+
+        public QsTypeEvalContext(
+            ImmutableDictionary<QsTypeId, QsTypeSkeleton> typeSkeletons,
+            ImmutableDictionary<(string Name, int TypeParamCount), QsTypeSkeleton> globalTypeSkeletons,
+            ImmutableDictionary<object, QsTypeId> typeIdsByTypeDecl)
         {
-            this.types = types;
+            TypeSkeletons = typeSkeletons;
+            GlobalTypeSkeletons = globalTypeSkeletons;
+            TypeIdsByTypeDecl = typeIdsByTypeDecl;
+            TypeExpTypeValues = new Dictionary<QsTypeExp, QsTypeValue>();
+            TypeEnv = ImmutableDictionary<string, QsTypeValue>.Empty;
+            Errors = new List<(object obj, string message)>();
         }
 
-        public QsTypeValue? GetTypeValue(string name)
+        public void UpdateTypeVar(string name, QsTypeValue typeValue)
         {
-            if (types.TryGetValue(name, out var type))
-                return type;
-
-            return null;
+            TypeEnv = TypeEnv.SetItem(name, typeValue);
         }
     }
 }

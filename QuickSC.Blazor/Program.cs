@@ -8,6 +8,8 @@ using Microsoft.JSInterop;
 using System.IO;
 using System.Collections.Immutable;
 using System.Threading;
+using QuickSC.StaticAnalyzer;
+using QuickSC.TypeExpEvaluator;
 
 namespace QuickSC.Blazor
 {
@@ -86,10 +88,25 @@ namespace QuickSC.Blazor
                     return false;
                 }
 
-                var demoCmdProvider = new QsDemoCommandProvider();
+                var typeValueFactory = new QsTypeValueFactory();
+                var typeExpEvaluator = new QsTypeExpEvaluator();
+                
+                var analyzer = new QsAnalyzer(typeValueFactory, typeExpEvaluator);
+                var analyzerContext = new QsAnalyzerContext();
+                analyzer.AnalyzeScript(scriptResult.Elem, analyzerContext);
+
+                if (analyzerContext.HasError())
+                {
+                    await WriteAsync("에러 (타입 체킹 실패)"); // 다들 아는 단어로
+                    return false;
+                }                
+                
+
+                var demoCmdProvider = new QsDemoCommandProvider();                
 
                 var evaluator = new QsEvaluator(demoCmdProvider);
-                var evalContext = QsEvalContext.Make();
+                var evalContext = QsEvalContext.Make(new QsEvalStaticContext(analyzerContext.TypeExpTypeValues.ToImmutableDictionary()));
+
                 var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);
                 if (newEvalContext == null)
                 {

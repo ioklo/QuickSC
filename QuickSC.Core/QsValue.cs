@@ -18,7 +18,6 @@ namespace QuickSC
     // { captures..., Invoke: func } 
     // () => { }
 
-
     // runtime placeholder
     public abstract class QsValue
     {
@@ -66,7 +65,7 @@ namespace QuickSC
             return null;
         }
 
-        public override bool IsType(QsType type)
+        public override bool IsType(QsTypeInst typeInst)
         {
             // struct에서  is 류가 사용가능하게 해야할 수 도 있다.
             return false;
@@ -131,50 +130,6 @@ namespace QuickSC
             return false;
         }
     }
-
-    public class QsTypeValueBak
-    {
-        public QsType Type { get; private set; }
-
-        public QsTypeValueBak(QsType type)
-        {
-            Type = type;
-        }
-        
-        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
-        {
-            if( funcId.Kind == QsMemberFuncKind.Normal)
-                return Type.GetMemberFuncs(funcId.Name);
-
-            return null;
-        }
-
-        public override QsValue? GetMemberValue(string varName)
-        {
-            return Type.GetMemberValue(varName);
-        }
-
-        public sealed override bool IsType(QsType type)
-        {
-            return QsTypeType.Instance == type;
-        }
-
-        public override QsValue MakeCopy()
-        {
-            return new QsTypeValue(Type);
-        }
-
-        public override bool SetValue(QsValue v)
-        {
-            if (v is QsTypeValue tv)
-            {
-                Type = tv.Type;
-                return true;
-            }
-
-            return false;
-        }
-    }
     
     public class QsNullValue : QsValue
     {
@@ -201,7 +156,7 @@ namespace QuickSC
             throw new InvalidOperationException();
         }
 
-        public override bool IsType(QsType type)
+        public override bool IsType(QsTypeInst type)
         {
             return false;
         }
@@ -256,7 +211,7 @@ namespace QuickSC
             return false;
         }
 
-        public override bool IsType(QsType type)
+        public override bool IsType(QsTypeInst type)
         {
             throw new NotImplementedException();
         }

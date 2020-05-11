@@ -21,7 +21,7 @@ namespace QuickSC
     public struct QsResult<TValue, TContext>
     {
         public static QsResult<TValue, TContext> Invalid() { throw new NotImplementedException(); }
-        public static QsResult<TValue, TContext> Result(TValue value, TContext context)
+        public static QsResult<TValue, TContext> Result(TValue value, TContext context) 
         {
             return new QsResult<TValue, TContext>(value, context);
         }

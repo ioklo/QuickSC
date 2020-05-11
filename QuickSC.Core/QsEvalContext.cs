@@ -47,10 +47,11 @@ namespace QuickSC
         }
     }
 
+    // TODO: EvalContext는 백트래킹을 할 것이 아니기 때문에 mutable로 바꿀 수 있을것 같다
     public struct QsEvalContext
     {
         // TODO: QsFuncDecl을 직접 사용하지 않고, QsModule에서 정의한 Func을 사용해야 한다        
-        QsEvalStaticContext staticContext;
+        public QsEvalStaticContext StaticContext { get; }
         public ImmutableDictionary<string, QsFuncDecl> Funcs { get; }
         public ImmutableDictionary<string, QsValue> GlobalVars { get; }
         public ImmutableDictionary<string, QsValue> Vars { get; }
@@ -59,9 +60,10 @@ namespace QuickSC
         public QsValue ThisValue { get; }
         public bool bGlobalScope { get; }
 
-        public static QsEvalContext Make()
+        public static QsEvalContext Make(QsEvalStaticContext StaticContext)
         {
             return new QsEvalContext(
+                StaticContext,
                 ImmutableDictionary<string, QsFuncDecl>.Empty,
                 ImmutableDictionary<string, QsValue>.Empty, 
                 ImmutableDictionary<string, QsValue>.Empty, 
@@ -72,6 +74,7 @@ namespace QuickSC
         }
 
         private QsEvalContext(
+            QsEvalStaticContext StaticContext,
             ImmutableDictionary<string, QsFuncDecl> funcs,
             ImmutableDictionary<string, QsValue> globalVars, 
             ImmutableDictionary<string, QsValue> vars, 
@@ -80,6 +83,7 @@ namespace QuickSC
             QsValue thisValue,
             bool bGlobalScope)
         {
+            this.StaticContext = StaticContext;
             this.Funcs = funcs;
             this.GlobalVars = globalVars;
             this.Vars = vars;
@@ -91,59 +95,57 @@ namespace QuickSC
 
         public QsEvalContext SetVars(ImmutableDictionary<string, QsValue> newVars)
         {
-            return new QsEvalContext(Funcs, GlobalVars, newVars, FlowControl, Tasks, ThisValue, bGlobalScope);
+            return new QsEvalContext(StaticContext, Funcs, GlobalVars, newVars, FlowControl, Tasks, ThisValue, bGlobalScope);
         }
 
         public QsEvalContext SetFlowControl(QsEvalFlowControl newFlowControl)
         {
-            return new QsEvalContext(Funcs, GlobalVars, Vars, newFlowControl, Tasks, ThisValue, bGlobalScope);
+            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars, newFlowControl, Tasks, ThisValue, bGlobalScope);
         }
         
         public QsEvalContext SetTasks(ImmutableArray<Task> newTasks)
         {
-            return new QsEvalContext(Funcs, GlobalVars, Vars, FlowControl, newTasks, ThisValue, bGlobalScope);
+            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars, FlowControl, newTasks, ThisValue, bGlobalScope);
         }
 
         public QsEvalContext SetThisValue(QsValue newThisValue)
         {
-            return new QsEvalContext(Funcs, GlobalVars, Vars, FlowControl, Tasks, newThisValue, bGlobalScope);
+            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars, FlowControl, Tasks, newThisValue, bGlobalScope);
+        }
+
+        public QsEvalContext SetGlobalValue(string varName, QsValue value)
+        {
+            return new QsEvalContext(StaticContext, Funcs, GlobalVars.SetItem(varName, value), Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
         }
 
         public QsEvalContext SetValue(string varName, QsValue value)
         {
-            if(bGlobalScope)
-            {
-                return new QsEvalContext(Funcs, GlobalVars.SetItem(varName, value), Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
-            }
-            else
-            {
-                return new QsEvalContext(Funcs, GlobalVars, Vars.SetItem(varName, value), FlowControl, Tasks, ThisValue, bGlobalScope);
-            }
+            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars.SetItem(varName, value), FlowControl, Tasks, ThisValue, bGlobalScope);
         }
         
         public QsEvalContext AddFunc(QsFuncDecl funcDecl)
         {
-            return new QsEvalContext(Funcs.SetItem(funcDecl.Name, funcDecl), GlobalVars, Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
+            return new QsEvalContext(StaticContext, Funcs.SetItem(funcDecl.Name, funcDecl), GlobalVars, Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
         }
 
         public QsEvalContext AddGlobalVar(string name, QsValue value)
         {
-            return new QsEvalContext(Funcs, GlobalVars.Add(name, value), Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
+            return new QsEvalContext(StaticContext, Funcs, GlobalVars.Add(name, value), Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
         }
 
         public QsEvalContext AddTask(Task task)
         {
-            return new QsEvalContext(Funcs, GlobalVars, Vars, FlowControl, Tasks.Add(task), ThisValue, bGlobalScope);
+            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars, FlowControl, Tasks.Add(task), ThisValue, bGlobalScope);
         }
 
         public QsEvalContext SetGlobalScope(bool bGlobalScope)
         {
-            return new QsEvalContext(Funcs, GlobalVars, Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
+            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
         }
 
         public QsTypeValue? GetTypeValue(QsTypeExp typeExp)
         {
-            if (staticContext.TypeValues.TryGetValue(typeExp, out var typeValue))
+            if (StaticContext.TypeValues.TryGetValue(typeExp, out var typeValue))
                 return typeValue;
 
             return null;
@@ -151,11 +153,15 @@ namespace QuickSC
 
         public QsValue? GetValue(string varName)
         {
-            QsValue retValue;
-            if (Vars.TryGetValue(varName, out retValue))
+            if (Vars.TryGetValue(varName, out var retValue))
                 return retValue;
 
-            if (GlobalVars.TryGetValue(varName, out retValue))
+            return null;
+        }
+
+        public QsValue? GetGlobalValue(string varName)
+        {
+            if (GlobalVars.TryGetValue(varName, out var retValue))
                 return retValue;
 
             return null;

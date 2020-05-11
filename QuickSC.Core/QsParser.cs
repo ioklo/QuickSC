@@ -142,7 +142,7 @@ namespace QuickSC
                         return QsParseResult<QsTypeExp>.Invalid;
 
                     // TODO: typeApp(T.S<>) 처리도 추가
-                    exp = new QsMemberTypeExp(exp, memberName!.Value);
+                    exp = new QsMemberTypeExp(exp, memberName!.Value, ImmutableArray<QsTypeExp>.Empty);
                     continue;
                 }
 
@@ -276,7 +276,7 @@ namespace QuickSC
                 elements.Add(new QsEnumDeclElement(elemName!.Value, parameters.ToImmutable()));
             }
 
-            return new QsParseResult<QsEnumDecl>(new QsEnumDecl(enumName!.Value, elements.ToImmutable()), context);
+            return new QsParseResult<QsEnumDecl>(new QsEnumDecl(enumName!.Value, ImmutableArray<string>.Empty, elements.ToImmutable()), context);
         }
 
         async ValueTask<QsParseResult<QsScriptElement>> ParseScriptElementAsync(QsParserContext context)

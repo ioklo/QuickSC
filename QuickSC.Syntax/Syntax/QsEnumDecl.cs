@@ -49,16 +49,19 @@ namespace QuickSC.Syntax
     public class QsEnumDecl
     {
         public string Name { get; }
+        public ImmutableArray<string> TypeParams { get; }
         public ImmutableArray<QsEnumDeclElement> Elems { get; }
-        public QsEnumDecl(string name, ImmutableArray<QsEnumDeclElement> elems)
+        public QsEnumDecl(string name, ImmutableArray<string> typeParams, ImmutableArray<QsEnumDeclElement> elems)
         {
             Name = name;
+            TypeParams = typeParams;
             Elems = elems;
         }
 
-        public QsEnumDecl(string name, params QsEnumDeclElement[] elems)
+        public QsEnumDecl(string name, ImmutableArray<string> typeParams, params QsEnumDeclElement[] elems)
         {
             Name = name;
+            TypeParams = typeParams;
             Elems = ImmutableArray.Create(elems);
         }
 
@@ -66,6 +69,7 @@ namespace QuickSC.Syntax
         {
             return obj is QsEnumDecl decl &&
                    Name == decl.Name &&
+                   Enumerable.SequenceEqual(TypeParams, decl.TypeParams) && 
                    Enumerable.SequenceEqual(Elems, decl.Elems);
         }
 

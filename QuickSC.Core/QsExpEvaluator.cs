@@ -25,11 +25,12 @@ namespace QuickSC
         {
             var result = context.GetValue(idExp.Value);
 
-            // 없는 경우,
+            if (result == null)
+                result = context.GetGlobalValue(idExp.Value);
+
             if (result == null)
                 return QsEvalResult<QsValue>.Invalid;
 
-            // 초기화 되지 않은 경우는 QsNullValue를 머금고 리턴될 것이다
             return new QsEvalResult<QsValue>(result, context);
         }
 
