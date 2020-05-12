@@ -8,20 +8,18 @@ using System.Threading.Tasks;
 namespace QuickSC
 {
     // Skeleton, StaticVariable은 QsTypeInst에서 얻을 수 있게 된다
-    //public abstract class QsType
-    //{
-    //    public QsTypeId TypeId { get;  }
-    //    public QsType(QsTypeId typeId)
-    //    {
-    //        TypeId = typeId;
-    //    }
-        
-    //    public abstract ImmutableArray<string> GetTypeParams();
-    //    public abstract QsTypeValue? GetBaseTypeValue();
-    //    public abstract QsType? GetMemberType(string name);
-    //    public abstract QsFuncType? GetMemberFuncType(QsMemberFuncId memberFuncId);
-    //    public abstract QsTypeValue? GetMemberVarTypeValue(string name);        
-    //}
+    public abstract class QsType
+    {
+        public QsTypeId TypeId { get; }
+        public QsType(QsTypeId typeId) { TypeId = typeId; }
+
+        public abstract string GetName();
+        public abstract ImmutableArray<string> GetTypeParams();
+        public abstract QsTypeValue? GetBaseTypeValue();
+        public abstract QsTypeId? GetMemberTypeId(string name);
+        public abstract QsFuncId? GetMemberFuncId(QsMemberFuncId memberFuncId);
+        public abstract QsTypeValue? GetMemberVarTypeValue(string name);
+    }
 
     //public struct QsDefaultTypeData
     //{
@@ -55,62 +53,72 @@ namespace QuickSC
     //    }
     //};
 
-    //public class QsDefaultType : QsType
-    //{
-    //    ImmutableArray<string> typeParams;
-    //    QsTypeValue? baseTypeValue;
-    //    ImmutableDictionary<string, QsType> memberTypes;
-    //    ImmutableDictionary<QsMemberFuncId, QsFuncType> memberFuncTypes;
-    //    ImmutableDictionary<string, QsTypeValue> memberVarTypeValues;
+    public class QsDefaultType : QsType
+    {
+        ImmutableArray<string> typeParams;
+        string name;
+        QsTypeValue? baseTypeValue;
+        ImmutableDictionary<string, QsTypeId> memberTypeIds;
+        ImmutableDictionary<QsMemberFuncId, QsFuncId> memberFuncIds;
+        ImmutableDictionary<string, QsTypeValue> memberVarTypeValues;
 
-    //    // 거의 모든 TypeValue에서 thisTypeValue를 쓰기 때문에 lazy하게 선언해야 한다
-    //    public QsDefaultType(QsTypeId typeId, QsTypeValue? outer, ImmutableArray<string> typeParams, Func<QsNormalTypeValue, QsDefaultTypeData> Initializer)
-    //        : base(typeId)
-    //    {
-    //        this.typeParams = typeParams;
+        // 거의 모든 TypeValue에서 thisTypeValue를 쓰기 때문에 lazy하게 선언해야 한다
+        public QsDefaultType(QsTypeId typeId,             
+            string name,
+            ImmutableArray<string> typeParams,
+            QsTypeValue? baseTypeValue,
+            ImmutableDictionary<string, QsTypeId> memberTypes,
+            ImmutableDictionary<QsMemberFuncId, QsFuncId> memberFuncs,
+            ImmutableDictionary<string, QsTypeValue> memberVarTypeValues)
+            : base(typeId)
+        {
+            this.typeParams = typeParams;
+            this.name = name;
+            this.baseTypeValue = baseTypeValue;
+            this.memberTypeIds = memberTypes;
+            this.memberFuncIds = memberFuncs;
+            this.memberVarTypeValues = memberVarTypeValues;
+        }
 
-    //        var thisTypeValue = new QsNormalTypeValue(
-    //            outer,
-    //            typeId,
-    //            typeParams.Select(typeParam => (QsTypeValue)new QsTypeVarTypeValue(this, typeParam)).ToImmutableArray());
+        public override string GetName()
+        {
+            return name;
+        }
 
-    //        (baseTypeValue, memberTypes, memberFuncTypes, memberVarTypeValues) = Initializer(thisTypeValue);
-    //    }
+        public override ImmutableArray<string> GetTypeParams()
+        {
+            return typeParams;
+        }
 
-    //    public override ImmutableArray<string> GetTypeParams()
-    //    {
-    //        return typeParams;
-    //    }
+        public override QsTypeValue? GetBaseTypeValue()
+        {
+            return baseTypeValue;
+        }
 
-    //    public override QsTypeValue? GetBaseTypeValue()
-    //    {
-    //        return baseTypeValue;
-    //    }
+        public override QsTypeId? GetMemberTypeId(string name)
+        {
+            if (memberTypeIds.TryGetValue(name, out var memberType))
+                return memberType;
 
-    //    public override QsType? GetMemberType(string name)
-    //    {
-    //        if (memberTypes.TryGetValue(name, out var memberType))
-    //            return memberType;
+            return null;
+        }
 
-    //        return null;
-    //    }
+        public override QsFuncId? GetMemberFuncId(QsMemberFuncId memberFuncId)
+        {
+            if (memberFuncIds.TryGetValue(memberFuncId, out var funcId))
+                return funcId;
 
-    //    public override QsFuncType? GetMemberFuncType(QsMemberFuncId memberFuncId)
-    //    {
-    //        if (memberFuncTypes.TryGetValue(memberFuncId, out var funcType))
-    //            return funcType;
+            return null;
+        }
 
-    //        return null;
-    //    }
+        public override QsTypeValue? GetMemberVarTypeValue(string varName)
+        {
+            if (memberVarTypeValues.TryGetValue(varName, out var value))
+                return value;
 
-    //    public override QsTypeValue? GetMemberVarTypeValue(string varName)
-    //    {
-    //        if (memberVarTypeValues.TryGetValue(varName, out var value))
-    //            return value;
-
-    //        return null;
-    //    }
-    //}
+            return null;
+        }
+    }
 
     // 'Func' 객체에 대한 TypeValue가 아니라 호출가능한 값의 타입이다
     // void Func(int x) : int => void
@@ -126,7 +134,8 @@ namespace QuickSC
     //    public QsTypeValue RetType { get; }
     //    public ImmutableArray<QsTypeValue> ArgTypes { get; }
 
-    //    public QsFuncType(bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retType, ImmutableArray<QsTypeValue> argTypes)
+    //    public QsFuncType(QsTypeId typeId, bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retType, ImmutableArray<QsTypeValue> argTypes)
+    //        : base(typeId)
     //    {
     //        this.bThisCall = bThisCall;
     //        TypeParams = typeParams;
@@ -134,7 +143,8 @@ namespace QuickSC
     //        ArgTypes = argTypes;
     //    }
 
-    //    public QsFuncType(bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retType, params QsTypeValue[] argTypes)
+    //    public QsFuncType(QsTypeId typeId, bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retType, params QsTypeValue[] argTypes)
+    //        : base(typeId)
     //    {
     //        this.bThisCall = bThisCall;
     //        TypeParams = typeParams;
@@ -152,8 +162,8 @@ namespace QuickSC
     //    public override QsType? GetMemberType(string name) => null;
     //    public override QsFuncType? GetMemberFuncType(QsMemberFuncId memberFuncId) => null;
     //    public override QsTypeValue? GetMemberVarTypeValue(string name) => null;
-        
-    //}        
-    
+
+    //}
+
 }
 

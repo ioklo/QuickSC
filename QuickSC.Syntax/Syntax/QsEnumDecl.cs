@@ -6,7 +6,7 @@ using System.Text;
 
 namespace QuickSC.Syntax
 {
-    public struct QsEnumDeclElement
+    public class QsEnumDeclElement : QsTypeDecl
     {
         public string Name { get; }
         public ImmutableArray<QsTypeAndName> Params { get; }        
@@ -35,18 +35,18 @@ namespace QuickSC.Syntax
             return HashCode.Combine(Name, Params);
         }
 
-        public static bool operator ==(QsEnumDeclElement left, QsEnumDeclElement right)
+        public static bool operator ==(QsEnumDeclElement? left, QsEnumDeclElement? right)
         {
-            return left.Equals(right);
+            return EqualityComparer<QsEnumDeclElement?>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(QsEnumDeclElement left, QsEnumDeclElement right)
+        public static bool operator !=(QsEnumDeclElement? left, QsEnumDeclElement? right)
         {
             return !(left == right);
         }
     }
 
-    public class QsEnumDecl
+    public class QsEnumDecl : QsTypeDecl
     {
         public string Name { get; }
         public ImmutableArray<string> TypeParams { get; }

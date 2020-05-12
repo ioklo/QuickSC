@@ -7,8 +7,34 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
 
-namespace QuickSC.TypeExpEvaluator
+namespace QuickSC.StaticAnalyzer
 {
+    public class QsTypeEvalContext
+    {
+        public ImmutableDictionary<QsTypeId, QsTypeSkeleton> TypeSkeletons { get; }
+        public ImmutableDictionary<(string Name, int TypeParamCount), QsTypeSkeleton> GlobalTypeSkeletons { get; }
+
+        public Dictionary<QsTypeExp, QsTypeValue> TypeExpTypeValues { get; }
+        public ImmutableDictionary<string, QsTypeValue> TypeEnv { get; set; }
+        public List<(object obj, string message)> Errors { get; }
+
+        public QsTypeEvalContext(
+            ImmutableDictionary<QsTypeId, QsTypeSkeleton> typeSkeletons,
+            ImmutableDictionary<(string Name, int TypeParamCount), QsTypeSkeleton> globalTypeSkeletons)
+        {
+            TypeSkeletons = typeSkeletons;
+            GlobalTypeSkeletons = globalTypeSkeletons;
+            TypeExpTypeValues = new Dictionary<QsTypeExp, QsTypeValue>();
+            TypeEnv = ImmutableDictionary<string, QsTypeValue>.Empty;
+            Errors = new List<(object obj, string message)>();
+        }
+
+        public void UpdateTypeVar(string name, QsTypeValue typeValue)
+        {
+            TypeEnv = TypeEnv.SetItem(name, typeValue);
+        }
+    }
+
     // TypeExp를 TypeValue로 바꿔서 저장합니다.
     public class QsTypeExpEvaluator
     {

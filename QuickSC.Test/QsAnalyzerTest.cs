@@ -9,7 +9,7 @@ using System.Collections;
 using System.IO;
 using System.IO.Enumeration;
 using QuickSC.Syntax;
-using QuickSC.TypeExpEvaluator;
+
 
 namespace QuickSC
 {

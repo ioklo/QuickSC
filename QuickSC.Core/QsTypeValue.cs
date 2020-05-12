@@ -223,4 +223,18 @@ namespace QuickSC
             return !(left == right);
         }
     }
+
+    public class QsFuncTypeValue : QsTypeValue
+    {
+        public QsTypeValue? Outer { get; }
+        public QsFuncId FuncId { get; }
+        public ImmutableArray<QsTypeValue> TypeArgs { get; }
+
+        public QsFuncTypeValue(QsTypeValue? outer, QsFuncId funcId, ImmutableArray<QsTypeValue> typeArgs)
+        {
+            Outer = outer;
+            FuncId = funcId;
+            TypeArgs = typeArgs;
+        }
+    }
 }

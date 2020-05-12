@@ -1,5 +1,4 @@
 ﻿using QuickSC.StaticAnalyzer;
-using QuickSC.TypeExpEvaluator;
 using System;
 using System.Collections.Immutable;
 using System.IO;
