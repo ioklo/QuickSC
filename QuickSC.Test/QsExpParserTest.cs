@@ -89,7 +89,7 @@ namespace QuickSC
 
             var expected = new QsUnaryOpExp(QsUnaryOpKind.PostfixInc,
                 new QsBinaryOpExp(QsBinaryOpKind.Modulo,
-                    new QsCallExp(new QsUnaryOpExp(QsUnaryOpKind.PostfixInc, new QsIdentifierExp("c")), new QsIdentifierExp("e"), new QsIdentifierExp("f")),
+                    new QsCallExp(new QsUnaryOpExp(QsUnaryOpKind.PostfixInc, new QsIdentifierExp("c")), ImmutableArray<QsTypeExp>.Empty, new QsIdentifierExp("e"), new QsIdentifierExp("f")),
                     new QsIdentifierExp("d")));
 
             Assert.Equal(expected, expResult.Elem);
@@ -127,11 +127,13 @@ namespace QuickSC
             var expected =
                 new QsMemberExp(
                     new QsMemberCallExp(
-                        new QsMemberExp(new QsIdentifierExp("a"), "b"),
+                        new QsMemberExp(new QsIdentifierExp("a"), "b", ImmutableArray<QsTypeExp>.Empty),
                         new QsMemberFuncId("c"),
+                        ImmutableArray<QsTypeExp>.Empty,
                         new QsIntLiteralExp(1),
                         new QsStringExp(new QsTextStringExpElement("str"))),
-                    "d");
+                    "d",
+                    ImmutableArray<QsTypeExp>.Empty);
 
             Assert.Equal(expected, expResult.Elem);
         }
@@ -145,6 +147,7 @@ namespace QuickSC
             var expResult = await expParser.ParseExpAsync(context);
 
             var expected = new QsListExp(
+                null,
                 new QsIntLiteralExp(1),
                 new QsIntLiteralExp(2),
                 new QsIntLiteralExp(3));

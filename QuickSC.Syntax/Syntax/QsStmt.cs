@@ -262,14 +262,14 @@ namespace QuickSC.Syntax
         public QsForStmtInitializer? Initializer { get; }
         public QsExp? CondExp { get; }
         public QsExp? ContinueExp { get; }
-        public QsStmt BodyStmt { get; }
+        public QsStmt Body { get; }
 
         public QsForStmt(QsForStmtInitializer? initializer, QsExp? condExp, QsExp? continueExp, QsStmt bodyStmt)
         {
             Initializer = initializer;
             CondExp = condExp;
             ContinueExp = continueExp;
-            BodyStmt = bodyStmt;
+            Body = bodyStmt;
         }
 
         public override bool Equals(object? obj)
@@ -278,12 +278,12 @@ namespace QuickSC.Syntax
                    EqualityComparer<QsForStmtInitializer?>.Default.Equals(Initializer, stmt.Initializer) &&
                    EqualityComparer<QsExp?>.Default.Equals(CondExp, stmt.CondExp) &&
                    EqualityComparer<QsExp?>.Default.Equals(ContinueExp, stmt.ContinueExp) &&
-                   EqualityComparer<QsStmt>.Default.Equals(BodyStmt, stmt.BodyStmt);
+                   EqualityComparer<QsStmt>.Default.Equals(Body, stmt.Body);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Initializer, CondExp, ContinueExp, BodyStmt);
+            return HashCode.Combine(Initializer, CondExp, ContinueExp, Body);
         }
 
         public static bool operator ==(QsForStmt? left, QsForStmt? right)

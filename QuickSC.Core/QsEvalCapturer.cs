@@ -163,7 +163,7 @@ namespace QuickSC
                 context = contResult.Value;
             }
 
-            var bodyResult = CaptureStmt(forStmt.BodyStmt, context);
+            var bodyResult = CaptureStmt(forStmt.Body, context);
             if (!bodyResult.HasValue) return null;
             context = bodyResult.Value;
 
@@ -342,9 +342,9 @@ namespace QuickSC
                 unaryOpExp.Kind == QsUnaryOpKind.PostfixDec ||
                 unaryOpExp.Kind == QsUnaryOpKind.PrefixInc ||
                 unaryOpExp.Kind == QsUnaryOpKind.PrefixDec)
-                return RefCaptureExp(unaryOpExp.OperandExp, context);
+                return RefCaptureExp(unaryOpExp.Operand, context);
             else
-                return CaptureExp(unaryOpExp.OperandExp, context);
+                return CaptureExp(unaryOpExp.Operand, context);
         }
 
         QsCaptureContext? CaptureBinaryOpExp(QsBinaryOpExp binaryOpExp, QsCaptureContext context) 

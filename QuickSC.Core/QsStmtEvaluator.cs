@@ -198,7 +198,7 @@ namespace QuickSC
                         break;
                 }
 
-                await foreach (var result in EvaluateStmtAsync(forStmt.BodyStmt, context))
+                await foreach (var result in EvaluateStmtAsync(forStmt.Body, context))
                 {
                     if (!result.HasValue)
                     {

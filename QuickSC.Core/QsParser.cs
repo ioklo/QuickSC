@@ -227,7 +227,8 @@ namespace QuickSC
                 new QsFuncDecl(
                     funcKind, 
                     retTypeResult.Elem, 
-                    funcName!.Value, 
+                    funcName!.Value,
+                    ImmutableArray<string>.Empty,
                     funcDeclParams.ToImmutable(), 
                     variadicParamIndex, 
                     blockStmtResult.Elem), 

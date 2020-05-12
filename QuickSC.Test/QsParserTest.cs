@@ -43,7 +43,7 @@ namespace QuickSC
             var expected = new QsFuncDecl(
                 QsFuncKind.Normal,
                 new QsIdTypeExp("void"),
-                "Func", 1,
+                "Func", ImmutableArray<string>.Empty, 1,
                 new QsBlockStmt(new QsVarDeclStmt(new QsVarDecl(new QsIdTypeExp("int"), new QsVarDeclElement("a", new QsIntLiteralExp(0))))),
                 new QsTypeAndName(new QsIdTypeExp("int"), "x"),
                 new QsTypeAndName(new QsIdTypeExp("string"), "y"),

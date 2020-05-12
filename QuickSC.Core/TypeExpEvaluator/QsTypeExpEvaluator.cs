@@ -20,6 +20,19 @@ namespace QuickSC.TypeExpEvaluator
         {
             typeValue = null;
 
+            if (exp.Name == "var")
+            {
+                if( exp.TypeArgs.Length != 0)
+                {
+                    context.Errors.Add((exp, "var는 타입 인자를 가질 수 없습니다"));
+                    return false;
+                }
+
+                typeValue = QsVarTypeValue.Instance;
+                context.TypeExpTypeValues.Add(exp, typeValue);
+                return true;
+            }
+
             // 1. TypeVar에서 먼저 검색
             if (context.TypeEnv.TryGetValue(exp.Name, out typeValue))
             {
@@ -150,9 +163,244 @@ namespace QuickSC.TypeExpEvaluator
             context.TypeEnv = prevTypeEnv;
         }
 
-        void EvaluateStmt(QsStmt stmt, QsTypeEvalContext context)
+        void EvaluateVarDecl(QsVarDecl varDecl, QsTypeEvalContext context)
+        {
+            EvaluateTypeExp(varDecl.Type, context, out var _);
+
+            foreach (var elem in varDecl.Elements)
+                if (elem.InitExp != null)
+                    EvaluateExp(elem.InitExp, context);
+        }
+
+        void EvaluateStringExpElements(ImmutableArray<QsStringExpElement> elems, QsTypeEvalContext context)
+        {
+            foreach (var elem in elems)
+            {
+                switch (elem)
+                {
+                    case QsTextStringExpElement textElem: break;
+                    case QsExpStringExpElement expElem: EvaluateExp(expElem.Exp, context); break;
+                    default: throw new NotImplementedException();
+                }
+            }
+        }
+
+        void EvaluateTypeExps(ImmutableArray<QsTypeExp> typeExps, QsTypeEvalContext context)
+        {
+            foreach (var typeExp in typeExps)
+                EvaluateTypeExp(typeExp, context, out var _);
+        }
+
+        void EvaluateIdExp(QsIdentifierExp idExp, QsTypeEvalContext context) 
+        {
+            EvaluateTypeExps(idExp.TypeArgs, context);
+        }
+
+        void EvaluateBoolLiteralExp(QsBoolLiteralExp boolExp, QsTypeEvalContext context) 
         {
 
+        }
+
+        void EvaluateIntLiteralExp(QsIntLiteralExp intExp, QsTypeEvalContext context) 
+        { 
+
+        }
+
+        void EvaluateStringExp(QsStringExp stringExp, QsTypeEvalContext context)
+        {
+            EvaluateStringExpElements(stringExp.Elements, context);
+        }
+
+        void EvaluateUnaryOpExp(QsUnaryOpExp unaryOpExp, QsTypeEvalContext context)
+        {
+            EvaluateExp(unaryOpExp.Operand, context);
+        }
+
+        void EvaluateBinaryOpExp(QsBinaryOpExp binaryOpExp, QsTypeEvalContext context)
+        {
+            EvaluateExp(binaryOpExp.Operand0, context);
+            EvaluateExp(binaryOpExp.Operand1, context);
+        }
+
+        void EvaluateCallExp(QsCallExp callExp, QsTypeEvalContext context)
+        {
+            EvaluateExp(callExp.Callable, context);
+            EvaluateTypeExps(callExp.TypeArgs, context);
+
+            foreach (var arg in callExp.Args)
+                EvaluateExp(arg, context);
+        }
+
+        void EvaluateLambdaExp(QsLambdaExp lambdaExp, QsTypeEvalContext context) 
+        {
+            foreach (var param in lambdaExp.Params)
+                if(param.Type != null)
+                    EvaluateTypeExp(param.Type, context, out var _);
+
+            EvaluateStmt(lambdaExp.Body, context);
+        }
+
+        void EvaluateMemberCallExp(QsMemberCallExp memberCallExp, QsTypeEvalContext context)
+        {
+            EvaluateExp(memberCallExp.Object, context);
+            EvaluateTypeExps(memberCallExp.MemberTypeArgs, context);
+
+            foreach (var arg in memberCallExp.Args)
+                EvaluateExp(arg, context);
+        }
+
+        void EvaluateMemberExp(QsMemberExp memberExp, QsTypeEvalContext context)
+        {
+            EvaluateExp(memberExp.Object, context);
+
+            EvaluateTypeExps(memberExp.MemberTypeArgs, context);
+        }
+
+        void EvaluateListExp(QsListExp listExp, QsTypeEvalContext context)
+        {
+            foreach (var elem in listExp.Elems)
+                EvaluateExp(elem, context);
+        }
+
+        void EvaluateExp(QsExp exp, QsTypeEvalContext context)
+        {
+            switch(exp)
+            {
+                case QsIdentifierExp idExp: EvaluateIdExp(idExp, context); break;
+                case QsBoolLiteralExp boolExp: EvaluateBoolLiteralExp(boolExp, context); break;
+                case QsIntLiteralExp intExp: EvaluateIntLiteralExp(intExp, context); break;
+                case QsStringExp stringExp: EvaluateStringExp(stringExp, context); break;
+                case QsUnaryOpExp unaryOpExp: EvaluateUnaryOpExp(unaryOpExp, context); break;
+                case QsBinaryOpExp binaryOpExp: EvaluateBinaryOpExp(binaryOpExp, context); break;
+                case QsCallExp callExp: EvaluateCallExp(callExp, context); break;
+                case QsLambdaExp lambdaExp: EvaluateLambdaExp(lambdaExp, context); break;
+                case QsMemberCallExp memberCallExp: EvaluateMemberCallExp(memberCallExp, context); break;
+                case QsMemberExp memberExp: EvaluateMemberExp(memberExp, context); break;
+                case QsListExp listExp: EvaluateListExp(listExp, context); break;
+                default: throw new NotImplementedException();
+            }
+        }
+        
+        void EvaluateCommandStmt(QsCommandStmt cmdStmt, QsTypeEvalContext context)
+        {
+            foreach (var cmd in cmdStmt.Commands)
+                EvaluateStringExpElements(cmd.Elements, context);
+        }
+
+        void EvaluateVarDeclStmt(QsVarDeclStmt varDeclStmt, QsTypeEvalContext context) 
+        {
+            EvaluateVarDecl(varDeclStmt.VarDecl, context);
+        }
+
+        void EvaluateIfStmt(QsIfStmt ifStmt, QsTypeEvalContext context)
+        {
+            EvaluateExp(ifStmt.Cond, context);
+
+            if (ifStmt.TestType != null)
+                EvaluateTypeExp(ifStmt.TestType, context, out var _);
+
+            EvaluateStmt(ifStmt.Body, context);
+
+            if (ifStmt.ElseBody != null)
+                EvaluateStmt(ifStmt.ElseBody, context);
+        }
+
+        void EvaluateForStmtInitializer(QsForStmtInitializer initializer, QsTypeEvalContext context)
+        {
+            switch(initializer)
+            {
+                case QsExpForStmtInitializer expInit: EvaluateExp(expInit.Exp, context); break;
+                case QsVarDeclForStmtInitializer varDeclInit: EvaluateVarDecl(varDeclInit.VarDecl, context); break;
+                default: throw new NotImplementedException();
+            }
+        }
+
+        void EvaluateForStmt(QsForStmt forStmt, QsTypeEvalContext context)
+        {
+            if (forStmt.Initializer != null)
+                EvaluateForStmtInitializer(forStmt.Initializer, context);
+
+            if (forStmt.CondExp != null)
+                EvaluateExp(forStmt.CondExp, context);
+
+            if (forStmt.ContinueExp != null)
+                EvaluateExp(forStmt.ContinueExp, context);
+
+            EvaluateStmt(forStmt.Body, context);
+        }
+
+        void EvaluateContinueStmt(QsContinueStmt continueStmt, QsTypeEvalContext context)
+        {
+        }
+
+        void EvaluateBreakStmt(QsBreakStmt breakStmt, QsTypeEvalContext context)
+        {
+        }
+
+        void EvaluateReturnStmt(QsReturnStmt returnStmt, QsTypeEvalContext context) 
+        {
+            if (returnStmt.Value != null)
+                EvaluateExp(returnStmt.Value, context);
+        }
+
+        void EvaluateBlockStmt(QsBlockStmt blockStmt, QsTypeEvalContext context)
+        {
+            foreach (var stmt in blockStmt.Stmts)
+                EvaluateStmt(stmt, context);
+        }
+
+        void EvaluateExpStmt(QsExpStmt expStmt, QsTypeEvalContext context)
+        {
+            EvaluateExp(expStmt.Exp, context);
+        }
+
+        void EvaluateTaskStmt(QsTaskStmt taskStmt, QsTypeEvalContext context)
+        {
+            EvaluateStmt(taskStmt.Body, context);
+        }
+
+        void EvaluateAwaitStmt(QsAwaitStmt awaitStmt, QsTypeEvalContext context)
+        {
+            EvaluateStmt(awaitStmt.Body, context);
+        }
+
+        void EvaluateAsyncStmt(QsAsyncStmt asyncStmt, QsTypeEvalContext context)
+        {
+            EvaluateStmt(asyncStmt.Body, context);
+        }
+
+        void EvaluateForeachStmt(QsForeachStmt foreachStmt, QsTypeEvalContext context) 
+        {
+            EvaluateTypeExp(foreachStmt.Type, context, out var _);
+            EvaluateExp(foreachStmt.Obj, context);
+            EvaluateStmt(foreachStmt.Body, context);
+        }
+
+        void EvaluateYieldStmt(QsYieldStmt yieldStmt, QsTypeEvalContext context)
+        {
+            EvaluateExp(yieldStmt.Value, context);
+        }
+
+        void EvaluateStmt(QsStmt stmt, QsTypeEvalContext context)
+        {
+            switch (stmt)
+            {
+                case QsCommandStmt cmdStmt: EvaluateCommandStmt(cmdStmt, context); break;
+                case QsVarDeclStmt varDeclStmt: EvaluateVarDeclStmt(varDeclStmt, context); break;
+                case QsIfStmt ifStmt: EvaluateIfStmt(ifStmt, context); break;
+                case QsForStmt forStmt: EvaluateForStmt(forStmt, context); break;                        
+                case QsContinueStmt continueStmt: EvaluateContinueStmt(continueStmt, context); break;
+                case QsBreakStmt breakStmt: EvaluateBreakStmt(breakStmt, context); break;
+                case QsReturnStmt returnStmt: EvaluateReturnStmt(returnStmt, context); break;
+                case QsBlockStmt blockStmt: EvaluateBlockStmt(blockStmt, context); break;                        
+                case QsExpStmt expStmt: EvaluateExpStmt(expStmt, context); break;
+                case QsTaskStmt taskStmt: EvaluateTaskStmt(taskStmt, context); break;
+                case QsAwaitStmt awaitStmt: EvaluateAwaitStmt(awaitStmt, context); break;
+                case QsAsyncStmt asyncStmt: EvaluateAsyncStmt(asyncStmt, context); break;
+                case QsForeachStmt foreachStmt: EvaluateForeachStmt(foreachStmt, context); break;
+                case QsYieldStmt yieldStmt: EvaluateYieldStmt(yieldStmt, context); break;                        
+                default: throw new NotImplementedException();
+            };
         }
 
         public void EvaluateScript(QsScript script, QsTypeEvalContext context)

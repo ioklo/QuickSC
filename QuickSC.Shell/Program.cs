@@ -56,10 +56,8 @@ namespace QuickSC.Shell
 
                 var cmdProvider = new QsDemoCommandProvider();
 
-                var typeValueFactory = new QsTypeValueFactory();
-                var typeExpEvaluator = new QsTypeExpEvaluator();
-
-                var analyzer = new QsAnalyzer(typeValueFactory, typeExpEvaluator);
+                // var typeValueFactory = new QsTypeValueFactory();
+                var analyzer = new QsAnalyzer();
                 var analyzerContext = new QsAnalyzerContext();                
 
                 var evaluator = new QsEvaluator(cmdProvider);

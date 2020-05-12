@@ -87,11 +87,8 @@ namespace QuickSC.Blazor
                     await WriteAsync("에러 (파싱 실패)");
                     return false;
                 }
-
-                var typeValueFactory = new QsTypeValueFactory();
-                var typeExpEvaluator = new QsTypeExpEvaluator();
                 
-                var analyzer = new QsAnalyzer(typeValueFactory, typeExpEvaluator);
+                var analyzer = new QsAnalyzer();
                 var analyzerContext = new QsAnalyzerContext();
                 analyzer.AnalyzeScript(scriptResult.Elem, analyzerContext);
 

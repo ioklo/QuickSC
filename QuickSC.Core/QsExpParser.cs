@@ -216,7 +216,7 @@ namespace QuickSC
                     if (!Accept<QsRBracketToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                         return QsExpParseResult.Invalid;
 
-                    exp = new QsMemberCallExp(exp, new QsMemberFuncId(QsMemberFuncKind.Indexer), indexResult.Elem);
+                    exp = new QsMemberCallExp(exp, new QsMemberFuncId(QsMemberFuncKind.Indexer), ImmutableArray<QsTypeExp>.Empty, indexResult.Elem);
                     continue;
                 }
 
@@ -230,12 +230,12 @@ namespace QuickSC
                     if (memberCallArgsResult.HasValue)
                     {
                         context = memberCallArgsResult.Context;
-                        exp = new QsMemberCallExp(exp, new QsMemberFuncId(idResult.Value), memberCallArgsResult.Elem);
+                        exp = new QsMemberCallExp(exp, new QsMemberFuncId(idResult.Value), ImmutableArray<QsTypeExp>.Empty, memberCallArgsResult.Elem);
                         continue;
                     }
                     else
                     {
-                        exp = new QsMemberExp(exp, idResult.Value);
+                        exp = new QsMemberExp(exp, idResult.Value, ImmutableArray<QsTypeExp>.Empty);
                         continue;
                     }
                 }
@@ -245,7 +245,7 @@ namespace QuickSC
                 if (callArgsResult.HasValue)
                 {
                     context = callArgsResult.Context;
-                    exp = new QsCallExp(exp, callArgsResult.Elem);
+                    exp = new QsCallExp(exp, ImmutableArray<QsTypeExp>.Empty, callArgsResult.Elem);
                     continue;
                 }
 
@@ -563,7 +563,7 @@ namespace QuickSC
                 elems.Add(elemResult.Elem);
             }
 
-            return new QsExpParseResult(new QsListExp(elems.ToImmutable()), context);
+            return new QsExpParseResult(new QsListExp(null, elems.ToImmutable()), context);
         }
 
         async ValueTask<QsExpParseResult> ParseIdentifierExpAsync(QsParserContext context)

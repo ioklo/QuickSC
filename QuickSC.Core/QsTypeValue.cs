@@ -71,13 +71,13 @@ namespace QuickSC
         public override bool Equals(object? obj)
         {
             return obj is QsTypeVarTypeValue value &&
-                   EqualityComparer<QsType>.Default.Equals(Type, value.Type) &&
+                   Parent == value.Parent &&
                    Name == value.Name;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Type, Name);
+            return HashCode.Combine(Parent, Name);
         }
 
         public static bool operator ==(QsTypeVarTypeValue? left, QsTypeVarTypeValue? right)

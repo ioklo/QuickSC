@@ -84,7 +84,7 @@ namespace QuickSC
             {
                 case QsUnaryOpKind.PostfixInc:  // i++
                     {
-                        var operandResult = await EvaluateExpAsync(exp.OperandExp, context);
+                        var operandResult = await EvaluateExpAsync(exp.Operand, context);
                         if (!operandResult.HasValue) return QsEvalResult<QsValue>.Invalid;
 
                         var intValue = operandResult.Value as QsValue<int>;
@@ -97,7 +97,7 @@ namespace QuickSC
 
                 case QsUnaryOpKind.PostfixDec:
                     {
-                        var operandResult = await EvaluateExpAsync(exp.OperandExp, context);
+                        var operandResult = await EvaluateExpAsync(exp.Operand, context);
                         if (!operandResult.HasValue) return QsEvalResult<QsValue>.Invalid;
 
                         var intValue = operandResult.Value as QsValue<int>;
@@ -110,7 +110,7 @@ namespace QuickSC
 
                 case QsUnaryOpKind.LogicalNot:
                     {
-                        var operandResult = await EvaluateExpAsync(exp.OperandExp, context);
+                        var operandResult = await EvaluateExpAsync(exp.Operand, context);
                         if (!operandResult.HasValue) return QsEvalResult<QsValue>.Invalid;
 
                         var boolValue = operandResult.Value as QsValue<bool>;
@@ -121,7 +121,7 @@ namespace QuickSC
 
                 case QsUnaryOpKind.PrefixInc:
                     {
-                        var operandResult = await EvaluateExpAsync(exp.OperandExp, context);
+                        var operandResult = await EvaluateExpAsync(exp.Operand, context);
                         if (!operandResult.HasValue) return QsEvalResult<QsValue>.Invalid;
 
                         var intValue = operandResult.Value as QsValue<int>;
@@ -133,7 +133,7 @@ namespace QuickSC
 
                 case QsUnaryOpKind.PrefixDec:
                     {
-                        var operandResult = await EvaluateExpAsync(exp.OperandExp, context);
+                        var operandResult = await EvaluateExpAsync(exp.Operand, context);
                         if (!operandResult.HasValue) return QsEvalResult<QsValue>.Invalid;
 
                         var intValue = operandResult.Value as QsValue<int>;

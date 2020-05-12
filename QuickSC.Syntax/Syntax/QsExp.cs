@@ -13,13 +13,16 @@ namespace QuickSC.Syntax
     
     public class QsIdentifierExp : QsExp
     {
-        public string Value;
-        public QsIdentifierExp(string value) { Value = value; }
+        public string Value { get; }
+        public ImmutableArray<QsTypeExp> TypeArgs { get; }
+        public QsIdentifierExp(string value, ImmutableArray<QsTypeExp> typeArgs) { Value = value; TypeArgs = typeArgs; }
+        public QsIdentifierExp(string value, params QsTypeExp[] typeArgs) { Value = value; TypeArgs = ImmutableArray.Create(typeArgs); }
 
         public override bool Equals(object? obj)
         {
             return obj is QsIdentifierExp exp &&
-                   Value == exp.Value;
+                   Value == exp.Value &&
+                   Enumerable.SequenceEqual(TypeArgs, exp.TypeArgs);
         }
 
         public override int GetHashCode()
@@ -172,23 +175,23 @@ namespace QuickSC.Syntax
     public class QsUnaryOpExp : QsExp
     {
         public QsUnaryOpKind Kind { get; }
-        public QsExp OperandExp{ get; }
-        public QsUnaryOpExp(QsUnaryOpKind kind, QsExp operandExp)
+        public QsExp Operand{ get; }
+        public QsUnaryOpExp(QsUnaryOpKind kind, QsExp operand)
         {
             Kind = kind;
-            OperandExp = operandExp;
+            Operand = operand;
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsUnaryOpExp exp &&
                    Kind == exp.Kind &&
-                   EqualityComparer<QsExp>.Default.Equals(OperandExp, exp.OperandExp);
+                   EqualityComparer<QsExp>.Default.Equals(Operand, exp.Operand);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Kind, OperandExp);
+            return HashCode.Combine(Kind, Operand);
         }
 
         public static bool operator ==(QsUnaryOpExp? left, QsUnaryOpExp? right)
@@ -207,18 +210,22 @@ namespace QuickSC.Syntax
     {
         public QsExp Callable { get; }
 
+        public ImmutableArray<QsTypeExp> TypeArgs { get; }
+
         // TODO: params, out, 등 처리를 하려면 QsExp가 아니라 다른거여야 한다
         public ImmutableArray<QsExp> Args { get; }
 
-        public QsCallExp(QsExp callable, ImmutableArray<QsExp> args)
+        public QsCallExp(QsExp callable, ImmutableArray<QsTypeExp> typeArgs, ImmutableArray<QsExp> args)
         {
             Callable = callable;
+            TypeArgs = typeArgs;
             Args = args;
         }
 
-        public QsCallExp(QsExp callable, params QsExp[] args)
+        public QsCallExp(QsExp callable, ImmutableArray<QsTypeExp> typeArgs, params QsExp[] args)
         {
             Callable = callable;
+            TypeArgs = typeArgs;
             Args = ImmutableArray.Create(args);
         }
 
@@ -226,6 +233,7 @@ namespace QuickSC.Syntax
         {
             return obj is QsCallExp exp &&
                    EqualityComparer<QsExp>.Default.Equals(Callable, exp.Callable) &&
+                   Enumerable.SequenceEqual(TypeArgs, exp.TypeArgs) &&
                    Enumerable.SequenceEqual(Args, exp.Args);
         }
 
@@ -371,19 +379,22 @@ namespace QuickSC.Syntax
     {
         public QsExp Object { get; }
         public QsMemberFuncId MemberFuncId { get; }
+        public ImmutableArray<QsTypeExp> MemberTypeArgs { get; }
         public ImmutableArray<QsExp> Args { get; }
 
-        public QsMemberCallExp(QsExp obj, QsMemberFuncId memberFuncId, ImmutableArray<QsExp> args)
+        public QsMemberCallExp(QsExp obj, QsMemberFuncId memberFuncId, ImmutableArray<QsTypeExp> typeArgs, ImmutableArray<QsExp> args)
         {
             Object = obj;
             MemberFuncId = memberFuncId;
+            MemberTypeArgs = typeArgs;
             Args = args;
         }
 
-        public QsMemberCallExp(QsExp obj, QsMemberFuncId memberFuncId, params QsExp[] args)
+        public QsMemberCallExp(QsExp obj, QsMemberFuncId memberFuncId, ImmutableArray<QsTypeExp> typeArgs, params QsExp[] args)
         {
             Object = obj;
             MemberFuncId = memberFuncId;
+            MemberTypeArgs = typeArgs;
             Args = ImmutableArray.Create(args);
         }
 
@@ -392,6 +403,7 @@ namespace QuickSC.Syntax
             return obj is QsMemberCallExp exp &&
                    EqualityComparer<QsExp>.Default.Equals(Object, exp.Object) &&
                    EqualityComparer<QsMemberFuncId>.Default.Equals(MemberFuncId, exp.MemberFuncId) &&
+                   Enumerable.SequenceEqual(MemberTypeArgs, exp.MemberTypeArgs) &&
                    Enumerable.SequenceEqual(Args, exp.Args);
         }
 
@@ -415,18 +427,21 @@ namespace QuickSC.Syntax
     {
         public QsExp Object { get; }
         public string MemberName { get; }
+        public ImmutableArray<QsTypeExp> MemberTypeArgs { get; }
 
-        public QsMemberExp(QsExp obj, string memberName)
+        public QsMemberExp(QsExp obj, string memberName, ImmutableArray<QsTypeExp> memberTypeArgs)
         {
             Object = obj;
             MemberName = memberName;
+            MemberTypeArgs = memberTypeArgs;
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsMemberExp exp &&
                    EqualityComparer<QsExp>.Default.Equals(Object, exp.Object) &&
-                   MemberName == exp.MemberName;
+                   MemberName == exp.MemberName &&
+                   Enumerable.SequenceEqual(MemberTypeArgs, exp.MemberTypeArgs);
         }
 
         public override int GetHashCode()
@@ -447,21 +462,25 @@ namespace QuickSC.Syntax
 
     public class QsListExp : QsExp
     {
+        QsTypeExp? ElemType { get; }
         public ImmutableArray<QsExp> Elems { get; }
 
-        public QsListExp(ImmutableArray<QsExp> elems)
+        public QsListExp(QsTypeExp? elemType, ImmutableArray<QsExp> elems)
         {
+            ElemType = elemType;
             Elems = elems;
         }
 
-        public QsListExp(params QsExp[] elems)
+        public QsListExp(QsTypeExp? elemType, params QsExp[] elems)
         {
+            ElemType = elemType;
             Elems = ImmutableArray.Create(elems);
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsListExp exp &&
+                   EqualityComparer<QsTypeExp?>.Default.Equals(ElemType, exp.ElemType) &&
                    Enumerable.SequenceEqual(Elems, exp.Elems);
         }
 

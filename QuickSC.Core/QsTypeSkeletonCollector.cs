@@ -10,66 +10,40 @@ namespace QuickSC
     public class QsTypeSkeleton
     {
         public QsTypeId TypeId { get; }
+        public string Name { get; }
         public int TypeParamCount { get; }
         public Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton> MemberSkeletons { get; }
 
-        public QsTypeSkeleton(QsTypeId typeId, int typeParamCount)
+        public QsTypeSkeleton(QsTypeId typeId, string name, int typeParamCount)
         {
             TypeId = typeId;
+            Name = name;
             TypeParamCount = typeParamCount;
             MemberSkeletons = new Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton>();
         }
     }
-
-    public abstract class QsTypeSkelTypeDecl { }
-    class QsTypeSkeletonEnumTypeDecl : QsTypeSkelTypeDecl
-    {
-        public QsEnumDecl EnumDecl { get; }
-        public QsTypeSkeletonEnumTypeDecl(QsEnumDecl enumDecl) { EnumDecl = enumDecl; }
-
-        public override bool Equals(object? obj)
-        {
-            return obj is QsTypeSkeletonEnumTypeDecl decl &&
-                   Object.ReferenceEquals(EnumDecl, decl.EnumDecl);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(EnumDecl);
-        }
-
-        public static bool operator ==(QsTypeSkeletonEnumTypeDecl? left, QsTypeSkeletonEnumTypeDecl? right)
-        {
-            return EqualityComparer<QsTypeSkeletonEnumTypeDecl>.Default.Equals(left, right);
-        }
-
-        public static bool operator !=(QsTypeSkeletonEnumTypeDecl? left, QsTypeSkeletonEnumTypeDecl? right)
-        {
-            return !(left == right);
-        }
-    }
-
+    
     public class QsTypeSkeletonCollectorContext
     {
-        public Dictionary<string, QsTypeSkeleton> RootSkeletons { get; }
-        public Dictionary<QsTypeSkelTypeDecl, QsTypeId> CollectedTypeIds { get; }
-        public QsTypeSkeleton? ScopeSkeleton { get; }
+        public Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton> GlobalTypeSkeletons { get; }
+        public Dictionary<object, QsTypeId> TypeIdsByTypeDecl { get; }
+        public Dictionary<QsTypeId, QsTypeSkeleton> TypeSkeletonsByTypeId { get; }
 
-        public QsTypeSkeletonCollectorContext()
+        public QsTypeSkeleton? ScopeSkeleton { get; set; }
+
+        public QsTypeSkeletonCollectorContext(IEnumerable<QsTypeSkeleton> refSkeletons)
         {
-            RootSkeletons = new Dictionary<string, QsTypeSkeleton>();
-            CollectedTypeIds = new Dictionary<QsTypeSkelTypeDecl, QsTypeId>();
+            GlobalTypeSkeletons = new Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton>();
+            TypeIdsByTypeDecl = new Dictionary<object, QsTypeId>();
+            TypeSkeletonsByTypeId = new Dictionary<QsTypeId, QsTypeSkeleton>();
             ScopeSkeleton = null;
-        }
 
-        public void AddSkeleton(string name, QsTypeSkeleton skeleton)
-        {
-            if (ScopeSkeleton != null)
-                ScopeSkeleton.ChildTypeSkeletons.Add(name, skeleton);
-            else
-                RootSkeletons.Add(name, skeleton);
+            foreach(var refSkeleton in refSkeletons)
+            {
+                GlobalTypeSkeletons.Add((refSkeleton.Name, refSkeleton.TypeParamCount), refSkeleton);
+                TypeSkeletonsByTypeId.Add(refSkeleton.TypeId, refSkeleton);
+            }
         }
-
 
         // 1. TypeId 부여 Ref 대신 Id부여
         // 2. 순회하며 QsType 만들기, 만들때 중간에 나타나는 타입들은 어떻게 처리할 것인가
@@ -102,28 +76,44 @@ namespace QuickSC
         {
             this.typeIdFactory = typeIdFactory;
         }
+        
+        QsTypeSkeleton MakeSkeleton(object? typeDecl, string name, int typeParamCount, QsTypeSkeletonCollectorContext context)
+        {
+            var typeId = typeIdFactory.MakeTypeId();
+
+            if (typeDecl != null)
+                context.TypeIdsByTypeDecl.Add(typeDecl, typeId);
+
+            var skeleton = new QsTypeSkeleton(typeId, name, typeParamCount);
+            context.TypeSkeletonsByTypeId.Add(typeId, skeleton);
+
+            if (context.ScopeSkeleton != null)
+                context.ScopeSkeleton.MemberSkeletons.Add((skeleton.Name, skeleton.TypeParamCount), skeleton);
+            else
+                context.GlobalTypeSkeletons.Add((skeleton.Name, skeleton.TypeParamCount), skeleton);
+
+            return skeleton;
+        }
 
         bool CollectEnumDecl(QsEnumDecl enumDecl, QsTypeSkeletonCollectorContext context)
-        {
-            var newTypeId = typeIdFactory.MakeTypeId();
-            var skeleton = new QsTypeSkeleton(newTypeId, enumDecl.TypeParams.Length);
-            context.AddSkeleton(enumDecl.Name, skeleton);
+        {            
+            var skeleton = MakeSkeleton(enumDecl, enumDecl.Name, enumDecl.TypeParams.Length, context);
 
             // 여기서는 직접 
-            foreach (var elem in enumDecl.Elems)
-            {
-                var newChildTypeId = typeIdFactory.MakeTypeId();
-                var childSkeleton = new QsTypeSkeleton(newChildTypeId, 0); // childType은 타입파라미터가 없어야 한다
+            var prevScopeSkeleton = context.ScopeSkeleton;
+            context.ScopeSkeleton = skeleton;
 
-                skeleton.MemberSkeletons.Add(elem.Name, childSkeleton);
-            }
+            foreach (var elem in enumDecl.Elems)
+                MakeSkeleton(elem, elem.Name, 0, context); // memberType은 타입파라미터가 없어야 한다
+
+            context.ScopeSkeleton = prevScopeSkeleton;
             
             return true;
         }
 
         public bool CollectScript(QsScript script, QsTypeSkeletonCollectorContext context)
         {
-            foreach(var scriptElem in script.Elements)
+            foreach (var scriptElem in script.Elements)
             {
                 switch(scriptElem)
                 {
