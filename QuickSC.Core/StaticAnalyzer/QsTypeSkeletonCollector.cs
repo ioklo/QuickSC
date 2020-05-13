@@ -9,7 +9,8 @@ namespace QuickSC.StaticAnalyzer
     public class QsTypeSkeletonCollectorContext
     {
         public Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton> GlobalTypeSkeletons { get; }
-        public Dictionary<QsTypeDecl, QsTypeId> TypeIdsByTypeDecl { get; }
+        public Dictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
+        public Dictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
         public Dictionary<QsTypeId, QsTypeSkeleton> TypeSkeletonsByTypeId { get; }
 
         public QsTypeSkeleton? ScopeSkeleton { get; set; }
@@ -17,7 +18,8 @@ namespace QuickSC.StaticAnalyzer
         public QsTypeSkeletonCollectorContext(IEnumerable<QsTypeSkeleton> refSkeletons)
         {
             GlobalTypeSkeletons = new Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton>();
-            TypeIdsByTypeDecl = new Dictionary<QsTypeDecl, QsTypeId>();
+            TypeIdsByLocation = new Dictionary<QsTypeIdLocation, QsTypeId>();
+            FuncIdsByLocation = new Dictionary<QsFuncIdLocation, QsFuncId>();
             TypeSkeletonsByTypeId = new Dictionary<QsTypeId, QsTypeSkeleton>();
             ScopeSkeleton = null;
 
@@ -53,19 +55,20 @@ namespace QuickSC.StaticAnalyzer
     public class QsTypeSkeletonCollector
     {
         // TypeId 발급기
-        QsTypeIdFactory typeIdFactory;        
+        QsTypeIdFactory typeIdFactory;
+        QsFuncIdFactory funcIdFactory;
 
-        public QsTypeSkeletonCollector(QsTypeIdFactory typeIdFactory)
+        public QsTypeSkeletonCollector(QsTypeIdFactory typeIdFactory, QsFuncIdFactory funcIdFactory)
         {
             this.typeIdFactory = typeIdFactory;
+            this.funcIdFactory = funcIdFactory;
         }
         
-        QsTypeSkeleton MakeSkeleton(QsTypeDecl typeDecl, string name, int typeParamCount, QsTypeSkeletonCollectorContext context)
+        QsTypeSkeleton MakeSkeleton(QsTypeIdLocation loc, string name, int typeParamCount, QsTypeSkeletonCollectorContext context)
         {
             var typeId = typeIdFactory.MakeTypeId();
 
-            if (typeDecl != null)
-                context.TypeIdsByTypeDecl.Add(typeDecl, typeId);
+            context.TypeIdsByLocation.Add(loc, typeId);
 
             var skeleton = new QsTypeSkeleton(typeId, name, typeParamCount);
             context.TypeSkeletonsByTypeId.Add(typeId, skeleton);
@@ -80,17 +83,24 @@ namespace QuickSC.StaticAnalyzer
 
         bool CollectEnumDecl(QsEnumDecl enumDecl, QsTypeSkeletonCollectorContext context)
         {            
-            var skeleton = MakeSkeleton(enumDecl, enumDecl.Name, enumDecl.TypeParams.Length, context);
+            var skeleton = MakeSkeleton(QsTypeIdLocation.Make(enumDecl), enumDecl.Name, enumDecl.TypeParams.Length, context);
 
             // 여기서는 직접 
             var prevScopeSkeleton = context.ScopeSkeleton;
             context.ScopeSkeleton = skeleton;
 
             foreach (var elem in enumDecl.Elems)
-                MakeSkeleton(elem, elem.Name, 0, context); // memberType은 타입파라미터가 없어야 한다
+                MakeSkeleton(QsTypeIdLocation.Make(elem), elem.Name, 0, context); // memberType은 타입파라미터가 없어야 한다
 
             context.ScopeSkeleton = prevScopeSkeleton;
             
+            return true;
+        }
+
+        bool CollectFuncDecl(QsFuncDecl funcDecl, QsTypeSkeletonCollectorContext context)
+        {
+            var funcId = funcIdFactory.MakeFuncId();
+            context.FuncIdsByLocation[QsFuncIdLocation.Make(funcDecl)] = funcId;
             return true;
         }
 
@@ -102,6 +112,11 @@ namespace QuickSC.StaticAnalyzer
                 {
                     case QsEnumDeclScriptElement enumElem:
                         if (!CollectEnumDecl(enumElem.EnumDecl, context))
+                            return false;
+                        break;
+
+                    case QsFuncDeclScriptElement funcElem:
+                        if (!CollectFuncDecl(funcElem.FuncDecl, context))
                             return false;
                         break;
                 }

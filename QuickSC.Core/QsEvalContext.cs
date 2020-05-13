@@ -1,4 +1,5 @@
-﻿using QuickSC.Syntax;
+﻿using QuickSC.StaticAnalyzer;
+using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -41,9 +42,14 @@ namespace QuickSC
     public class QsEvalStaticContext
     {
         public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValues { get; }
-        public QsEvalStaticContext(ImmutableDictionary<QsTypeExp, QsTypeValue> typeValues)
+        public ImmutableDictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> CaptureInfosByLocation { get; }
+
+        public QsEvalStaticContext(
+            ImmutableDictionary<QsTypeExp, QsTypeValue> typeValues,
+            ImmutableDictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> captureInfosByLocation)
         {
             TypeValues = typeValues;
+            CaptureInfosByLocation = captureInfosByLocation;
         }
     }
 
@@ -55,10 +61,12 @@ namespace QuickSC
         public ImmutableDictionary<string, QsFuncDecl> Funcs { get; }
         public ImmutableDictionary<string, QsValue> GlobalVars { get; }
         public ImmutableDictionary<string, QsValue> Vars { get; }
+
         public QsEvalFlowControl FlowControl { get; }
         public ImmutableArray<Task> Tasks { get; }
         public QsValue ThisValue { get; }
         public bool bGlobalScope { get; }
+        
 
         public static QsEvalContext Make(QsEvalStaticContext StaticContext)
         {

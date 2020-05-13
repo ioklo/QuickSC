@@ -29,7 +29,6 @@ namespace QuickSC
     // TODO: Small Step으로 가야하지 않을까 싶다 (yield로 실행 point 잡는거 해보면 재미있을 것 같다)
     public class QsEvaluator
     {
-        QsEvalCapturer capturer;
         QsExpEvaluator expEvaluator;
         QsCallableEvaluator callableEvaluator;
         QsStmtEvaluator stmtEvaluator;
@@ -49,9 +48,8 @@ namespace QuickSC
 
         public QsEvaluator(IQsCommandProvider commandProvider)
         {            
-            this.capturer = new QsEvalCapturer();
-            this.expEvaluator = new QsExpEvaluator(this, capturer);
-            this.stmtEvaluator = new QsStmtEvaluator(this, expEvaluator, capturer, commandProvider);
+            this.expEvaluator = new QsExpEvaluator(this);
+            this.stmtEvaluator = new QsStmtEvaluator(this, expEvaluator, commandProvider);
 
             this.callableEvaluator = new QsCallableEvaluator(stmtEvaluator);
         }

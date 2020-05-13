@@ -11,20 +11,26 @@ namespace QuickSC.StaticAnalyzer
 {
     public class QsTypeEvalContext
     {
+        public ImmutableDictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
+        public ImmutableDictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
         public ImmutableDictionary<QsTypeId, QsTypeSkeleton> TypeSkeletons { get; }
         public ImmutableDictionary<(string Name, int TypeParamCount), QsTypeSkeleton> GlobalTypeSkeletons { get; }
 
-        public Dictionary<QsTypeExp, QsTypeValue> TypeExpTypeValues { get; }
+        public Dictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
         public ImmutableDictionary<string, QsTypeValue> TypeEnv { get; set; }
         public List<(object obj, string message)> Errors { get; }
 
         public QsTypeEvalContext(
+            ImmutableDictionary<QsTypeIdLocation, QsTypeId> typeIdsByLocation,
+            ImmutableDictionary<QsFuncIdLocation, QsFuncId> funcIdsByLocation,
             ImmutableDictionary<QsTypeId, QsTypeSkeleton> typeSkeletons,
             ImmutableDictionary<(string Name, int TypeParamCount), QsTypeSkeleton> globalTypeSkeletons)
         {
+            TypeIdsByLocation = typeIdsByLocation;
+            FuncIdsByLocation = funcIdsByLocation;
             TypeSkeletons = typeSkeletons;
             GlobalTypeSkeletons = globalTypeSkeletons;
-            TypeExpTypeValues = new Dictionary<QsTypeExp, QsTypeValue>();
+            TypeValuesByTypeExp = new Dictionary<QsTypeExp, QsTypeValue>(QsReferenceComparer<QsTypeExp>.Instance);
             TypeEnv = ImmutableDictionary<string, QsTypeValue>.Empty;
             Errors = new List<(object obj, string message)>();
         }
@@ -55,14 +61,14 @@ namespace QuickSC.StaticAnalyzer
                 }
 
                 typeValue = QsVarTypeValue.Instance;
-                context.TypeExpTypeValues.Add(exp, typeValue);
+                context.TypeValuesByTypeExp.Add(exp, typeValue);
                 return true;
             }
 
             // 1. TypeVar에서 먼저 검색
             if (context.TypeEnv.TryGetValue(exp.Name, out typeValue))
             {
-                context.TypeExpTypeValues.Add(exp, typeValue);
+                context.TypeValuesByTypeExp.Add(exp, typeValue);
                 return true;
             }
 
@@ -82,7 +88,7 @@ namespace QuickSC.StaticAnalyzer
 
                 // global이니까 
                 typeValue = new QsNormalTypeValue(null, skeleton.TypeId, typeArgsBuilder.MoveToImmutable());
-                context.TypeExpTypeValues.Add(exp, typeValue);
+                context.TypeValuesByTypeExp.Add(exp, typeValue);
                 return true;
             }
 
@@ -112,7 +118,7 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
 
-            context.TypeExpTypeValues.Add(exp, typeValue);
+            context.TypeValuesByTypeExp.Add(exp, typeValue);
             return true;
         }
 
@@ -153,10 +159,11 @@ namespace QuickSC.StaticAnalyzer
         void EvaluateEnumDecl(QsEnumDecl enumDecl, QsTypeEvalContext context)
         {
             var prevTypeEnv = context.TypeEnv;
-            
-            foreach(var typeParam in enumDecl.TypeParams)
+
+            var typeId = context.TypeIdsByLocation[QsTypeIdLocation.Make(enumDecl)];
+            foreach (var typeParam in enumDecl.TypeParams)
             {
-                context.UpdateTypeVar(typeParam, new QsTypeVarTypeValue(enumDecl, typeParam));
+                context.UpdateTypeVar(typeParam, new QsTypeVarTypeValue(typeId, typeParam));
             }
 
             // 
@@ -181,8 +188,9 @@ namespace QuickSC.StaticAnalyzer
 
             var prevTypeEnv = context.TypeEnv;
 
+            var funcId = context.FuncIdsByLocation[QsFuncIdLocation.Make(funcDecl)];
             foreach (var param in funcDecl.TypeParams)
-                context.UpdateTypeVar(param, new QsTypeVarTypeValue(funcDecl, param));
+                context.UpdateTypeVar(param, new QsTypeVarTypeValue(funcId, param));
 
             EvaluateStmt(funcDecl.Body, context);
 

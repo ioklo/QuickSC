@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace QuickSC.StaticAnalyzer
@@ -11,70 +10,73 @@ namespace QuickSC.StaticAnalyzer
     // Analyzer는 backtracking이 없어서, MutableContext를 쓴다 
     public class QsAnalyzerContext
     {
-        // error
+        // TypeExp가 무슨 타입을 갖고 있는지. VarTypeValue를 여기서 교체할 수 있다
+        public Dictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
+
+        // 전역 타입 정보
+        public ImmutableDictionary<string, QsType> GlobalTypes { get; }
+
+        public QsTypeValue BoolTypeValue { get; }
+        public QsTypeValue VoidTypeValue { get; }
+
+        // 전역 스코프인지,
         public bool bGlobalScope { get; set; }
+
+        // 에러
         public List<(object Obj, string Message)> Errors { get; }
-        public ImmutableDictionary<string, QsTypeValue> GlobalVarTypeValues { get; private set; }
-        public ImmutableDictionary<string, QsTypeValue> VarTypeValues { get; private set; }        
-        public Dictionary<QsExp, QsTypeValue> ExpTypeValues { get; }
-        public Dictionary<QsTypeExp, QsTypeValue> TypeExpTypeValues { get; }
 
-        // ReferenceEqualityComparer는 .net 5부터 지원
-        class QsRefComparer<T> : IEqualityComparer<T> where T : class
+        // 전역변수의 타입
+        public ImmutableDictionary<string, QsTypeValue> GlobalVarTypeValues { get; set; }
+
+        // 현재 변수의 타입
+        public ImmutableDictionary<string, QsTypeValue> VarTypeValues { get; set; }
+
+        // Exp가 무슨 타입을 갖고 있는지 저장
+        public Dictionary<QsExp, QsTypeValue> TypeValuesByExp { get; }
+
+        public QsTypeValueServiceContext TypeValueServiceContext { get; }
+
+        // 현재 실행되고 있는 함수, null이면 글로벌
+        public QsFunc? CurFunc { get; }
+        public Dictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> CaptureInfosByLocation { get; }
+
+        public QsAnalyzerContext(
+            ImmutableDictionary<QsTypeId, QsType> typesById,
+            ImmutableDictionary<QsFuncId, QsFunc> funcsById,
+            Dictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
+            ImmutableDictionary<string, QsType> globalTypes,            
+            QsTypeValue boolTypeValue,
+            QsTypeValue voidTypeValue)
         {
-            public bool Equals(T x, T y)
-            {
-                return Object.ReferenceEquals(x, y);
-            }
+            TypeValuesByTypeExp = typeValuesByTypeExp;
+            GlobalTypes = globalTypes;
 
-            public int GetHashCode(T obj)
-            {
-                return RuntimeHelpers.GetHashCode(obj);
-            }
-        }
+            BoolTypeValue = boolTypeValue;
+            VoidTypeValue = voidTypeValue;
 
-        public QsAnalyzerContext()
-        {
             bGlobalScope = true;
+
             Errors = new List<(object Obj, string Message)>();
             GlobalVarTypeValues = ImmutableDictionary<string, QsTypeValue>.Empty;
             VarTypeValues = ImmutableDictionary<string, QsTypeValue>.Empty;
-            ExpTypeValues = new Dictionary<QsExp, QsTypeValue>(new QsRefComparer<QsExp>());
-            TypeExpTypeValues = new Dictionary<QsTypeExp, QsTypeValue>(new QsRefComparer<QsTypeExp>());
-        }
+            TypeValuesByExp = new Dictionary<QsExp, QsTypeValue>(QsReferenceComparer<QsExp>.Instance);
+            TypeValueServiceContext = new QsTypeValueServiceContext(typesById, funcsById);
 
-        public void AddError(object obj, string message)
-        {
-            Errors.Add((obj, message));
+            CurFunc = null;
+            CaptureInfosByLocation = new Dictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>>();
         }
-
-        public bool HasError() { return Errors.Count != 0; }
 
         public void AddVarType(string varName, QsTypeValue typeValue)
         {
             VarTypeValues = VarTypeValues.SetItem(varName, typeValue);
         }
-
-        public bool GetVarTypeValue(string varName, [NotNullWhen(returnValue:true)] out QsTypeValue? typeValue)
-        {
-            return VarTypeValues.TryGetValue(varName, out typeValue);
-        }
-
+        
         public void AddGlobalVarType(string varName, QsTypeValue typeValue)
         {
             GlobalVarTypeValues = GlobalVarTypeValues.SetItem(varName, typeValue);
         }
-
-        public bool GetGlobalVarTypeValue(string varName, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
-        {
-            return GlobalVarTypeValues.TryGetValue(varName, out typeValue);
-        }
-
-        public void AddExpTypeValue(QsExp exp, QsTypeValue typeValue)
-        {
-            ExpTypeValues.Add(exp, typeValue);
-        }
-
+        
+        
         // 1. exp가 무슨 타입을 가지는지
         // 2. callExp가 staticFunc을 호출할 경우 무슨 함수를 호출하는지
     }

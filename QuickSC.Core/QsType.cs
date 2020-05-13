@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -16,9 +17,9 @@ namespace QuickSC
         public abstract string GetName();
         public abstract ImmutableArray<string> GetTypeParams();
         public abstract QsTypeValue? GetBaseTypeValue();
-        public abstract QsTypeId? GetMemberTypeId(string name);
-        public abstract QsFuncId? GetMemberFuncId(QsMemberFuncId memberFuncId);
-        public abstract QsTypeValue? GetMemberVarTypeValue(string name);
+        public abstract bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsTypeId? typeId);
+        public abstract bool GetMemberFuncId(QsMemberFuncId memberFuncId, [NotNullWhen(returnValue: true)] out QsFuncId? funcId);
+        public abstract bool GetMemberVarTypeValue(string varName, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue);
     }
 
     //public struct QsDefaultTypeData
@@ -95,28 +96,46 @@ namespace QuickSC
             return baseTypeValue;
         }
 
-        public override QsTypeId? GetMemberTypeId(string name)
+        public override bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsTypeId? outTypeId)
         {
-            if (memberTypeIds.TryGetValue(name, out var memberType))
-                return memberType;
-
-            return null;
+            if (memberTypeIds.TryGetValue(name, out var typeId))
+            {
+                outTypeId = typeId;
+                return true;
+            }
+            else
+            {
+                outTypeId = null;
+                return false;
+            }
         }
 
-        public override QsFuncId? GetMemberFuncId(QsMemberFuncId memberFuncId)
+        public override bool GetMemberFuncId(QsMemberFuncId memberFuncId, [NotNullWhen(returnValue: true)] out QsFuncId? outFuncId)
         {
             if (memberFuncIds.TryGetValue(memberFuncId, out var funcId))
-                return funcId;
-
-            return null;
+            {
+                outFuncId = funcId;
+                return true;
+            }
+            else
+            {
+                outFuncId = null;
+                return false;
+            }
         }
 
-        public override QsTypeValue? GetMemberVarTypeValue(string varName)
+        public override bool GetMemberVarTypeValue(string varName, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
-            if (memberVarTypeValues.TryGetValue(varName, out var value))
-                return value;
-
-            return null;
+            if (memberVarTypeValues.TryGetValue(varName, out var typeValue))
+            {
+                outTypeValue = typeValue;
+                return true;
+            }
+            else
+            {
+                outTypeValue = null;
+                return false;
+            }
         }
     }
 

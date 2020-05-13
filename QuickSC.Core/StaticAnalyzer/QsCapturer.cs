@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
-namespace QuickSC
+namespace QuickSC.StaticAnalyzer
 {
     public enum QsCaptureContextCaptureKind
     {
@@ -57,7 +57,7 @@ namespace QuickSC
         }        
     }
 
-    class QsEvalCapturer
+    public class QsCapturer
     {
         QsCaptureContext? CaptureStringExpElements(ImmutableArray<QsStringExpElement> elems, QsCaptureContext context)
         {

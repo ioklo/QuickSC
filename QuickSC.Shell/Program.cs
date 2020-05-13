@@ -55,9 +55,7 @@ namespace QuickSC.Shell
 
                 var cmdProvider = new QsDemoCommandProvider();
 
-                // var typeValueFactory = new QsTypeValueFactory();
-                var analyzer = new QsAnalyzer();
-                var analyzerContext = new QsAnalyzerContext();                
+                // var typeValueFactory = new QsTypeValueFactory();                
 
                 var evaluator = new QsEvaluator(cmdProvider);
                 
@@ -93,9 +91,16 @@ Func(First);
                     return;
                 }
 
-                analyzer.AnalyzeScript(scriptResult.Elem, analyzerContext);
+                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem);
+                if (analyzerContext == null || 0 < analyzerContext.Errors.Count)
+                {
+                    Console.WriteLine("분석에 실패했습니다");
+                    return;
+                }
 
-                var evalStaticContext = new QsEvalStaticContext(analyzerContext.TypeExpTypeValues.ToImmutableDictionary());
+                var evalStaticContext = new QsEvalStaticContext(
+                    analyzerContext.TypeValuesByTypeExp.ToImmutableDictionary(),
+                    analyzerContext.CaptureInfosByLocation.ToImmutableDictionary());
                 var evalContext = QsEvalContext.Make(evalStaticContext);
                 var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);
                 if (!newEvalContext.HasValue)

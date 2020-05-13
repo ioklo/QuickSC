@@ -87,22 +87,21 @@ namespace QuickSC.Blazor
                     await WriteAsync("에러 (파싱 실패)");
                     return false;
                 }
-                
-                var analyzer = new QsAnalyzer();
-                var analyzerContext = new QsAnalyzerContext();
-                analyzer.AnalyzeScript(scriptResult.Elem, analyzerContext);
 
-                if (analyzerContext.HasError())
+                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem);
+
+                if (analyzerContext == null || 0 < analyzerContext.Errors.Count)
                 {
                     await WriteAsync("에러 (타입 체킹 실패)"); // 다들 아는 단어로
                     return false;
-                }                
-                
+                }
 
                 var demoCmdProvider = new QsDemoCommandProvider();                
 
                 var evaluator = new QsEvaluator(demoCmdProvider);
-                var evalContext = QsEvalContext.Make(new QsEvalStaticContext(analyzerContext.TypeExpTypeValues.ToImmutableDictionary()));
+                var evalContext = QsEvalContext.Make(new QsEvalStaticContext(
+                    analyzerContext.TypeValuesByTypeExp.ToImmutableDictionary(),
+                    analyzerContext.CaptureInfosByLocation.ToImmutableDictionary()));
 
                 var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);
                 if (newEvalContext == null)

@@ -1,4 +1,5 @@
-﻿using QuickSC.Syntax;
+﻿using QuickSC.StaticAnalyzer;
+using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -13,14 +14,12 @@ namespace QuickSC
     {
         private QsEvaluator evaluator;
         private QsExpEvaluator expEvaluator;
-        private QsEvalCapturer capturer;        
         private IQsCommandProvider commandProvider;
 
-        public QsStmtEvaluator(QsEvaluator evaluator, QsExpEvaluator expEvaluator, QsEvalCapturer capturer, IQsCommandProvider commandProvider)
+        public QsStmtEvaluator(QsEvaluator evaluator, QsExpEvaluator expEvaluator, IQsCommandProvider commandProvider)
         {
             this.evaluator = evaluator;
             this.expEvaluator = expEvaluator;
-            this.capturer = capturer;            
             this.commandProvider = commandProvider;
         }
 
@@ -319,15 +318,11 @@ namespace QuickSC
 
         internal QsEvalContext? EvaluateTaskStmt(QsTaskStmt taskStmt, QsEvalContext context)
         {
-            var captureResult = capturer.CaptureStmt(taskStmt.Body, QsCaptureContext.Make());
-            if (!captureResult.HasValue) return null;
+            var captureInfo = context.StaticContext.CaptureInfosByLocation[QsCaptureInfoLocation.Make(taskStmt)];
 
             var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
-            foreach (var needCapture in captureResult.Value.NeedCaptures)
+            foreach (var (name, kind) in captureInfo)
             {
-                var name = needCapture.Key;
-                var kind = needCapture.Value;
-
                 var origValue = context.GetValue(name);
 
                 if (origValue == null)
@@ -392,15 +387,11 @@ namespace QuickSC
 
         internal QsEvalContext? EvaluateAsyncStmt(QsAsyncStmt asyncStmt, QsEvalContext context)
         {
-            var captureResult = capturer.CaptureStmt(asyncStmt.Body, QsCaptureContext.Make());
-            if (!captureResult.HasValue) return null;
+            var captureInfo = context.StaticContext.CaptureInfosByLocation[QsCaptureInfoLocation.Make(asyncStmt)];
 
             var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
-            foreach (var needCapture in captureResult.Value.NeedCaptures)
+            foreach (var (name, kind) in captureInfo)
             {
-                var name = needCapture.Key;
-                var kind = needCapture.Value;
-
                 var origValue = context.GetValue(name);
 
                 if (origValue == null)

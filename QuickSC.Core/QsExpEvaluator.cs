@@ -1,4 +1,5 @@
 ﻿using QuickSC.Runtime;
+using QuickSC.StaticAnalyzer;
 using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
@@ -13,12 +14,10 @@ namespace QuickSC
     class QsExpEvaluator
     {
         private QsEvaluator evaluator;
-        private QsEvalCapturer capturer;
 
-        public QsExpEvaluator(QsEvaluator evaluator, QsEvalCapturer capturer)
+        public QsExpEvaluator(QsEvaluator evaluator)
         {
             this.evaluator = evaluator;
-            this.capturer = capturer;
         }
 
         QsEvalResult<QsValue> EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
@@ -393,16 +392,11 @@ namespace QuickSC
 
         QsEvalResult<QsValue> EvaluateLambdaExp(QsLambdaExp exp, QsEvalContext context)
         {
-            var captureResult = capturer.CaptureLambdaExp(exp, QsCaptureContext.Make());
-            if (!captureResult.HasValue)
-                return QsEvalResult<QsValue>.Invalid;
+            var captureInfo = context.StaticContext.CaptureInfosByLocation[QsCaptureInfoLocation.Make(exp)];
 
             var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
-            foreach (var needCapture in captureResult.Value.NeedCaptures)
+            foreach (var (name, kind) in captureInfo)
             {
-                var name = needCapture.Key;
-                var kind = needCapture.Value;
-
                 var origValue = context.GetValue(name);
                 if (origValue == null) return QsEvalResult<QsValue>.Invalid;
 

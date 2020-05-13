@@ -49,13 +49,10 @@ namespace QuickSC
 
             Assert.True(scriptResult.HasValue);
 
-            var analyzer = new QsAnalyzer();
-            var context = new QsAnalyzerContext();
-
-            analyzer.AnalyzeScript(scriptResult.Elem, context);
-
+            var context = QsAnalyzer.AnalyzeScript(scriptResult.Elem);            
+            
             // 통과만 하는 시나리오
-            Assert.False(context.HasError());
+            Assert.False(context == null || 0 < context.Errors.Count);
         }
 
         public static IEnumerable<object[]> GetScriptData()

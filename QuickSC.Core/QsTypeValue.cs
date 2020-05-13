@@ -36,42 +36,83 @@ namespace QuickSC
         //    => throw new NotImplementedException();
     }
 
-    public class QsTypeVarTypeValue : QsTypeValue
+    public abstract class QsTypeVarParent { }
+    class QsTypeIdTypeVarParent : QsTypeVarParent
     {
-        // TODO: if there's need to distinguish parent, then typing
-        public object Parent { get; } 
+        public QsTypeId TypeId { get; }
+        public QsTypeIdTypeVarParent(QsTypeId typeId) { TypeId = typeId; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsTypeIdTypeVarParent parent &&
+                   EqualityComparer<QsTypeId>.Default.Equals(TypeId, parent.TypeId);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(TypeId);
+        }
+
+        public static bool operator ==(QsTypeIdTypeVarParent? left, QsTypeIdTypeVarParent? right)
+        {
+            return EqualityComparer<QsTypeIdTypeVarParent?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsTypeIdTypeVarParent? left, QsTypeIdTypeVarParent? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    class QsFuncIdTypeVarParent : QsTypeVarParent
+    {
+        public QsFuncId FuncId { get; }
+        public QsFuncIdTypeVarParent(QsFuncId funcId) { FuncId = funcId; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsFuncIdTypeVarParent parent &&
+                   EqualityComparer<QsFuncId>.Default.Equals(FuncId, parent.FuncId);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(FuncId);
+        }
+
+        public static bool operator ==(QsFuncIdTypeVarParent? left, QsFuncIdTypeVarParent? right)
+        {
+            return EqualityComparer<QsFuncIdTypeVarParent?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsFuncIdTypeVarParent? left, QsFuncIdTypeVarParent? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    // T
+    public class QsTypeVarTypeValue : QsTypeValue
+    {        
+        public QsTypeVarParent Parent { get; } 
         public string Name { get; }
 
-        public QsTypeVarTypeValue(object parent, string name)
+        public QsTypeVarTypeValue(QsFuncId funcId, string name)
         {
-            Parent = parent;
+            Parent = new QsFuncIdTypeVarParent(funcId);
             Name = name;
         }
 
-        //public override ImmutableDictionary<string, QsTypeValue> MakeTypeEnv()
-        //{
-        //    return ImmutableDictionary<string, QsTypeValue>.Empty;
-        //}
-
-        //public override bool ApplyTypeArgs(ImmutableDictionary<string, QsTypeValue> env, out QsTypeValue? appliedTypeValue)
-        //{
-        //    return env.TryGetValue(Name, out appliedTypeValue);
-        //}
-
-        //public override QsTypeValue? GetMemberTypeValue(string memberName, ImmutableArray<QsTypeValue> typeArgs)
-        //{
-        //    return null;
-        //}
-
-        //public override ImmutableArray<QsTypeValue> GetTypeArgs()
-        //{
-        //    return ImmutableArray<QsTypeValue>.Empty;
-        //}
+        public QsTypeVarTypeValue(QsTypeId typeId, string name)
+        {
+            Parent = new QsTypeIdTypeVarParent(typeId);
+            Name = name;
+        }
 
         public override bool Equals(object? obj)
         {
             return obj is QsTypeVarTypeValue value &&
-                   Parent == value.Parent &&
+                   EqualityComparer<QsTypeVarParent>.Default.Equals(Parent, value.Parent) &&
                    Name == value.Name;
         }
 
@@ -90,6 +131,7 @@ namespace QuickSC
             return !(left == right);
         }
     }
+
 
     public class QsNormalTypeValue : QsTypeValue
     {
@@ -223,6 +265,7 @@ namespace QuickSC
             return !(left == right);
         }
     }
+
 
     public class QsFuncTypeValue : QsTypeValue
     {
