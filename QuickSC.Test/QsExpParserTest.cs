@@ -128,7 +128,7 @@ namespace QuickSC
                 new QsMemberExp(
                     new QsMemberCallExp(
                         new QsMemberExp(new QsIdentifierExp("a"), "b", ImmutableArray<QsTypeExp>.Empty),
-                        new QsMemberFuncId("c"),
+                        "c",
                         ImmutableArray<QsTypeExp>.Empty,
                         new QsIntLiteralExp(1),
                         new QsStringExp(new QsTextStringExpElement("str"))),

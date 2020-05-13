@@ -216,7 +216,7 @@ namespace QuickSC
                     if (!Accept<QsRBracketToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                         return QsExpParseResult.Invalid;
 
-                    exp = new QsMemberCallExp(exp, new QsMemberFuncId(QsMemberFuncKind.Indexer), ImmutableArray<QsTypeExp>.Empty, indexResult.Elem);
+                    exp = new QsIndexerExp(exp, indexResult.Elem);
                     continue;
                 }
 
@@ -230,7 +230,7 @@ namespace QuickSC
                     if (memberCallArgsResult.HasValue)
                     {
                         context = memberCallArgsResult.Context;
-                        exp = new QsMemberCallExp(exp, new QsMemberFuncId(idResult.Value), ImmutableArray<QsTypeExp>.Empty, memberCallArgsResult.Elem);
+                        exp = new QsMemberCallExp(exp, idResult.Value, ImmutableArray<QsTypeExp>.Empty, memberCallArgsResult.Elem);
                         continue;
                     }
                     else

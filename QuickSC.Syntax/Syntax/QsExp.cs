@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace QuickSC.Syntax
@@ -326,50 +326,37 @@ namespace QuickSC.Syntax
             return !(left == right);
         }
     }
-
-    public enum QsMemberFuncKind
+    
+    // a[b]
+    public class QsIndexerExp : QsExp
     {
-        Normal,
-        Indexer,
-    }
+        public QsExp Object { get; }
+        public QsExp Index { get; }
 
-    public struct QsMemberFuncId
-    {
-        public QsMemberFuncKind Kind { get; }
-        public string Name { get; }
-
-        public QsMemberFuncId(QsMemberFuncKind kind)
+        public QsIndexerExp(QsExp obj, QsExp index)
         {
-            Debug.Assert(kind != QsMemberFuncKind.Normal);
-
-            Kind = kind;
-            Name = string.Empty;
-        }
-
-        public QsMemberFuncId(string name)
-        {
-            Kind = QsMemberFuncKind.Normal;
-            Name = name;
+            Object = obj;
+            Index = index;
         }
 
         public override bool Equals(object? obj)
         {
-            return obj is QsMemberFuncId id &&
-                   Kind == id.Kind &&
-                   Name == id.Name;
+            return obj is QsIndexerExp exp &&
+                   EqualityComparer<QsExp>.Default.Equals(Object, exp.Object) &&
+                   EqualityComparer<QsExp>.Default.Equals(Index, exp.Index);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Kind, Name);
+            return HashCode.Combine(Object, Index);
         }
 
-        public static bool operator ==(QsMemberFuncId left, QsMemberFuncId right)
+        public static bool operator ==(QsIndexerExp? left, QsIndexerExp? right)
         {
-            return left.Equals(right);
+            return EqualityComparer<QsIndexerExp?>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(QsMemberFuncId left, QsMemberFuncId right)
+        public static bool operator !=(QsIndexerExp? left, QsIndexerExp? right)
         {
             return !(left == right);
         }
@@ -378,22 +365,22 @@ namespace QuickSC.Syntax
     public class QsMemberCallExp : QsExp
     {
         public QsExp Object { get; }
-        public QsMemberFuncId MemberFuncId { get; }
+        public string MemberFuncName { get; }
         public ImmutableArray<QsTypeExp> MemberTypeArgs { get; }
         public ImmutableArray<QsExp> Args { get; }
 
-        public QsMemberCallExp(QsExp obj, QsMemberFuncId memberFuncId, ImmutableArray<QsTypeExp> typeArgs, ImmutableArray<QsExp> args)
+        public QsMemberCallExp(QsExp obj, string memberFuncName, ImmutableArray<QsTypeExp> typeArgs, ImmutableArray<QsExp> args)
         {
             Object = obj;
-            MemberFuncId = memberFuncId;
+            MemberFuncName = memberFuncName;
             MemberTypeArgs = typeArgs;
             Args = args;
         }
 
-        public QsMemberCallExp(QsExp obj, QsMemberFuncId memberFuncId, ImmutableArray<QsTypeExp> typeArgs, params QsExp[] args)
+        public QsMemberCallExp(QsExp obj, string memberFuncName, ImmutableArray<QsTypeExp> typeArgs, params QsExp[] args)
         {
             Object = obj;
-            MemberFuncId = memberFuncId;
+            MemberFuncName = memberFuncName;
             MemberTypeArgs = typeArgs;
             Args = ImmutableArray.Create(args);
         }
@@ -402,14 +389,14 @@ namespace QuickSC.Syntax
         {
             return obj is QsMemberCallExp exp &&
                    EqualityComparer<QsExp>.Default.Equals(Object, exp.Object) &&
-                   EqualityComparer<QsMemberFuncId>.Default.Equals(MemberFuncId, exp.MemberFuncId) &&
+                   MemberFuncName == exp.MemberFuncName &&
                    Enumerable.SequenceEqual(MemberTypeArgs, exp.MemberTypeArgs) &&
                    Enumerable.SequenceEqual(Args, exp.Args);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Object, MemberFuncId, Args);
+            return HashCode.Combine(Object, MemberFuncName, Args);
         }
 
         public static bool operator ==(QsMemberCallExp? left, QsMemberCallExp? right)

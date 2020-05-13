@@ -426,7 +426,7 @@ namespace QuickSC
             if (!Eval(await EvaluateExpAsync(exp.Object, context), ref context, out var thisValue))
                 return QsEvalResult<QsValue>.Invalid;
 
-            var callable = thisValue!.GetMemberFuncs(exp.MemberFuncId);
+            var callable = thisValue!.GetMemberFuncs(new QsMemberFuncId(exp.MemberFuncName));
             if (callable == null) return QsEvalResult<QsValue>.Invalid;
 
             // 

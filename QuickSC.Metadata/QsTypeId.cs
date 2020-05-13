@@ -6,7 +6,7 @@ namespace QuickSC
     {
         public int Value { get; }
 
-        internal QsTypeId(int value) { Value = value; }
+        public QsTypeId(int value) { Value = value; }
 
         public override bool Equals(object? obj)
         {
