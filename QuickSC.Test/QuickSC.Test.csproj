@@ -31,10 +31,4 @@
     <ProjectReference Include="..\QuickSC.Syntax\QuickSC.Syntax.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="Input\01_Analyzer.qs">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>

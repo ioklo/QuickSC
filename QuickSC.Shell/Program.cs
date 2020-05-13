@@ -71,11 +71,11 @@ enum X
 
 void Func(X x)
 {
-    if (x is First)
+    if (x is X.First)
         @echo hi
 }
 
-Func(First);
+Func(X.First);
 
 @echo $a
 

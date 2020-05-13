@@ -15,19 +15,13 @@ namespace QuickSC.StaticAnalyzer
 
         public QsTypeSkeleton? ScopeSkeleton { get; set; }
 
-        public QsTypeSkeletonCollectorContext(IEnumerable<QsTypeSkeleton> refSkeletons)
+        public QsTypeSkeletonCollectorContext()
         {
             GlobalTypeSkeletons = new Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton>();
             TypeIdsByLocation = new Dictionary<QsTypeIdLocation, QsTypeId>();
             FuncIdsByLocation = new Dictionary<QsFuncIdLocation, QsFuncId>();
             TypeSkeletonsByTypeId = new Dictionary<QsTypeId, QsTypeSkeleton>();
             ScopeSkeleton = null;
-
-            foreach(var refSkeleton in refSkeletons)
-            {
-                GlobalTypeSkeletons.Add((refSkeleton.Name, refSkeleton.TypeParamCount), refSkeleton);
-                TypeSkeletonsByTypeId.Add(refSkeleton.TypeId, refSkeleton);
-            }
         }
 
         // 1. TypeId 부여 Ref 대신 Id부여

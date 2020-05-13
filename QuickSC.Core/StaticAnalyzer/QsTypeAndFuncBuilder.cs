@@ -41,6 +41,8 @@ namespace QuickSC.StaticAnalyzer
     {
         public QsTypeValue ThisTypeValue { get; }
         public Dictionary<string, QsTypeId> MemberTypes { get; }
+        public Dictionary<string, QsFuncId> StaticMemberFuncs { get; }
+        public Dictionary<string, QsTypeValue> StaticMemberVarTypeValues { get; }
         public Dictionary<QsMemberFuncId, QsFuncId> MemberFuncs { get; }
         public Dictionary<string, QsTypeValue> MemberVarTypeValues { get; }
 
@@ -49,6 +51,8 @@ namespace QuickSC.StaticAnalyzer
             ThisTypeValue = thisTypeValue;
 
             MemberTypes = new Dictionary<string, QsTypeId>();
+            StaticMemberFuncs = new Dictionary<string, QsFuncId>();
+            StaticMemberVarTypeValues = new Dictionary<string, QsTypeValue>();
             MemberFuncs = new Dictionary<QsMemberFuncId, QsFuncId>();
             MemberVarTypeValues = new Dictionary<string, QsTypeValue>();
         }
@@ -72,6 +76,8 @@ namespace QuickSC.StaticAnalyzer
                 ImmutableArray<string>.Empty,                
                 thisTypeValue, // enum E<T>{ First } => E<T>.First : E<T>
                 ImmutableDictionary<string, QsTypeId>.Empty,
+                ImmutableDictionary<string, QsFuncId>.Empty,
+                ImmutableDictionary<string, QsTypeValue>.Empty,
                 ImmutableDictionary<QsMemberFuncId, QsFuncId>.Empty,
                 ImmutableDictionary<string, QsTypeValue>.Empty);
 
@@ -96,12 +102,12 @@ namespace QuickSC.StaticAnalyzer
                     argTypes.MoveToImmutable(), 
                     context);
 
-                context.TypeBuilder.MemberFuncs.Add(new QsMemberFuncId(func.Name), func.FuncId);
+                context.TypeBuilder.StaticMemberFuncs.Add(func.Name, func.FuncId);
             }
             else
             {
                 // NOTICE : E.First 타입이 아니라 E 타입이다 var x = E.First; 에서 x는 E여야 하기 떄문
-                context.TypeBuilder.MemberVarTypeValues.Add(elem.Name, thisTypeValue); 
+                context.TypeBuilder.StaticMemberVarTypeValues.Add(elem.Name, thisTypeValue); 
             }
         }
 
@@ -142,6 +148,8 @@ namespace QuickSC.StaticAnalyzer
                 enumDecl.TypeParams,
                 null, // TODO: Enum이던가 Object여야 한다,
                 context.TypeBuilder.MemberTypes.ToImmutableDictionary(),
+                context.TypeBuilder.StaticMemberFuncs.ToImmutableDictionary(),
+                context.TypeBuilder.StaticMemberVarTypeValues.ToImmutableDictionary(),
                 context.TypeBuilder.MemberFuncs.ToImmutableDictionary(),
                 context.TypeBuilder.MemberVarTypeValues.ToImmutableDictionary());
 

@@ -16,8 +16,11 @@ namespace QuickSC.StaticAnalyzer
         // 전역 타입 정보
         public ImmutableDictionary<string, QsType> GlobalTypes { get; }
 
-        public QsTypeValue BoolTypeValue { get; }
         public QsTypeValue VoidTypeValue { get; }
+        public QsTypeValue BoolTypeValue { get; }
+        public QsTypeValue IntTypeValue { get; }
+        public QsTypeValue StringTypeValue { get; }
+        public QsTypeId ListTypeId { get; }
 
         // 전역 스코프인지,
         public bool bGlobalScope { get; set; }
@@ -25,7 +28,8 @@ namespace QuickSC.StaticAnalyzer
         // 에러
         public List<(object Obj, string Message)> Errors { get; }
 
-        // 전역변수의 타입
+        // 전역변수의 타입, 
+        // TODO: 전역변수는 전역타입과 이름이 겹치면 안된다.
         public ImmutableDictionary<string, QsTypeValue> GlobalVarTypeValues { get; set; }
 
         // 현재 변수의 타입
@@ -44,15 +48,21 @@ namespace QuickSC.StaticAnalyzer
             ImmutableDictionary<QsTypeId, QsType> typesById,
             ImmutableDictionary<QsFuncId, QsFunc> funcsById,
             Dictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
-            ImmutableDictionary<string, QsType> globalTypes,            
+            ImmutableDictionary<string, QsType> globalTypes,
+            QsTypeValue voidTypeValue,
             QsTypeValue boolTypeValue,
-            QsTypeValue voidTypeValue)
+            QsTypeValue intTypeValue,
+            QsTypeValue stringTypeValue,
+            QsTypeId listTypeId)
         {
             TypeValuesByTypeExp = typeValuesByTypeExp;
             GlobalTypes = globalTypes;
 
-            BoolTypeValue = boolTypeValue;
             VoidTypeValue = voidTypeValue;
+            BoolTypeValue = boolTypeValue;
+            IntTypeValue = intTypeValue;
+            StringTypeValue = stringTypeValue;
+            ListTypeId = listTypeId;
 
             bGlobalScope = true;
 

@@ -24,7 +24,76 @@ namespace QuickSC.StaticAnalyzer
 
     public class QsTypeValueService
     {
+        public bool GetMemberTypeValue_NormalTypeValue(
+            QsNormalTypeValue typeValue,
+            string memberName,
+            ImmutableArray<QsTypeValue> typeArgs,
+            QsTypeValueServiceContext context,
+            [NotNullWhen(returnValue: true)] out QsTypeValue? memberTypeValue)
+        {
+            memberTypeValue = null;
+            var type = context.TypesById[typeValue.TypeId];
+
+            if (!type.GetMemberTypeId(memberName, out var memberTypeId))
+                return false;            
+
+            var typeEnv = new Dictionary<QsTypeVarTypeValue, QsTypeValue>();
+            MakeTypeEnv(typeValue, context, typeEnv);
+            memberTypeValue = ApplyTypeEnv(new QsNormalTypeValue(typeValue, memberTypeId.Value, typeArgs), typeEnv);
+            return true;
+        }
+
+        public bool GetMemberTypeValue(
+            QsTypeValue typeValue, 
+            string memberName, 
+            ImmutableArray<QsTypeValue> typeArgs, 
+            QsTypeValueServiceContext context, 
+            [NotNullWhen(returnValue: true)] out QsTypeValue? memberTypeValue)
+        {
+            // var / typeVar / normal / func
+            return typeValue switch
+            {
+                QsNormalTypeValue normalTypeValue => GetMemberTypeValue_NormalTypeValue(normalTypeValue, memberName, typeArgs, context, out memberTypeValue),
+                _ => throw new NotImplementedException()
+            };
+        }
+
+        public bool GetMemberVarTypeValue_NormalTypeValue(
+            bool bStaticOnly,
+            QsNormalTypeValue typeValue,
+            string memberName,
+            QsTypeValueServiceContext context,
+            [NotNullWhen(returnValue: true)] out QsTypeValue? memberVarTypeValue)
+        {
+            memberVarTypeValue = null;
+            var type = context.TypesById[typeValue.TypeId];
+
+            if (!type.GetMemberVarTypeValue(bStaticOnly, memberName, out var varTypeValue))
+                return false;
+
+            var typeEnv = new Dictionary<QsTypeVarTypeValue, QsTypeValue>();
+            MakeTypeEnv(typeValue, context, typeEnv);
+            memberVarTypeValue = ApplyTypeEnv(varTypeValue, typeEnv);
+            return true;
+        }
+
+        public bool GetMemberVarTypeValue(
+            bool bStaticOnly,
+            QsTypeValue typeValue, 
+            string memberName, 
+            QsTypeValueServiceContext context,
+            [NotNullWhen(returnValue: true)] out QsTypeValue? memberVarTypeValue)
+        {
+            // var / typeVar / normal / func
+            return typeValue switch
+            {
+                QsNormalTypeValue normalTypeValue => GetMemberVarTypeValue_NormalTypeValue(bStaticOnly, normalTypeValue, memberName, context, out memberVarTypeValue),
+                _ => throw new NotImplementedException()
+            };
+        }
+
         bool GetFuncTypeValue_NormalTypeValue(
+            bool bStaticOnly,
             QsNormalTypeValue typeValue, 
             QsMemberFuncId memberFuncId, 
             ImmutableArray<QsTypeValue> typeArgs, 
@@ -35,7 +104,7 @@ namespace QuickSC.StaticAnalyzer
 
             var type = context.TypesById[typeValue.TypeId];
 
-            if (!type.GetMemberFuncId(memberFuncId, out var funcId))
+            if (!type.GetMemberFuncId(bStaticOnly, memberFuncId, out var funcId))
                 return false;
 
             funcTypeValue = new QsFuncTypeValue(typeValue, funcId.Value, typeArgs);
@@ -43,6 +112,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         public bool GetFuncTypeValue(
+            bool bStaticOnly,
             QsTypeValue typeValue, 
             QsMemberFuncId memberFuncId, 
             ImmutableArray<QsTypeValue> typeArgs,
@@ -52,7 +122,7 @@ namespace QuickSC.StaticAnalyzer
             // var / typeVar / normal / func
             return typeValue switch
             {
-                QsNormalTypeValue normalTypeValue => GetFuncTypeValue_NormalTypeValue(normalTypeValue, memberFuncId, typeArgs, context, out funcTypeValue),
+                QsNormalTypeValue normalTypeValue => GetFuncTypeValue_NormalTypeValue(bStaticOnly, normalTypeValue, memberFuncId, typeArgs, context, out funcTypeValue),
                 _ => throw new NotImplementedException()
             };
         }
@@ -162,5 +232,7 @@ namespace QuickSC.StaticAnalyzer
 
             // func.RetTypeValue;
         }
+
+        
     }
 }

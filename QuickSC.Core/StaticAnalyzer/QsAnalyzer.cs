@@ -11,7 +11,7 @@ namespace QuickSC.StaticAnalyzer
 {
     public class QsAnalyzer
     {
-        // QsExpAnalyzer expAnalyzer;
+        QsExpAnalyzer expAnalyzer;
         QsStmtAnalyzer stmtAnalyzer;
         QsCapturer capturer;
         QsTypeValueService typeValueService;
@@ -19,17 +19,17 @@ namespace QuickSC.StaticAnalyzer
         public QsAnalyzer(QsCapturer capturer, QsTypeValueService typeValueService)
         {
             // 내부 전용 클래스는 new를 써서 직접 만들어도 된다 (DI, 인자로 받을 필요 없이)
-            
-            // this.expAnalyzer = new QsExpAnalyzer(typeValueFactory);
+
+            this.expAnalyzer = new QsExpAnalyzer(typeValueService);
             this.stmtAnalyzer = new QsStmtAnalyzer(this, typeValueService);
             this.capturer = new QsCapturer();
             this.typeValueService = new QsTypeValueService();
         }
 
-        //internal QsTypeValue? AnalyzeExp(QsExp exp, QsAnalyzerContext context)
-        //{
-        //    return expAnalyzer.AnalyzeExp(exp, context);
-        //}
+        internal bool AnalyzeExp(QsExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        { 
+            return expAnalyzer.AnalyzeExp(exp, context, out typeValue);
+        }
 
         internal bool CaptureStmt(QsStmt stmt, ref QsCaptureContext captureContext)
         {
@@ -87,12 +87,7 @@ namespace QuickSC.StaticAnalyzer
                 }
             }
         }
-
-        public bool AnalyzeExp(QsExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue:true)] out QsTypeValue? typeValue)
-        {
-            throw new NotImplementedException();
-        }
-
+        
         public void AnalyzeStmt(QsStmt stmt, QsAnalyzerContext context)
         {
             stmtAnalyzer.AnalyzeStmt(stmt, context);
@@ -115,16 +110,30 @@ namespace QuickSC.StaticAnalyzer
 
             var errors = new List<(object obj, string msg)>();
 
-            var refSkeletons = new[] {
-                new QsTypeSkeleton(typeIdFactory.MakeTypeId(), "void", 0),
-                new QsTypeSkeleton(typeIdFactory.MakeTypeId(), "bool", 0),
-                new QsTypeSkeleton(typeIdFactory.MakeTypeId(), "int", 0),
-                new QsTypeSkeleton(typeIdFactory.MakeTypeId(), "string", 0),
-                new QsTypeSkeleton(typeIdFactory.MakeTypeId(), "List", 1),
-            };
+            var emptyStrings = ImmutableArray<string>.Empty;
+            var emptyTypeValuesDict = ImmutableDictionary<string, QsTypeValue>.Empty;
+            var emptyTypeIds = ImmutableDictionary<string, QsTypeId>.Empty;
+            var emptyFuncIds = ImmutableDictionary<string, QsFuncId>.Empty;
+            var emptyMemberFuncIds = ImmutableDictionary<QsMemberFuncId, QsFuncId>.Empty;
 
+            var voidType = new QsDefaultType(typeIdFactory.MakeTypeId(), "void",
+                emptyStrings, null, emptyTypeIds, emptyFuncIds, emptyTypeValuesDict, emptyMemberFuncIds, emptyTypeValuesDict);
+
+            var boolType = new QsDefaultType(typeIdFactory.MakeTypeId(), "bool",
+                emptyStrings, null, emptyTypeIds, emptyFuncIds, emptyTypeValuesDict, emptyMemberFuncIds, emptyTypeValuesDict);
+
+            var intType = new QsDefaultType(typeIdFactory.MakeTypeId(), "int",
+                emptyStrings, null, emptyTypeIds, emptyFuncIds, emptyTypeValuesDict, emptyMemberFuncIds, emptyTypeValuesDict);
+
+            var stringType = new QsDefaultType(typeIdFactory.MakeTypeId(), "string",
+                emptyStrings, null, emptyTypeIds, emptyFuncIds, emptyTypeValuesDict, emptyMemberFuncIds, emptyTypeValuesDict);
+
+            // TODO: list
+            // var listType = new QsDefaultType(typeIdFactory.MakeTypeId(), "List",
+            //    emptyStrings, null, emptyTypeIds, emptyFuncIds, emptyTypeValuesDict, emptyMemberFuncIds, emptyTypeValuesDict);
+            
             // 1. type skeleton 모으기
-            var skeletonCollectorContext = new QsTypeSkeletonCollectorContext(refSkeletons);
+            var skeletonCollectorContext = new QsTypeSkeletonCollectorContext();
             if (!typeSkeletonCollector.CollectScript(script, skeletonCollectorContext))
             {
                 errors.Add((script, $"타입 정보 모으기에 실패했습니다"));
@@ -154,8 +163,11 @@ namespace QuickSC.StaticAnalyzer
             var typesById = builderContext.Types.ToImmutableDictionary(type => type.TypeId);
             var funcsById = builderContext.Funcs.ToImmutableDictionary(type => type.FuncId);
 
-            var boolValueType = new QsNormalTypeValue(null, globalTypes["bool"].TypeId);
-            var voidValueType = new QsNormalTypeValue(null, globalTypes["void"].TypeId);
+            var voidValueType = new QsNormalTypeValue(null, voidType.TypeId);
+            var boolValueType = new QsNormalTypeValue(null, boolType.TypeId);
+            var intValueType = new QsNormalTypeValue(null, intType.TypeId);
+            var stringValueType = new QsNormalTypeValue(null, stringType.TypeId);
+            var listTypeId = globalTypes["list"].TypeId;
 
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
             var analyzerContext = new QsAnalyzerContext(
@@ -163,8 +175,12 @@ namespace QuickSC.StaticAnalyzer
                 funcsById,
                 new Dictionary<QsTypeExp, QsTypeValue>(typeExpEvaluatorContext.TypeValuesByTypeExp, QsReferenceComparer<QsTypeExp>.Instance), 
                 globalTypes,
-                boolValueType,
-                voidValueType);
+                voidValueType,
+                boolValueType, 
+                intValueType,
+                stringValueType,
+                listTypeId);
+
             analyzer.AnalyzeScript(script, analyzerContext);
 
             return analyzerContext;
