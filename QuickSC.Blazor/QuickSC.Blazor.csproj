@@ -14,5 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\QuickSC.Core\QuickSC.Core.csproj" />
+    <ProjectReference Include="..\QuickSC.RuntimeModule\QuickSC.RuntimeModule.csproj" />
   </ItemGroup>
 </Project>

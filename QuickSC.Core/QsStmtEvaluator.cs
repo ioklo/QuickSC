@@ -1,4 +1,5 @@
-﻿using QuickSC.StaticAnalyzer;
+﻿using QuickSC.Runtime;
+using QuickSC.StaticAnalyzer;
 using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
@@ -15,12 +16,14 @@ namespace QuickSC
         private QsEvaluator evaluator;
         private QsExpEvaluator expEvaluator;
         private IQsCommandProvider commandProvider;
+        private IQsRuntimeModule runtimeModule;
 
-        public QsStmtEvaluator(QsEvaluator evaluator, QsExpEvaluator expEvaluator, IQsCommandProvider commandProvider)
+        public QsStmtEvaluator(QsEvaluator evaluator, QsExpEvaluator expEvaluator, IQsCommandProvider commandProvider, IQsRuntimeModule runtimeModule)
         {
             this.evaluator = evaluator;
             this.expEvaluator = expEvaluator;
             this.commandProvider = commandProvider;
+            this.runtimeModule = runtimeModule;
         }
 
         // TODO: CommandProvider가 Parser도 제공해야 할 것 같다
@@ -32,7 +35,7 @@ namespace QuickSC
                 if (!cmdResult.HasValue) return null;
                 context = cmdResult.Context;
 
-                var cmdText = GetString(cmdResult.Value);
+                var cmdText = runtimeModule.GetString(cmdResult.Value);
                 if (cmdText == null) return null;
 
                 await commandProvider.ExecuteAsync(cmdText);

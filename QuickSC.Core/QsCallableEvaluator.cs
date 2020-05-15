@@ -12,10 +12,12 @@ namespace QuickSC
     class QsCallableEvaluator
     {
         private QsStmtEvaluator stmtEvaluator;
+        private IQsRuntimeModule runtimeModule;
 
-        public QsCallableEvaluator(QsStmtEvaluator stmtEvaluator)
+        public QsCallableEvaluator(QsStmtEvaluator stmtEvaluator, IQsRuntimeModule runtimeModule)
         {
             this.stmtEvaluator = stmtEvaluator;
+            this.runtimeModule = runtimeModule;
         }
 
         async IAsyncEnumerable<QsEvalResult<QsValue>> EvaluateSequenceCallAsync(QsStmt body, QsValue thisValue, ImmutableDictionary<string, QsValue> vars, QsEvalContext context)
@@ -89,7 +91,7 @@ namespace QuickSC
             {
                 // context.. 여기 들어가 있어도 괜찮은걸까
                 var asyncEnum = EvaluateSequenceCallAsync(callable.FuncDecl.Body, thisValue, vars.ToImmutable(), context);
-                return new QsEvalResult<QsValue>(new QsObjectValue(new QsAsyncEnumerableObject(ToValue(asyncEnum))), context);
+                return new QsEvalResult<QsValue>(new QsObjectValue(runtimeModule.MakeAsyncEnumerableObject(ToValue(asyncEnum))), context);
             }
             else
             {
@@ -120,13 +122,22 @@ namespace QuickSC
             return await EvaluateNormalCallAsync(callable.Exp.Body, thisValue, vars.ToImmutable(), context);
         }
 
+        async ValueTask<QsEvalResult<QsValue>> EvaluateNativeCallableAsync(QsNativeCallable callable, QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)
+        {
+            var result = await callable.Invoker(thisValue, args);
+            if (result == null)
+                return QsEvalResult<QsValue>.Invalid;
+
+            return new QsEvalResult<QsValue>(result, context);
+        }
+
         internal async ValueTask<QsEvalResult<QsValue>> EvaluateCallableAsync(QsCallable callable, QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)
         {
             return callable switch
             {
                 QsFuncCallable funcCallable => await EvaluateFuncCallableAsync(funcCallable, thisValue, args, context),
                 QsLambdaCallable lambdaCallable => await EvaluateLambdaCallableAsync(lambdaCallable, thisValue, args, context),
-                QsNativeCallable nativeCallable => await nativeCallable.Invoker(thisValue, args, context),
+                QsNativeCallable nativeCallable => await EvaluateNativeCallableAsync(nativeCallable, thisValue, args, context),
                 _ => throw new NotImplementedException()
             };
         }

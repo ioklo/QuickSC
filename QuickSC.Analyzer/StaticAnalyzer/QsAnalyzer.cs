@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using System.Text;
 
 using QuickSC.Syntax;
@@ -20,7 +21,7 @@ namespace QuickSC.StaticAnalyzer
         {
             // 내부 전용 클래스는 new를 써서 직접 만들어도 된다 (DI, 인자로 받을 필요 없이)
 
-            this.expAnalyzer = new QsExpAnalyzer(typeValueService);
+            this.expAnalyzer = new QsExpAnalyzer(this, typeValueService);
             this.stmtAnalyzer = new QsStmtAnalyzer(this, typeValueService);
             this.capturer = new QsCapturer();
             this.typeValueService = new QsTypeValueService();
@@ -93,7 +94,46 @@ namespace QuickSC.StaticAnalyzer
             stmtAnalyzer.AnalyzeStmt(stmt, context);
         }
 
-        public static QsAnalyzerContext? AnalyzeScript(QsScript script)
+        public bool GetGlobalTypeValue(string name, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        {
+            return GetGlobalTypeValue(name, ImmutableArray<QsTypeValue>.Empty, context, out typeValue);
+        }
+
+        public bool GetGlobalTypeValue(string name, ImmutableArray<QsTypeValue> typeArgs, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        {
+            var candidates = new List<QsTypeValue>();
+
+            // TODO: 추후 namespace 검색도 해야 한다
+            if (context.GlobalTypes.TryGetValue(name, out var type))
+                candidates.Add(new QsNormalTypeValue(null, type.TypeId, typeArgs));
+
+            foreach(var refMetadata in context.RefMetadatas)
+            {
+                if (refMetadata.GetGlobalTypeValue(name, typeArgs, out var globalTypeValue))
+                    candidates.Add(globalTypeValue);
+            }
+
+            if (candidates.Count == 1)
+            {
+                typeValue = candidates[0];
+                return true;
+            }
+            else if (1 < candidates.Count)
+            {
+                typeValue = null;
+                context.Errors.Add((name, $"이름이 같은 {name} 타입이 여러개 입니다"));
+                return false;
+            }
+            else
+            {
+                typeValue = null;
+                context.Errors.Add((name, $"{name} 타입을 찾지 못했습니다"));
+                return false;
+            }            
+            
+        }
+
+        public static QsAnalyzerContext? AnalyzeScript(QsScript script, ImmutableArray<IQsMetadata> refMetadatas)
         {
             var typeIdFactory = new QsTypeIdFactory();
             var funcIdFactory = new QsFuncIdFactory();
@@ -109,28 +149,6 @@ namespace QuickSC.StaticAnalyzer
             var analyzer = new QsAnalyzer(capturer, typeValueService);
 
             var errors = new List<(object obj, string msg)>();
-
-            var emptyStrings = ImmutableArray<string>.Empty;
-            var emptyTypeValuesDict = ImmutableDictionary<string, QsTypeValue>.Empty;
-            var emptyTypeIds = ImmutableDictionary<string, QsTypeId>.Empty;
-            var emptyFuncIds = ImmutableDictionary<string, QsFuncId>.Empty;
-            var emptyMemberFuncIds = ImmutableDictionary<QsMemberFuncId, QsFuncId>.Empty;
-
-            var voidType = new QsDefaultType(typeIdFactory.MakeTypeId(), "void",
-                emptyStrings, null, emptyTypeIds, emptyFuncIds, emptyTypeValuesDict, emptyMemberFuncIds, emptyTypeValuesDict);
-
-            var boolType = new QsDefaultType(typeIdFactory.MakeTypeId(), "bool",
-                emptyStrings, null, emptyTypeIds, emptyFuncIds, emptyTypeValuesDict, emptyMemberFuncIds, emptyTypeValuesDict);
-
-            var intType = new QsDefaultType(typeIdFactory.MakeTypeId(), "int",
-                emptyStrings, null, emptyTypeIds, emptyFuncIds, emptyTypeValuesDict, emptyMemberFuncIds, emptyTypeValuesDict);
-
-            var stringType = new QsDefaultType(typeIdFactory.MakeTypeId(), "string",
-                emptyStrings, null, emptyTypeIds, emptyFuncIds, emptyTypeValuesDict, emptyMemberFuncIds, emptyTypeValuesDict);
-
-            // TODO: list
-            // var listType = new QsDefaultType(typeIdFactory.MakeTypeId(), "List",
-            //    emptyStrings, null, emptyTypeIds, emptyFuncIds, emptyTypeValuesDict, emptyMemberFuncIds, emptyTypeValuesDict);
             
             // 1. type skeleton 모으기
             var skeletonCollectorContext = new QsTypeSkeletonCollectorContext();
@@ -140,15 +158,20 @@ namespace QuickSC.StaticAnalyzer
                 return null;
             }
 
-            // 2. skeleton으로 트리의 모든 TypeExp들을 TypeValue로 변환하기
+            // 2. skeleton과 metadata로 트리의 모든 TypeExp들을 TypeValue로 변환하기
             var typeExpEvaluatorContext = new QsTypeEvalContext(
+                refMetadatas,
                 skeletonCollectorContext.TypeIdsByLocation.ToImmutableDictionary(),
                 skeletonCollectorContext.FuncIdsByLocation.ToImmutableDictionary(),
                 skeletonCollectorContext.TypeSkeletonsByTypeId.ToImmutableDictionary(),
                 skeletonCollectorContext.GlobalTypeSkeletons.ToImmutableDictionary());
             typeExpEvaluator.EvaluateScript(script, typeExpEvaluatorContext);
 
-            errors.AddRange(typeExpEvaluatorContext.Errors);
+            if (0 < typeExpEvaluatorContext.Errors.Count)
+            {
+                errors.AddRange(typeExpEvaluatorContext.Errors);
+                return null;
+            }
 
             var typeValuesByTypeExp = typeExpEvaluatorContext.TypeValuesByTypeExp.ToImmutableDictionary();
 
@@ -162,24 +185,15 @@ namespace QuickSC.StaticAnalyzer
             var globalTypes = builderContext.GlobalTypes.ToImmutableDictionary(type => type.GetName());
             var typesById = builderContext.Types.ToImmutableDictionary(type => type.TypeId);
             var funcsById = builderContext.Funcs.ToImmutableDictionary(type => type.FuncId);
-
-            var voidValueType = new QsNormalTypeValue(null, voidType.TypeId);
-            var boolValueType = new QsNormalTypeValue(null, boolType.TypeId);
-            var intValueType = new QsNormalTypeValue(null, intType.TypeId);
-            var stringValueType = new QsNormalTypeValue(null, stringType.TypeId);
-            var listTypeId = globalTypes["list"].TypeId;
+            
 
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
             var analyzerContext = new QsAnalyzerContext(
+                refMetadatas,
                 typesById,
                 funcsById,
                 new Dictionary<QsTypeExp, QsTypeValue>(typeExpEvaluatorContext.TypeValuesByTypeExp, QsReferenceComparer<QsTypeExp>.Instance), 
-                globalTypes,
-                voidValueType,
-                boolValueType, 
-                intValueType,
-                stringValueType,
-                listTypeId);
+                globalTypes);
 
             analyzer.AnalyzeScript(script, analyzerContext);
 

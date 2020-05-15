@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\QuickSC.Analyzer\QuickSC.Analyzer.csproj" />
     <ProjectReference Include="..\QuickSC.Infra\QuickSC.Infra.csproj" />
+    <ProjectReference Include="..\QuickSC.Runtime\QuickSC.Runtime.csproj" />
     <ProjectReference Include="..\QuickSC.Syntax\QuickSC.Syntax.csproj" />
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
         <_Parameter1>QuickSC.Test</_Parameter1>

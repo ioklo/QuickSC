@@ -12,7 +12,7 @@
         public QsTypeId MakeTypeId()
         {
             typeIdCount++;
-            return new QsTypeId(typeIdCount);
+            return new QsTypeId(null, typeIdCount);
         }
     }
 }

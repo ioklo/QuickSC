@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
@@ -15,27 +16,22 @@ namespace QuickSC.StaticAnalyzer
     // 어떤 Exp에서 타입 정보 등을 알아냅니다
     class QsExpAnalyzer
     {
+        QsAnalyzer analyzer;
         QsTypeValueService typeValueService;
 
-        public QsExpAnalyzer(QsTypeValueService typeValueService)
+        public QsExpAnalyzer(QsAnalyzer analyzer, QsTypeValueService typeValueService)
         {
+            this.analyzer = analyzer;
             this.typeValueService = typeValueService;
         }
 
         internal bool AnalyzeIdExpAsType(QsIdentifierExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            typeValue = null;
-
-            // TODO: 추후 namespace 검색도 해야 한다
-            if (!context.GlobalTypes.TryGetValue(exp.Value, out var type))
-                return false;
-
             var typeArgs = ImmutableArray.CreateBuilder<QsTypeValue>(exp.TypeArgs.Length);
             foreach (var typeArg in exp.TypeArgs)
                 typeArgs.Add(context.TypeValuesByTypeExp[typeArg]);
 
-            typeValue = new QsNormalTypeValue(null, type.TypeId, typeArgs.MoveToImmutable());
-            return true;
+            return analyzer.GetGlobalTypeValue(exp.Value, typeArgs.MoveToImmutable(), context, out typeValue);
         }
 
         internal bool AnalyzeMemberExpAsType(QsMemberExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
@@ -89,22 +85,31 @@ namespace QuickSC.StaticAnalyzer
 
         internal bool AnalyzeBoolLiteralExp(QsBoolLiteralExp boolExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            context.TypeValuesByExp.Add(boolExp, context.BoolTypeValue);
-            typeValue = context.BoolTypeValue;
+            if (!analyzer.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+                Debug.Fail("Runtime에 bool이 없습니다");
+
+            context.TypeValuesByExp.Add(boolExp, boolTypeValue);
+            typeValue = boolTypeValue;
             return true;
         }
 
         internal bool AnalyzeIntLiteralExp(QsIntLiteralExp intExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            context.TypeValuesByExp.Add(intExp, context.IntTypeValue);
-            typeValue = context.IntTypeValue;
+            if (!analyzer.GetGlobalTypeValue("int", context, out var intTypeValue))
+                Debug.Fail("Runtime에 int가 없습니다");
+
+            context.TypeValuesByExp.Add(intExp, intTypeValue);
+            typeValue = intTypeValue;
             return true;
         }
 
         internal bool AnalyzeStringExp(QsStringExp stringExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            context.TypeValuesByExp.Add(stringExp, context.StringTypeValue);
-            typeValue = context.StringTypeValue;
+            if (!analyzer.GetGlobalTypeValue("string", context, out var stringTypeValue))
+                Debug.Fail("Runtime에 string이 없습니다");
+
+            context.TypeValuesByExp.Add(stringExp, stringTypeValue);
+            typeValue = stringTypeValue;
             return true;
         }
 
@@ -113,6 +118,13 @@ namespace QuickSC.StaticAnalyzer
             typeValue = null;
 
             // TODO: operator 함수 선택 방식 따로 만들기, 지금은 하드코딩
+            if (!analyzer.GetGlobalTypeValue("bool", context, out var boolTypeValue) || 
+                !analyzer.GetGlobalTypeValue("int", context, out var intTypeValue))
+            {
+                Debug.Fail("Runtime에 bool, int가 없습니다");
+                return false;
+            }
+
             if (!AnalyzeExp(unaryOpExp.Operand, context, out var operandTypeValue))            
                 return false; // AnalyzeExp에서 에러가 생겼으므로 내부에서 에러를 추가했을 것이다. 여기서는 더 추가 하지 않는다
 
@@ -120,14 +132,14 @@ namespace QuickSC.StaticAnalyzer
             {
                 case QsUnaryOpKind.LogicalNot:
                     {
-                        if (!IsAssignable(context.BoolTypeValue, operandTypeValue))
+                        if (!IsAssignable(boolTypeValue, operandTypeValue))
                         {
                             context.Errors.Add((unaryOpExp, $"{unaryOpExp.Operand}에 !를 적용할 수 없습니다. bool 타입이어야 합니다"));                            
                             return false;
                         }
 
-                        context.TypeValuesByExp.Add(unaryOpExp, context.BoolTypeValue);
-                        typeValue = context.BoolTypeValue;
+                        context.TypeValuesByExp.Add(unaryOpExp, boolTypeValue);
+                        typeValue = boolTypeValue;
                         return true;
                     }
 
@@ -139,14 +151,14 @@ namespace QuickSC.StaticAnalyzer
 
                 case QsUnaryOpKind.Minus:
                     {
-                        if (!IsAssignable(context.IntTypeValue, operandTypeValue))
+                        if (!IsAssignable(intTypeValue, operandTypeValue))
                         {
                             context.Errors.Add((unaryOpExp, $"{unaryOpExp.Operand}에 -를 적용할 수 없습니다. int 타입이어야 합니다"));
                             return false;
                         }
 
-                        context.TypeValuesByExp.Add(unaryOpExp, context.IntTypeValue);
-                        typeValue = context.IntTypeValue;
+                        context.TypeValuesByExp.Add(unaryOpExp, intTypeValue);
+                        typeValue = intTypeValue;
                         return true;
                     }
 
@@ -159,6 +171,15 @@ namespace QuickSC.StaticAnalyzer
         internal bool AnalyzeBinaryOpExp(QsBinaryOpExp binaryOpExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             typeValue = null;
+
+            if (!analyzer.GetGlobalTypeValue("bool", context, out var boolTypeValue) ||
+                !analyzer.GetGlobalTypeValue("int", context, out var intTypeValue) ||
+                !analyzer.GetGlobalTypeValue("string", context, out var stringTypeValue))
+            {
+                Debug.Fail("Runtime에 bool, int가 없습니다");
+                return false;
+            }
+
 
             if (!AnalyzeExp(binaryOpExp.Operand0, context, out var operandTypeValue0))
                 return false;
@@ -187,15 +208,15 @@ namespace QuickSC.StaticAnalyzer
                     return false;
                 }
 
-                context.TypeValuesByExp.Add(binaryOpExp, context.BoolTypeValue);
-                typeValue = context.BoolTypeValue;
+                context.TypeValuesByExp.Add(binaryOpExp, boolTypeValue);
+                typeValue = boolTypeValue;
                 return true;
             }
 
             // TODO: 일단 하드코딩, Evaluator랑 지원하는 것들이 똑같아야 한다
-            if (IsAssignable(context.BoolTypeValue, operandTypeValue0))
+            if (IsAssignable(boolTypeValue, operandTypeValue0))
             {
-                if (!IsAssignable(context.BoolTypeValue, operandTypeValue1))
+                if (!IsAssignable(boolTypeValue, operandTypeValue1))
                 {
                     context.Errors.Add((binaryOpExp, $"{operandTypeValue1}은 bool 형식이어야 합니다"));
                     return false;
@@ -208,9 +229,9 @@ namespace QuickSC.StaticAnalyzer
                         return false;
                 }
             }
-            else if (IsAssignable(context.IntTypeValue, operandTypeValue0))
+            else if (IsAssignable(intTypeValue, operandTypeValue0))
             {
-                if (!IsAssignable(context.IntTypeValue, operandTypeValue1))
+                if (!IsAssignable(intTypeValue, operandTypeValue1))
                 {
                     context.Errors.Add((binaryOpExp, $"{operandTypeValue1}은 int 형식이어야 합니다"));
                     return false;
@@ -223,16 +244,16 @@ namespace QuickSC.StaticAnalyzer
                     case QsBinaryOpKind.Modulo:
                     case QsBinaryOpKind.Add:
                     case QsBinaryOpKind.Subtract:
-                        context.TypeValuesByExp.Add(binaryOpExp, context.IntTypeValue);
-                        typeValue = context.IntTypeValue;
+                        context.TypeValuesByExp.Add(binaryOpExp, intTypeValue);
+                        typeValue = intTypeValue;
                         return true;
 
                     case QsBinaryOpKind.LessThan:
                     case QsBinaryOpKind.GreaterThan:
                     case QsBinaryOpKind.LessThanOrEqual:
                     case QsBinaryOpKind.GreaterThanOrEqual:
-                        context.TypeValuesByExp.Add(binaryOpExp, context.BoolTypeValue);
-                        typeValue = context.BoolTypeValue;
+                        context.TypeValuesByExp.Add(binaryOpExp, boolTypeValue);
+                        typeValue = boolTypeValue;
                         return true;
 
                     default:
@@ -240,9 +261,9 @@ namespace QuickSC.StaticAnalyzer
                         return false;
                 }
             }
-            else if (IsAssignable(context.StringTypeValue, operandTypeValue0))
+            else if (IsAssignable(stringTypeValue, operandTypeValue0))
             {
-                if (!IsAssignable(context.StringTypeValue, operandTypeValue1))
+                if (!IsAssignable(stringTypeValue, operandTypeValue1))
                 {
                     context.Errors.Add((binaryOpExp, $"{operandTypeValue1}은 string 형식이어야 합니다"));
                     return false;
@@ -251,16 +272,16 @@ namespace QuickSC.StaticAnalyzer
                 switch (binaryOpExp.Kind)
                 {
                     case QsBinaryOpKind.Add:
-                        context.TypeValuesByExp.Add(binaryOpExp, context.StringTypeValue);
-                        typeValue = context.StringTypeValue;
+                        context.TypeValuesByExp.Add(binaryOpExp, stringTypeValue);
+                        typeValue = stringTypeValue;
                         return true;
 
                     case QsBinaryOpKind.LessThan:
                     case QsBinaryOpKind.GreaterThan:
                     case QsBinaryOpKind.LessThanOrEqual:
                     case QsBinaryOpKind.GreaterThanOrEqual:
-                        context.TypeValuesByExp.Add(binaryOpExp, context.BoolTypeValue);
-                        typeValue = context.BoolTypeValue;
+                        context.TypeValuesByExp.Add(binaryOpExp, boolTypeValue);
+                        typeValue = boolTypeValue;
                         return true;
 
                     default:
@@ -357,7 +378,12 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
 
-            typeValue = new QsNormalTypeValue(null, context.ListTypeId, ImmutableArray.Create(curElemTypeValue));
+            if (!analyzer.GetGlobalTypeValue("List", ImmutableArray.Create(curElemTypeValue), context, out typeValue))
+            {
+                Debug.Fail("Runtime에 리스트가 없습니다");
+                return false;
+            }
+
             context.TypeValuesByExp.Add(listExp, typeValue);
             return true;
         }

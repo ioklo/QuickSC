@@ -265,6 +265,12 @@ namespace QuickSC
         }
     }
 
+    // "void"
+    public class QsVoidTypeValue : QsTypeValue
+    {
+        public static QsVoidTypeValue Instance { get; } = new QsVoidTypeValue();
+        private QsVoidTypeValue() { }
+    }
 
     public class QsFuncTypeValue : QsTypeValue
     {

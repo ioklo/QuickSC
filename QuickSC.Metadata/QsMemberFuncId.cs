@@ -7,6 +7,7 @@ namespace QuickSC
     {
         Normal,
         Indexer,
+        Invoker, // Lambda
     }
 
     public struct QsMemberFuncId

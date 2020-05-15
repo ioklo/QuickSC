@@ -1,14 +1,12 @@
 ﻿using QuickSC.Syntax;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace QuickSC
-{   
-    public abstract class QsCallable
-    {
-    }
-
+{
     public class QsFuncCallable : QsCallable
     {
         // TODO: Syntax직접 쓰지 않고, QsModule에서 정의한 것들을 써야 한다
@@ -33,14 +31,4 @@ namespace QuickSC
             Captures = captures;
         }
     }
-
-    public class QsNativeCallable : QsCallable
-    {
-        public Func<QsValue, ImmutableArray<QsValue>, QsEvalContext, ValueTask<QsEvalResult<QsValue>>> Invoker { get; }
-        public QsNativeCallable(Func<QsValue, ImmutableArray<QsValue>, QsEvalContext, ValueTask<QsEvalResult<QsValue>>> invoker)
-        {
-            Invoker = invoker;
-        }
-    }
 }
-

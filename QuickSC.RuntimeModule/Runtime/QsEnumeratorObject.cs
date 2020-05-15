@@ -1,5 +1,4 @@
-﻿using QuickSC.Syntax;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 
@@ -14,22 +13,22 @@ namespace QuickSC.Runtime
             this.enumerator = enumerator;
         }
 
-        static ValueTask<QsEvalResult<QsValue>> NativeMoveNext(QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)
+        static ValueTask<QsValue?> NativeMoveNext(QsValue thisValue, ImmutableArray<QsValue> args)
         {
             var enumeratorObj = GetObject<QsEnumeratorObject>(thisValue);
-            if (enumeratorObj == null) return new ValueTask<QsEvalResult<QsValue>>(QsEvalResult<QsValue>.Invalid);
+            if (enumeratorObj == null) return new ValueTask<QsValue?>((QsValue?)null);
 
             bool bResult = enumeratorObj.enumerator.MoveNext();
-            return new ValueTask<QsEvalResult<QsValue>>(new QsEvalResult<QsValue>(new QsValue<bool>(bResult), context));
+            return new ValueTask<QsValue?>(new QsValue<bool>(bResult));
         }
 
-        static ValueTask<QsEvalResult<QsValue>> NativeGetCurrent(QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)
+        static ValueTask<QsValue?> NativeGetCurrent(QsValue thisValue, ImmutableArray<QsValue> args)
         {
             var enumeratorObj = GetObject<QsEnumeratorObject>(thisValue);
-            if (enumeratorObj == null) return new ValueTask<QsEvalResult<QsValue>>(QsEvalResult<QsValue>.Invalid);            
+            if (enumeratorObj == null) return new ValueTask<QsValue?>((QsValue?)null);
 
             // TODO: 여기 copy 해야 할 것 같음
-            return new ValueTask<QsEvalResult<QsValue>>(new QsEvalResult<QsValue>(enumeratorObj.enumerator.Current, context));
+            return new ValueTask<QsValue?>(enumeratorObj.enumerator.Current);
         }
 
         public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)

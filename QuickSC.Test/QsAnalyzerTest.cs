@@ -9,7 +9,8 @@ using System.Collections;
 using System.IO;
 using System.IO.Enumeration;
 using QuickSC.Syntax;
-
+using System.Collections.Immutable;
+using QuickSC.Runtime;
 
 namespace QuickSC
 {
@@ -49,7 +50,8 @@ namespace QuickSC
 
             Assert.True(scriptResult.HasValue);
 
-            var context = QsAnalyzer.AnalyzeScript(scriptResult.Elem);            
+            var runtimeModule = new QsRuntimeModule();
+            var context = QsAnalyzer.AnalyzeScript(scriptResult.Elem, ImmutableArray.Create<IQsMetadata>(runtimeModule));
             
             // 통과만 하는 시나리오
             Assert.False(context == null || 0 < context.Errors.Count);

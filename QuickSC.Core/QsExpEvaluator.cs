@@ -14,10 +14,12 @@ namespace QuickSC
     class QsExpEvaluator
     {
         private QsEvaluator evaluator;
+        private IQsRuntimeModule runtimeModule;
 
-        public QsExpEvaluator(QsEvaluator evaluator)
+        public QsExpEvaluator(QsEvaluator evaluator, IQsRuntimeModule runtimeModule)
         {
             this.evaluator = evaluator;
+            this.runtimeModule = runtimeModule;
         }
 
         QsEvalResult<QsValue> EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
@@ -60,7 +62,7 @@ namespace QuickSC
                         if (!result.HasValue)
                             return QsEvalResult<QsValue>.Invalid;
 
-                        var strValue = GetString(result.Value);
+                        var strValue = runtimeModule.GetString(result.Value);
 
                         if (strValue == null)
                             return QsEvalResult<QsValue>.Invalid;
@@ -74,7 +76,9 @@ namespace QuickSC
                 }
             }
 
-            return new QsEvalResult<QsValue>(new QsObjectValue(new QsStringObject(sb.ToString())), context);
+            ;
+
+            return new QsEvalResult<QsValue>(new QsObjectValue(runtimeModule.MakeStringObject(sb.ToString())), context);
         }
 
         async ValueTask<QsEvalResult<QsValue>> EvaluateUnaryOpExpAsync(QsUnaryOpExp exp, QsEvalContext context)
@@ -145,17 +149,7 @@ namespace QuickSC
 
             throw new NotImplementedException();
         }
-
-        private static string? GetStringValue(QsValue value)
-        {
-            if (value is QsObjectValue objValue && objValue.Object is QsStringObject strObj)
-            {
-                return strObj.Data;
-            }
-
-            return null;
-        }
-
+        
         async ValueTask<QsEvalResult<QsValue>> EvaluateBinaryOpExpAsync(QsBinaryOpExp exp, QsEvalContext context)
         {
             var operandResult0 = await EvaluateExpAsync(exp.Operand0, context);
@@ -212,13 +206,13 @@ namespace QuickSC
                             return new QsEvalResult<QsValue>(new QsValue<int>(intValue0.Value + intValue1.Value), context);
                         }
 
-                        var strValue0 = GetStringValue(operandResult0.Value);
+                        var strValue0 = runtimeModule.GetString(operandResult0.Value);
                         if (strValue0 != null)
                         {
-                            var strValue1 = GetStringValue(operandResult1.Value);
+                            var strValue1 = runtimeModule.GetString(operandResult1.Value);
                             if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                            return new QsEvalResult<QsValue>(new QsObjectValue(new QsStringObject(strValue0 + strValue1)), context);
+                            return new QsEvalResult<QsValue>(new QsObjectValue(runtimeModule.MakeStringObject(strValue0 + strValue1)), context);
                         }
 
                         return QsEvalResult<QsValue>.Invalid;
@@ -246,10 +240,10 @@ namespace QuickSC
                             return new QsEvalResult<QsValue>(new QsValue<bool>(intValue0.Value < intValue1.Value), context);
                         }
 
-                        var strValue0 = GetStringValue(operandResult0.Value);
+                        var strValue0 = runtimeModule.GetString(operandResult0.Value);
                         if (strValue0 != null)
                         {
-                            var strValue1 = GetStringValue(operandResult1.Value);
+                            var strValue1 = runtimeModule.GetString(operandResult1.Value);
                             if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
                             return new QsEvalResult<QsValue>(new QsValue<bool>(strValue0.CompareTo(strValue1) < 0), context);
@@ -269,10 +263,10 @@ namespace QuickSC
                             return new QsEvalResult<QsValue>(new QsValue<bool>(intValue0.Value > intValue1.Value), context);
                         }
 
-                        var strValue0 = GetStringValue(operandResult0.Value);
+                        var strValue0 = runtimeModule.GetString(operandResult0.Value);
                         if (strValue0 != null)
                         {
-                            var strValue1 = GetStringValue(operandResult1.Value);
+                            var strValue1 = runtimeModule.GetString(operandResult1.Value);
                             if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
                             return new QsEvalResult<QsValue>(new QsValue<bool>(strValue0.CompareTo(strValue1) > 0), context);
@@ -292,10 +286,10 @@ namespace QuickSC
                             return new QsEvalResult<QsValue>(new QsValue<bool>(intValue0.Value <= intValue1.Value), context);
                         }
 
-                        var strValue0 = GetStringValue(operandResult0.Value);
+                        var strValue0 = runtimeModule.GetString(operandResult0.Value);
                         if (strValue0 != null)
                         {
-                            var strValue1 = GetStringValue(operandResult1.Value);
+                            var strValue1 = runtimeModule.GetString(operandResult1.Value);
                             if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
                             return new QsEvalResult<QsValue>(new QsValue<bool>(strValue0.CompareTo(strValue1) <= 0), context);
@@ -315,10 +309,10 @@ namespace QuickSC
                             return new QsEvalResult<QsValue>(new QsValue<bool>(intValue0.Value >= intValue1.Value), context);
                         }
 
-                        var strValue0 = GetStringValue(operandResult0.Value);
+                        var strValue0 = runtimeModule.GetString(operandResult0.Value);
                         if (strValue0 != null)
                         {
-                            var strValue1 = GetStringValue(operandResult1.Value);
+                            var strValue1 = runtimeModule.GetString(operandResult1.Value);
                             if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
                             return new QsEvalResult<QsValue>(new QsValue<bool>(strValue0.CompareTo(strValue1) >= 0), context);
@@ -367,8 +361,9 @@ namespace QuickSC
             if (!Eval(await EvaluateExpAsync(exp, context), ref context, out var expCallable))
                 return QsEvalResult<QsCallable>.Invalid;
 
-            if (expCallable! is QsObjectValue objValue && objValue.Object is QsLambdaObject lambdaObj)
-                return new QsEvalResult<QsCallable>(lambdaObj.Callable, context);
+            // TODO: Lambda 지원 다시
+            //if (expCallable! is QsObjectValue objValue && objValue.Object is QsLambdaObject lambdaObj)
+            //    return new QsEvalResult<QsCallable>(lambdaObj.Callable, context);
 
             return QsEvalResult<QsCallable>.Invalid;            
         }
@@ -392,32 +387,34 @@ namespace QuickSC
 
         QsEvalResult<QsValue> EvaluateLambdaExp(QsLambdaExp exp, QsEvalContext context)
         {
-            var captureInfo = context.StaticContext.CaptureInfosByLocation[QsCaptureInfoLocation.Make(exp)];
+            throw new NotImplementedException();
 
-            var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
-            foreach (var (name, kind) in captureInfo)
-            {
-                var origValue = context.GetValue(name);
-                if (origValue == null) return QsEvalResult<QsValue>.Invalid;
+            //var captureInfo = context.StaticContext.CaptureInfosByLocation[QsCaptureInfoLocation.Make(exp)];
 
-                QsValue value;
-                if (kind == QsCaptureContextCaptureKind.Copy)
-                {
-                    value = origValue.MakeCopy();
-                }
-                else
-                {
-                    Debug.Assert(kind == QsCaptureContextCaptureKind.Ref);
-                    value = origValue;
-                }
+            //var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
+            //foreach (var (name, kind) in captureInfo)
+            //{
+            //    var origValue = context.GetValue(name);
+            //    if (origValue == null) return QsEvalResult<QsValue>.Invalid;
 
-                captures.Add(name, value);
-            }
+            //    QsValue value;
+            //    if (kind == QsCaptureContextCaptureKind.Copy)
+            //    {
+            //        value = origValue.MakeCopy();
+            //    }
+            //    else
+            //    {
+            //        Debug.Assert(kind == QsCaptureContextCaptureKind.Ref);
+            //        value = origValue;
+            //    }
 
-            // QsValue<QsCallable>을 리턴한다
-            return new QsEvalResult<QsValue>(
-                new QsObjectValue(new QsLambdaObject(new QsLambdaCallable(exp, captures.ToImmutable()))),
-                context);
+            //    captures.Add(name, value);
+            //}
+
+            //// QsValue<QsCallable>을 리턴한다
+            //return new QsEvalResult<QsValue>(
+            //    new QsObjectValue(new QsLambdaObject(new QsLambdaCallable(exp, captures.ToImmutable()))),
+            //    context);
         }
 
         async ValueTask<QsEvalResult<QsValue>> EvaluateMemberCallExpAsync(QsMemberCallExp exp, QsEvalContext context)
@@ -466,7 +463,7 @@ namespace QuickSC
                 elems.Add(elemResult.Value);
             }
 
-            return new QsEvalResult<QsValue>(new QsObjectValue(new QsListObject(elems)), context);
+            return new QsEvalResult<QsValue>(new QsObjectValue(runtimeModule.MakeListObject(elems)), context);
         }
 
         internal async ValueTask<QsEvalResult<QsValue>> EvaluateExpAsync(QsExp exp, QsEvalContext context)

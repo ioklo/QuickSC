@@ -10,21 +10,6 @@ using QuickSC.Syntax;
 
 namespace QuickSC
 {
-    public struct QsEvalResult<TValue>
-    {
-        public static QsEvalResult<TValue> Invalid = new QsEvalResult<TValue>();
-
-        public bool HasValue { get; }
-        public TValue Value { get; }
-        public QsEvalContext Context { get; }
-        public QsEvalResult(TValue value, QsEvalContext context)
-        {
-            HasValue = true;
-            Value = value;
-            Context = context;
-        }
-    }
-
     // 레퍼런스용 Big Step Evaluator, 
     // TODO: Small Step으로 가야하지 않을까 싶다 (yield로 실행 point 잡는거 해보면 재미있을 것 같다)
     public class QsEvaluator
@@ -46,25 +31,13 @@ namespace QuickSC
             return true;
         }
 
-        public QsEvaluator(IQsCommandProvider commandProvider)
+        public QsEvaluator(IQsCommandProvider commandProvider, IQsRuntimeModule runtimeModule)
         {            
-            this.expEvaluator = new QsExpEvaluator(this);
-            this.stmtEvaluator = new QsStmtEvaluator(this, expEvaluator, commandProvider);
+            this.expEvaluator = new QsExpEvaluator(this, runtimeModule);
+            this.stmtEvaluator = new QsStmtEvaluator(this, expEvaluator, commandProvider, runtimeModule);
 
-            this.callableEvaluator = new QsCallableEvaluator(stmtEvaluator);
+            this.callableEvaluator = new QsCallableEvaluator(stmtEvaluator, runtimeModule);
         }
-
-        internal static string? GetString(QsValue value)
-        {
-            if (value is QsObjectValue objValue && objValue.Object is QsStringObject strObj) return strObj.Data;
-            if (value is QsValue<int> intValue) return intValue.Value.ToString();
-            if (value is QsValue<bool> boolValue) return boolValue.Value ? "true" : "false";
-
-            // TODO: ObjectValue의 경우 ToString()을 찾는다
-
-            return null;
-        }
-
 
         internal ValueTask<QsEvalResult<QsValue>> EvaluateCallableAsync(QsCallable callable, QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)
         {

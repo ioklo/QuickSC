@@ -9,7 +9,7 @@ using System.IO;
 using System.Collections.Immutable;
 using System.Threading;
 using QuickSC.StaticAnalyzer;
-
+using QuickSC.Runtime;
 
 namespace QuickSC.Blazor
 {
@@ -88,7 +88,8 @@ namespace QuickSC.Blazor
                     return false;
                 }
 
-                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem);
+                var runtimeModule = new QsRuntimeModule();
+                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem, ImmutableArray.Create<IQsMetadata>(runtimeModule));
 
                 if (analyzerContext == null || 0 < analyzerContext.Errors.Count)
                 {
@@ -98,7 +99,7 @@ namespace QuickSC.Blazor
 
                 var demoCmdProvider = new QsDemoCommandProvider();                
 
-                var evaluator = new QsEvaluator(demoCmdProvider);
+                var evaluator = new QsEvaluator(demoCmdProvider, runtimeModule);
                 var evalContext = QsEvalContext.Make(new QsEvalStaticContext(
                     analyzerContext.TypeValuesByTypeExp.ToImmutableDictionary(),
                     analyzerContext.CaptureInfosByLocation.ToImmutableDictionary()));

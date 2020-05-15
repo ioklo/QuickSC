@@ -11,6 +11,7 @@ namespace QuickSC.StaticAnalyzer
 {
     public class QsTypeEvalContext
     {
+        public ImmutableArray<IQsMetadata> RefMetadatas{ get; }
         public ImmutableDictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
         public ImmutableDictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
         public ImmutableDictionary<QsTypeId, QsTypeSkeleton> TypeSkeletons { get; }
@@ -21,11 +22,13 @@ namespace QuickSC.StaticAnalyzer
         public List<(object obj, string message)> Errors { get; }
 
         public QsTypeEvalContext(
+            ImmutableArray<IQsMetadata> refMetadatas,
             ImmutableDictionary<QsTypeIdLocation, QsTypeId> typeIdsByLocation,
             ImmutableDictionary<QsFuncIdLocation, QsFuncId> funcIdsByLocation,
             ImmutableDictionary<QsTypeId, QsTypeSkeleton> typeSkeletons,
             ImmutableDictionary<(string Name, int TypeParamCount), QsTypeSkeleton> globalTypeSkeletons)
         {
+            RefMetadatas = refMetadatas;
             TypeIdsByLocation = typeIdsByLocation;
             FuncIdsByLocation = funcIdsByLocation;
             TypeSkeletons = typeSkeletons;
@@ -74,26 +77,48 @@ namespace QuickSC.StaticAnalyzer
 
             // TODO: 2. 현재 This Context에서 검색
 
-            // 3. GlobalSkeleton에서 검색
+            var typeArgsBuilder = ImmutableArray.CreateBuilder<QsTypeValue>(exp.TypeArgs.Length);
+            foreach (var typeArgExp in exp.TypeArgs)
+            {
+                if (!EvaluateTypeExp(typeArgExp, context, out var typeArg))
+                    return false; // 그냥 진행하면 개수가 맞지 않을 것이므로
+
+                typeArgsBuilder.Add(typeArg);
+            }
+
+            var typeArgs = typeArgsBuilder.MoveToImmutable();
+
+            // 3-1. GlobalSkeleton에서 검색
+            List<QsTypeValue> candidates = new List<QsTypeValue>();
             if (context.GlobalTypeSkeletons.TryGetValue((exp.Name, exp.TypeArgs.Length), out var skeleton))
             {
-                var typeArgsBuilder = ImmutableArray.CreateBuilder<QsTypeValue>(exp.TypeArgs.Length);
-                foreach(var typeArgExp in exp.TypeArgs)
-                {
-                    if (!EvaluateTypeExp(typeArgExp, context, out var typeArg))
-                        return false; // 그냥 진행하면 개수가 맞지 않을 것이므로
+                // global이니까 outer는 null
+                candidates.Add(new QsNormalTypeValue(null, skeleton.TypeId, typeArgs));
+            }
 
-                    typeArgsBuilder.Add(typeArg);
-                }
+            // 3-2. Reference에서 검색, GlobalTypeSkeletons에 이름이 겹치지 않아야 한다.. RefMetadata들 끼리도 이름이 겹칠 수 있다
+            foreach(var refMetadata in context.RefMetadatas)
+            {
+                if (refMetadata.GetGlobalTypeValue(exp.Name, typeArgs, out var globalTypeValue))
+                    candidates.Add(globalTypeValue);
+            }
 
-                // global이니까 
-                typeValue = new QsNormalTypeValue(null, skeleton.TypeId, typeArgsBuilder.MoveToImmutable());
+            if (candidates.Count == 1)
+            {
+                typeValue = candidates[0];
                 context.TypeValuesByTypeExp.Add(exp, typeValue);
                 return true;
             }
-
-            context.Errors.Add((exp, $"{exp}를 찾지 못했습니다"));
-            return false;
+            else if (1 < candidates.Count)
+            {
+                context.Errors.Add((exp, $"이름이 같은 {exp} 타입이 여러개 입니다"));
+                return false;
+            }
+            else
+            {
+                context.Errors.Add((exp, $"{exp}를 찾지 못했습니다"));
+                return false;
+            }
         }
 
         bool EvaluateMemberTypeExp(QsMemberTypeExp exp, QsTypeEvalContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
@@ -168,8 +193,8 @@ namespace QuickSC.StaticAnalyzer
 
             // 
             foreach(var elem in enumDecl.Elems)
-            {
-                foreach(var param in elem.Params)
+            {   
+                foreach (var param in elem.Params)
                 {
                     // 성공여부와 상관없이 계속 진행한다
                     EvaluateTypeExp(param.Type, context, out var _);

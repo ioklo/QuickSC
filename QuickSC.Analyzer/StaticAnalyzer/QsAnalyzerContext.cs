@@ -10,18 +10,14 @@ namespace QuickSC.StaticAnalyzer
     // Analyzer는 backtracking이 없어서, MutableContext를 쓴다 
     public class QsAnalyzerContext
     {
+        public ImmutableArray<IQsMetadata> RefMetadatas { get; }
+
         // TypeExp가 무슨 타입을 갖고 있는지. VarTypeValue를 여기서 교체할 수 있다
         public Dictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
 
         // 전역 타입 정보
         public ImmutableDictionary<string, QsType> GlobalTypes { get; }
-
-        public QsTypeValue VoidTypeValue { get; }
-        public QsTypeValue BoolTypeValue { get; }
-        public QsTypeValue IntTypeValue { get; }
-        public QsTypeValue StringTypeValue { get; }
-        public QsTypeId ListTypeId { get; }
-
+        
         // 전역 스코프인지,
         public bool bGlobalScope { get; set; }
 
@@ -45,25 +41,15 @@ namespace QuickSC.StaticAnalyzer
         public Dictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> CaptureInfosByLocation { get; }
 
         public QsAnalyzerContext(
+            ImmutableArray<IQsMetadata> refMetadatas,
             ImmutableDictionary<QsTypeId, QsType> typesById,
             ImmutableDictionary<QsFuncId, QsFunc> funcsById,
             Dictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
-            ImmutableDictionary<string, QsType> globalTypes,
-            QsTypeValue voidTypeValue,
-            QsTypeValue boolTypeValue,
-            QsTypeValue intTypeValue,
-            QsTypeValue stringTypeValue,
-            QsTypeId listTypeId)
+            ImmutableDictionary<string, QsType> globalTypes)
         {
+            RefMetadatas = refMetadatas;
             TypeValuesByTypeExp = typeValuesByTypeExp;
-            GlobalTypes = globalTypes;
-
-            VoidTypeValue = voidTypeValue;
-            BoolTypeValue = boolTypeValue;
-            IntTypeValue = intTypeValue;
-            StringTypeValue = stringTypeValue;
-            ListTypeId = listTypeId;
-
+            GlobalTypes = globalTypes;            
             bGlobalScope = true;
 
             Errors = new List<(object Obj, string Message)>();

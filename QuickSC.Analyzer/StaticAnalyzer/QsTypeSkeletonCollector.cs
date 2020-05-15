@@ -84,7 +84,14 @@ namespace QuickSC.StaticAnalyzer
             context.ScopeSkeleton = skeleton;
 
             foreach (var elem in enumDecl.Elems)
+            {
                 MakeSkeleton(QsTypeIdLocation.Make(elem), elem.Name, 0, context); // memberType은 타입파라미터가 없어야 한다
+                if (0 < elem.Params.Length)
+                {
+                    var funcId = funcIdFactory.MakeFuncId();
+                    context.FuncIdsByLocation[QsFuncIdLocation.Make(elem)] = funcId;
+                }
+            }
 
             context.ScopeSkeleton = prevScopeSkeleton;
             

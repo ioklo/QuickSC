@@ -1,4 +1,5 @@
-﻿using QuickSC.StaticAnalyzer;
+﻿using QuickSC.Runtime;
+using QuickSC.StaticAnalyzer;
 using System;
 using System.Collections.Immutable;
 using System.IO;
@@ -57,27 +58,23 @@ namespace QuickSC.Shell
 
                 // var typeValueFactory = new QsTypeValueFactory();                
 
-                var evaluator = new QsEvaluator(cmdProvider);
+                var runtimeModule = new QsRuntimeModule();
+
+                var evaluator = new QsEvaluator(cmdProvider, runtimeModule);
                 
                 var input = @"
 
-int a = 0;
-
-enum X 
+enum X
 {
     First,
-    Second
+    Second (int i)
 }
 
-void Func(X x)
-{
-    if (x is X.First)
-        @echo hi
-}
+var x = X.First;
+x = X.Second (2);
 
-Func(X.First);
-
-@echo $a
+if (x is X.First)
+    @echo hi
 
 ";
                 var buffer = new QsBuffer(new StringReader(input));
@@ -91,7 +88,7 @@ Func(X.First);
                     return;
                 }
 
-                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem);
+                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem, ImmutableArray.Create<IQsMetadata>(runtimeModule));
                 if (analyzerContext == null || 0 < analyzerContext.Errors.Count)
                 {
                     Console.WriteLine("분석에 실패했습니다");

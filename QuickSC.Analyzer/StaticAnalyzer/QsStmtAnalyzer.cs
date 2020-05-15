@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -43,13 +44,16 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeIfStmt(QsIfStmt ifStmt, QsAnalyzerContext context) 
         {
+            if (!analyzer.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+                Debug.Fail("Runtime에 bool타입이 없습니다");
+
             if (!analyzer.AnalyzeExp(ifStmt.Cond, context, out var condTypeValue))            
                 return;            
             
             // if (x is X) 구문이 있으면 cond부분을 검사하지 않는다.
             if (ifStmt.TestType == null)
             {
-                if (!IsAssignable(context.BoolTypeValue, condTypeValue))
+                if (!IsAssignable(boolTypeValue, condTypeValue))
                 {
                     context.Errors.Add((ifStmt, "if 조건 식은 항상 bool형식이어야 합니다"));
                 }
@@ -73,6 +77,9 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeForStmt(QsForStmt forStmt, QsAnalyzerContext context)
         {
+            if (!analyzer.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+                Debug.Fail("Runtime에 bool타입이 없습니다");
+
             if (forStmt.Initializer != null)
                 AnalyzeForStmtInitializer(forStmt.Initializer, context);
 
@@ -83,7 +90,7 @@ namespace QuickSC.StaticAnalyzer
                     return;
 
                 // 에러가 나면 에러를 추가하고 계속 진행
-                if (!IsAssignable(context.BoolTypeValue, condExpTypeValue))
+                if (!IsAssignable(boolTypeValue, condExpTypeValue))
                     context.Errors.Add((forStmt.CondExp, $"{forStmt.CondExp}는 bool 형식이어야 합니다"));
             }
 
@@ -124,7 +131,7 @@ namespace QuickSC.StaticAnalyzer
             {
                 // TODO: seq 함수는 그냥 리턴이 허용된다.
 
-                if (context.CurFunc.RetTypeValue != context.VoidTypeValue)
+                if (context.CurFunc.RetTypeValue != QsVoidTypeValue.Instance)
                     context.Errors.Add((returnStmt.Value!, $"이 함수는 {context.CurFunc.RetTypeValue}을 반환해야 합니다"));
             }
         }
@@ -214,6 +221,9 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeForeachStmt(QsForeachStmt foreachStmt, QsAnalyzerContext context)
         {
+            if (!analyzer.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+                Debug.Fail("Runtime에 bool타입이 없습니다");
+
             if (!analyzer.AnalyzeExp(foreachStmt.Obj, context, out var objTypeValue))
                 return;
 
@@ -233,7 +243,7 @@ namespace QuickSC.StaticAnalyzer
             // TODO: thiscall인지도 확인해야 한다
             if (!GetFuncTypeValue(false, getEnumeratorRetTypeValue, new QsMemberFuncId("MoveNext"), context, out var moveNextTypeValue) ||
                 !GetReturnTypeValue(moveNextTypeValue, context, out var moveNextRetTypeValue) || 
-                !IsAssignable(context.BoolTypeValue, moveNextRetTypeValue))
+                !IsAssignable(boolTypeValue, moveNextRetTypeValue))
             {
                 context.Errors.Add((foreachStmt.Obj, "enumerator doesn't have 'bool MoveNext()' function"));
                 return;
