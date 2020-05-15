@@ -12,26 +12,26 @@ namespace QuickSC
         public string Name { get; }
         public ImmutableArray<string> TypeParams { get; }
         public QsTypeValue RetTypeValue { get; }
-        public ImmutableArray<QsTypeValue> ArgTypeValues { get; }
+        public ImmutableArray<QsTypeValue> ParamTypeValues { get; }
 
-        public QsFunc(QsFuncId funcId, bool bThisCall, string name, ImmutableArray<string> typeParams, QsTypeValue retTypeValue, ImmutableArray<QsTypeValue> argTypeValues)
+        public QsFunc(QsFuncId funcId, bool bThisCall, string name, ImmutableArray<string> typeParams, QsTypeValue retTypeValue, ImmutableArray<QsTypeValue> paramTypeValues)
         {
             FuncId = funcId;
             this.bThisCall = bThisCall;
             Name = name;
             TypeParams = typeParams;
             RetTypeValue = retTypeValue;
-            ArgTypeValues = argTypeValues;
+            ParamTypeValues = paramTypeValues;
         }
 
-        public QsFunc(QsFuncId funcId, bool bThisCall, string name, ImmutableArray<string> typeParams, QsTypeValue retTypeValues, params QsTypeValue[] argTypeValues)
+        public QsFunc(QsFuncId funcId, bool bThisCall, string name, ImmutableArray<string> typeParams, QsTypeValue retTypeValues, params QsTypeValue[] paramTypeValues)
         {
             FuncId = funcId;
             this.bThisCall = bThisCall;
             Name = name;
             TypeParams = typeParams;
             RetTypeValue = retTypeValues;
-            ArgTypeValues = ImmutableArray.Create(argTypeValues);
+            ParamTypeValues = ImmutableArray.Create(paramTypeValues);
         }
     }
 }

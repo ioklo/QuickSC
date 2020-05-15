@@ -94,6 +94,21 @@ namespace QuickSC.StaticAnalyzer
             stmtAnalyzer.AnalyzeStmt(stmt, context);
         }
 
+        public bool GetFuncTypeValue(bool bStaticOnly, QsTypeValue typeValue, QsMemberFuncId memberFuncId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsFuncTypeValue? funcTypeValue)
+        {
+            return typeValueService.GetFuncTypeValue(bStaticOnly, typeValue, memberFuncId, ImmutableArray<QsTypeValue>.Empty, context.TypeValueServiceContext, out funcTypeValue);
+        }
+
+        public bool GetReturnTypeValue(QsFuncTypeValue funcTypeValue, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? retTypeValue)
+        {
+            return typeValueService.GetReturnTypeValue(funcTypeValue, context.TypeValueServiceContext, out retTypeValue);
+        }
+
+        public bool GetParamTypeValues(QsFuncTypeValue funcTypeValue, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out ImmutableArray<QsTypeValue>? paramTypeValues)
+        {
+            return typeValueService.GetParamTypeValues(funcTypeValue, context.TypeValueServiceContext, out paramTypeValues);
+        }
+
         public bool GetGlobalTypeValue(string name, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             return GetGlobalTypeValue(name, ImmutableArray<QsTypeValue>.Empty, context, out typeValue);
@@ -183,9 +198,9 @@ namespace QuickSC.StaticAnalyzer
             typeBuilder.BuildScript(script, builderContext);
 
             var globalTypes = builderContext.GlobalTypes.ToImmutableDictionary(type => type.GetName());
+            var globalFuncs = builderContext.GlobalFuncs.ToImmutableDictionary(func => func.Name);
             var typesById = builderContext.Types.ToImmutableDictionary(type => type.TypeId);
             var funcsById = builderContext.Funcs.ToImmutableDictionary(type => type.FuncId);
-            
 
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
             var analyzerContext = new QsAnalyzerContext(
@@ -193,7 +208,8 @@ namespace QuickSC.StaticAnalyzer
                 typesById,
                 funcsById,
                 new Dictionary<QsTypeExp, QsTypeValue>(typeExpEvaluatorContext.TypeValuesByTypeExp, QsReferenceComparer<QsTypeExp>.Instance), 
-                globalTypes);
+                globalTypes,
+                globalFuncs);
 
             analyzer.AnalyzeScript(script, analyzerContext);
 

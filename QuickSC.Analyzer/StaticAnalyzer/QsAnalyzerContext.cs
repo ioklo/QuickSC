@@ -17,7 +17,10 @@ namespace QuickSC.StaticAnalyzer
 
         // 전역 타입 정보
         public ImmutableDictionary<string, QsType> GlobalTypes { get; }
-        
+
+        // 전역 함수 정보
+        public ImmutableDictionary<string, QsFunc> GlobalFuncs { get; }
+
         // 전역 스코프인지,
         public bool bGlobalScope { get; set; }
 
@@ -26,7 +29,7 @@ namespace QuickSC.StaticAnalyzer
 
         // 전역변수의 타입, 
         // TODO: 전역변수는 전역타입과 이름이 겹치면 안된다.
-        public ImmutableDictionary<string, QsTypeValue> GlobalVarTypeValues { get; set; }
+        public ImmutableDictionary<string, QsTypeValue> GlobalVarTypeValues { get; set; }        
 
         // 현재 변수의 타입
         public ImmutableDictionary<string, QsTypeValue> VarTypeValues { get; set; }
@@ -45,11 +48,13 @@ namespace QuickSC.StaticAnalyzer
             ImmutableDictionary<QsTypeId, QsType> typesById,
             ImmutableDictionary<QsFuncId, QsFunc> funcsById,
             Dictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
-            ImmutableDictionary<string, QsType> globalTypes)
+            ImmutableDictionary<string, QsType> globalTypes,
+            ImmutableDictionary<string, QsFunc> globalFuncs)
         {
             RefMetadatas = refMetadatas;
             TypeValuesByTypeExp = typeValuesByTypeExp;
-            GlobalTypes = globalTypes;            
+            GlobalTypes = globalTypes;
+            GlobalFuncs = globalFuncs;
             bGlobalScope = true;
 
             Errors = new List<(object Obj, string Message)>();

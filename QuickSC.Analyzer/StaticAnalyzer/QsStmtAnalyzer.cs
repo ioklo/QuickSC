@@ -208,17 +208,7 @@ namespace QuickSC.StaticAnalyzer
 
             context.VarTypeValues = prevVarTypeValues;
         }
-
-        bool GetFuncTypeValue(bool bStaticOnly, QsTypeValue typeValue, QsMemberFuncId memberFuncId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsFuncTypeValue? funcTypeValue)
-        {
-            return typeValueService.GetFuncTypeValue(bStaticOnly, typeValue, memberFuncId, ImmutableArray<QsTypeValue>.Empty, context.TypeValueServiceContext, out funcTypeValue);
-        }
-
-        bool GetReturnTypeValue(QsFuncTypeValue funcTypeValue, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? retTypeValue)
-        {
-            return typeValueService.GetReturnTypeValue(funcTypeValue, context.TypeValueServiceContext, out retTypeValue);
-        }
-
+        
         void AnalyzeForeachStmt(QsForeachStmt foreachStmt, QsAnalyzerContext context)
         {
             if (!analyzer.GetGlobalTypeValue("bool", context, out var boolTypeValue))
@@ -230,32 +220,32 @@ namespace QuickSC.StaticAnalyzer
             var elemTypeValue = context.TypeValuesByTypeExp[foreachStmt.Type];
 
             // 1. elemTypeValue가 VarTypeValue이면 GetEnumerator의 리턴값으로 판단한다
-            if (!GetFuncTypeValue(false, objTypeValue, new QsMemberFuncId("GetEnumerator"), context, out var getEnumeratorTypeValue))
+            if (!analyzer.GetFuncTypeValue(false, objTypeValue, new QsMemberFuncId("GetEnumerator"), context, out var getEnumeratorTypeValue))
             {
                 context.Errors.Add((foreachStmt.Obj, "foreach ... in 뒤 객체는 IEnumerator<T> GetEnumerator() 함수가 있어야 합니다."));
                 return;
             }
 
-            if (!GetReturnTypeValue(getEnumeratorTypeValue, context, out var getEnumeratorRetTypeValue))
+            if (!analyzer.GetReturnTypeValue(getEnumeratorTypeValue, context, out var getEnumeratorRetTypeValue))
                 return;
 
             // TODO: 일단 인터페이스가 없으므로, bool MoveNext()과 T GetCurrent()가 있는지 본다
             // TODO: thiscall인지도 확인해야 한다
-            if (!GetFuncTypeValue(false, getEnumeratorRetTypeValue, new QsMemberFuncId("MoveNext"), context, out var moveNextTypeValue) ||
-                !GetReturnTypeValue(moveNextTypeValue, context, out var moveNextRetTypeValue) || 
+            if (!analyzer.GetFuncTypeValue(false, getEnumeratorRetTypeValue, new QsMemberFuncId("MoveNext"), context, out var moveNextTypeValue) ||
+                !analyzer.GetReturnTypeValue(moveNextTypeValue, context, out var moveNextRetTypeValue) || 
                 !IsAssignable(boolTypeValue, moveNextRetTypeValue))
             {
                 context.Errors.Add((foreachStmt.Obj, "enumerator doesn't have 'bool MoveNext()' function"));
                 return;
             }
 
-            if (!GetFuncTypeValue(false, getEnumeratorRetTypeValue, new QsMemberFuncId("GetCurrent"), context, out var getCurrentTypeValue))
+            if (!analyzer.GetFuncTypeValue(false, getEnumeratorRetTypeValue, new QsMemberFuncId("GetCurrent"), context, out var getCurrentTypeValue))
             {
                 context.Errors.Add((foreachStmt.Obj, "enumerator doesn't have 'GetCurrent()' function"));
                 return;
             }
 
-            if (!GetReturnTypeValue(getCurrentTypeValue, context, out var getCurrentRetTypeValue))
+            if (!analyzer.GetReturnTypeValue(getCurrentTypeValue, context, out var getCurrentRetTypeValue))
                 return;
 
             if (elemTypeValue == QsVarTypeValue.Instance)

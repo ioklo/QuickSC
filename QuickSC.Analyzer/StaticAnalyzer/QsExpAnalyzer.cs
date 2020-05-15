@@ -56,20 +56,55 @@ namespace QuickSC.StaticAnalyzer
 
         internal bool AnalyzeIdExp(QsIdentifierExp idExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            // 여기는 id가 변수일때만 들어오는 부분
-            if (context.VarTypeValues.TryGetValue(idExp.Value, out typeValue))
+            // 여기는 id가 변수/함수일때만 들어오는 부분
+            if (idExp.TypeArgs.Length == 0 && context.VarTypeValues.TryGetValue(idExp.Value, out typeValue))
             {
                 context.TypeValuesByExp.Add(idExp, typeValue);
                 return true;
             }
 
-            if (context.GlobalVarTypeValues.TryGetValue(idExp.Value, out typeValue))
+            var typeArgs = ImmutableArray.CreateRange(idExp.TypeArgs, typeArg => context.TypeValuesByTypeExp[typeArg]);
+
+            // TODO: this scope 변수, 함수 검색
+            var candidates = new List<QsTypeValue>();
+            if (idExp.TypeArgs.Length == 0 && context.GlobalVarTypeValues.TryGetValue(idExp.Value, out var globalVarTypeValue))
             {
+                candidates.Add(globalVarTypeValue);                
+            }
+
+            if (context.GlobalFuncs.TryGetValue(idExp.Value, out var func))
+            {
+                var funcTypeValue = new QsFuncTypeValue(null, func.FuncId, typeArgs);
+                candidates.Add(funcTypeValue);
+            }
+
+            foreach(var refMetadata in context.RefMetadatas)
+            {
+                if (idExp.TypeArgs.Length == 0 && refMetadata.GetGlobalVarTypeValue(idExp.Value, out var outVarTypeValue))
+                    candidates.Add(outVarTypeValue);
+
+                if (refMetadata.GetGlobalFuncTypeValue(idExp.Value, typeArgs, out var outFuncTypeValue))
+                    candidates.Add(outFuncTypeValue);
+            }
+
+            if (candidates.Count == 1)
+            {
+                typeValue = candidates[0];
                 context.TypeValuesByExp.Add(idExp, typeValue);
                 return true;
             }
-
-            return false;
+            else if (1 < candidates.Count)
+            {
+                typeValue = null;
+                context.Errors.Add((idExp, "{idExp}가 모호합니다. 가능한 함수, 람다가 여러개 있습니다"));
+                return false;
+            }
+            else
+            {
+                typeValue = null;
+                context.Errors.Add((idExp, "가능한 함수, 람다가 없습니다"));
+                return false;
+            }
         }
 
         internal bool AnalyzeExpAsType(QsExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
@@ -292,17 +327,60 @@ namespace QuickSC.StaticAnalyzer
 
             context.Errors.Add((binaryOpExp, $"{operandTypeValue0}와 {operandTypeValue1}를 지원하는 연산자가 없습니다"));
             return false;
-        }
-
+        }        
+        
         internal bool AnalyzeCallExp(QsCallExp callExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue) 
         {
             // 여기서 분석해야 할 것은 
-            // 1. 해당 Exp가 함수인지, 변수인지, TODO로는 함수 오버로딩
-            // 2. Callable 인자에 맞게 잘 들어갔는지
-            // 3. 잘 들어갔다면 리턴타입
-            throw new NotImplementedException();
+            // 1. 해당 Exp가 함수인지, 변수인지, 함수라면 FuncId를 넣어준다
+            // 2. Callable 인자에 맞게 잘 들어갔는지 -> 완료
+            // 3. 잘 들어갔다면 리턴타입 -> 완료
 
+            typeValue = null;
 
+            var builder = ImmutableArray.CreateBuilder<QsTypeValue>(callExp.Args.Length);
+            foreach (var arg in callExp.Args)
+            {
+                if (!AnalyzeExp(arg, context, out var argTypeValue))
+                    return false; 
+
+                builder.Add(argTypeValue);
+            }
+            var argTypeValues = builder.MoveToImmutable();
+
+            // TODO: 함수 오버로딩이 들어가면 AnalyzeExp 함수만으로 안될 것이다
+            if (!AnalyzeExp(callExp.Callable, context, out var callableTypeValue))
+                return false;
+
+            var funcTypeValue = callableTypeValue as QsFuncTypeValue;
+            if (funcTypeValue == null)
+            {
+                context.Errors.Add((callExp.Callable, $"{callExp.Callable}은 호출 가능한 타입이 아닙니다"));
+                return false;
+            }
+
+            if (!analyzer.GetReturnTypeValue(funcTypeValue, context, out var retTypeValue))
+                return false;
+
+            if (!analyzer.GetParamTypeValues(funcTypeValue, context, out var paramTypeValues))
+                return false;
+
+            if (paramTypeValues.Value.Length != argTypeValues.Length)
+            {
+                context.Errors.Add((callExp, $"함수는 인자를 {paramTypeValues.Value.Length}개 받는데, 호출 인자는 {argTypeValues.Length} 개입니다"));
+                return false;
+            }
+
+            for(int i = 0; i < paramTypeValues.Value.Length; i++)
+            {
+                if (!IsAssignable(paramTypeValues.Value[i], argTypeValues[i]))
+                {
+                    context.Errors.Add((callExp.Args[i], $"함수의 {i + 1}번 째 매개변수 타입은 {paramTypeValues.Value[i]} 인데, 호출 인자 타입은 {argTypeValues[i]} 입니다"));
+                }
+            }
+
+            typeValue = retTypeValue;
+            return true;
         }
 
         internal bool AnalyzeLambdaExp(QsLambdaExp lambdaExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
@@ -310,7 +388,10 @@ namespace QuickSC.StaticAnalyzer
             throw new NotImplementedException();
         }
 
-        internal bool AnalyzeMemberCallExp(QsMemberCallExp memberCallExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue) { throw new NotImplementedException(); }
+        internal bool AnalyzeMemberCallExp(QsMemberCallExp memberCallExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue) 
+        {
+            throw new NotImplementedException();
+        }
 
         internal bool AnalyzeMemberExp(QsMemberExp memberExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue) 
         {
@@ -343,9 +424,10 @@ namespace QuickSC.StaticAnalyzer
                 context.TypeValuesByExp.Add(memberExp, typeValue);
                 return true;
             }
-            
 
-            throw new NotImplementedException();
+            context.Errors.Add((memberExp, $"{memberExp.Object}에 {memberExp.MemberName} 이름의 멤버를 찾을 수 없습니다"));
+            typeValue = null;
+            return false;
         }
 
         internal bool AnalyzeListExp(QsListExp listExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)

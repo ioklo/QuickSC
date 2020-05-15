@@ -233,6 +233,23 @@ namespace QuickSC.StaticAnalyzer
             // func.RetTypeValue;
         }
 
+        public bool GetParamTypeValues(QsFuncTypeValue funcTypeValue, QsTypeValueServiceContext context, [NotNullWhen(returnValue: true)] out ImmutableArray<QsTypeValue>? paramTypeValues)
+        {
+            var func = context.FuncsById[funcTypeValue.FuncId];
+
+            var typeEnv = new Dictionary<QsTypeVarTypeValue, QsTypeValue>();
+            MakeTypeEnv(funcTypeValue, context, typeEnv);
+
+            var builder = ImmutableArray.CreateBuilder<QsTypeValue>(func.ParamTypeValues.Length);
+            foreach (var paramTypeValue in func.ParamTypeValues)
+            {
+                var applied = ApplyTypeEnv(paramTypeValue, typeEnv);
+                builder.Add(applied);
+            }
+
+            paramTypeValues = builder.MoveToImmutable();
+            return true;
+        }
         
     }
 }

@@ -79,6 +79,18 @@ namespace QuickSC.Runtime
             return false;
         }
 
+        public bool GetGlobalFuncTypeValue(string value, ImmutableArray<QsTypeValue> typeArgs, [NotNullWhen(true)] out QsFuncTypeValue? outFuncTypeValue)
+        {
+            outFuncTypeValue = null;
+            return false;
+        }
+
+        public bool GetGlobalVarTypeValue(string value, [NotNullWhen(true)] out QsTypeValue? outTypeValue)
+        {
+            outTypeValue = null;
+            return false;
+        }
+
         public string? GetString(QsValue value)
         {
             if (value is QsObjectValue objValue && objValue.Object is QsStringObject strObj) return strObj.Data;
@@ -103,5 +115,7 @@ namespace QuickSC.Runtime
         {
             return new QsStringObject(str);
         }
+
+        
     }
 }
