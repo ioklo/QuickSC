@@ -99,8 +99,8 @@ namespace QuickSC.StaticAnalyzer
             // 3-2. Reference에서 검색, GlobalTypeSkeletons에 이름이 겹치지 않아야 한다.. RefMetadata들 끼리도 이름이 겹칠 수 있다
             foreach(var refMetadata in context.RefMetadatas)
             {
-                if (refMetadata.GetGlobalTypeValue(exp.Name, typeArgs, out var globalTypeValue))
-                    candidates.Add(globalTypeValue);
+                if (refMetadata.GetGlobalType(exp.Name, typeArgs.Length, out var globalType))
+                    candidates.Add(new QsNormalTypeValue(null, globalType.TypeId, typeArgs));
             }
 
             if (candidates.Count == 1)

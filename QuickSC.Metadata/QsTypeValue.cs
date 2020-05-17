@@ -134,6 +134,7 @@ namespace QuickSC
 
     public class QsNormalTypeValue : QsTypeValue
     {
+        // TODO: Outer를 NormalTypeValue로 고쳐보기
         public QsTypeValue? Outer { get; }
         public QsTypeId TypeId { get; }
         public ImmutableArray<QsTypeValue> TypeArgs { get; }
@@ -272,17 +273,16 @@ namespace QuickSC
         private QsVoidTypeValue() { }
     }
 
+    // ArgTypeValues => RetValueTypes
     public class QsFuncTypeValue : QsTypeValue
     {
-        public QsTypeValue? Outer { get; }
-        public QsFuncId FuncId { get; }
-        public ImmutableArray<QsTypeValue> TypeArgs { get; }
+        public QsTypeValue RetTypeValue { get; }
+        public ImmutableArray<QsTypeValue> ParamTypeValues { get; }
 
-        public QsFuncTypeValue(QsTypeValue? outer, QsFuncId funcId, ImmutableArray<QsTypeValue> typeArgs)
+        public QsFuncTypeValue(QsTypeValue retTypeValue, ImmutableArray<QsTypeValue> paramTypeValues)
         {
-            Outer = outer;
-            FuncId = funcId;
-            TypeArgs = typeArgs;
+            RetTypeValue = retTypeValue;
+            ParamTypeValues = paramTypeValues;
         }
     }
 }

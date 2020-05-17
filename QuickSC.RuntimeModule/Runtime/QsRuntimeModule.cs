@@ -13,11 +13,13 @@ namespace QuickSC.Runtime
         const int StringTypeId = 3;
         const int ListTypeId = 4;
 
-        Dictionary<string, QsType> globalTypes;
-        
-        void AddEmptyGlobalType(string name, int typeIdValue)
+        QsType boolType;
+        QsType intType;
+        QsType stringType;
+
+        QsType MakeEmptyGlobalType(string name, int typeIdValue)
         {
-            var type = new QsDefaultType(
+            return new QsDefaultType(
                 new QsTypeId(this, typeIdValue),
                 name,
                 ImmutableArray<string>.Empty,
@@ -27,21 +29,16 @@ namespace QuickSC.Runtime
                 ImmutableDictionary<string, QsTypeValue>.Empty,
                 ImmutableDictionary<QsMemberFuncId, QsFuncId>.Empty,
                 ImmutableDictionary<string, QsTypeValue>.Empty);
-
-            globalTypes.Add(name, type);
         }
 
         public QsRuntimeModule()
         {
-            globalTypes = new Dictionary<string, QsType>();
-
-            AddEmptyGlobalType("bool", BoolTypeId);
-            AddEmptyGlobalType("int", IntTypeId);
-            AddEmptyGlobalType("string", StringTypeId);
+            boolType = MakeEmptyGlobalType("bool", BoolTypeId);
+            intType = MakeEmptyGlobalType("int", IntTypeId);
+            stringType = MakeEmptyGlobalType("string", StringTypeId);
             
             // List
 
-            //var voidValueType = new QsNormalTypeValue(null, voidType.TypeId);
             //var boolValueType = new QsNormalTypeValue(null, boolType.TypeId);
             //var intValueType = new QsNormalTypeValue(null, intType.TypeId);
             //var stringValueType = new QsNormalTypeValue(null, stringType.TypeId);
@@ -53,32 +50,31 @@ namespace QuickSC.Runtime
 
         }
 
-        public bool GetGlobalTypeValue(string name, ImmutableArray<QsTypeValue> typeArgs, [NotNullWhen(true)] out QsTypeValue? typeValue)
+        public bool GetGlobalType(string name, int typeParamCount, [NotNullWhen(true)] out QsType? type)
         {
-            typeValue = null;
-
-            if (typeArgs.Length == 0)
+            if (typeParamCount == 0)
             {
-                if (name == "bool" )
+                if (name == "bool")
                 {
-                    typeValue = new QsNormalTypeValue(null, new QsTypeId(this, BoolTypeId));
+                    type = boolType;
                     return true;
                 }
                 else if (name == "int")
                 {
-                    typeValue = new QsNormalTypeValue(null, new QsTypeId(this, IntTypeId));
+                    type = intType;
                     return true;
                 }
                 else if (name == "string")
                 {
-                    typeValue = new QsNormalTypeValue(null, new QsTypeId(this, StringTypeId));
+                    type = stringType;
                     return true;
                 }
             }
 
+            type = null;
             return false;
         }
-
+        
         public bool GetGlobalFuncTypeValue(string value, ImmutableArray<QsTypeValue> typeArgs, [NotNullWhen(true)] out QsFuncTypeValue? outFuncTypeValue)
         {
             outFuncTypeValue = null;

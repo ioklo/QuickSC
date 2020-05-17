@@ -51,15 +51,6 @@ namespace QuickSC
         
         public async ValueTask<QsEvalContext?> EvaluateScriptAsync(QsScript script, QsEvalContext context)
         {
-            // 함수 처리
-            foreach (var elem in script.Elements)
-            {
-                if (elem is QsFuncDeclScriptElement funcDeclElem)
-                {
-                    context = context.AddFunc(funcDeclElem.FuncDecl);
-                }                
-            }
-
             foreach(var elem in script.Elements)
             {
                 if (elem is QsStmtScriptElement statementElem)
@@ -70,9 +61,6 @@ namespace QuickSC
                         context = result.Value;
                     }
                 }
-                else if (elem is QsFuncDeclScriptElement) continue;
-                else if (elem is QsEnumDeclScriptElement) continue;
-                else return null;
             }
 
             return context;

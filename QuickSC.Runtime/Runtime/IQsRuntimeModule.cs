@@ -4,7 +4,7 @@ using System.Text;
 
 namespace QuickSC.Runtime
 {
-    public interface IQsRuntimeModule : IQsMetadata
+    public interface IQsRuntimeModule : IQsModule
     {
         QsObject MakeStringObject(string str);
         string? GetString(QsValue value);

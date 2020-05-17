@@ -24,6 +24,17 @@ namespace QuickSC
 
         QsEvalResult<QsValue> EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
         {
+            // var idType = context.IdType[idExp]
+
+            //if (idType is QsLocalVar)
+            //    return context.GetValue(idExp.Value);
+
+            //else if (idType is QsGlobalVar)
+            //    return context.GetGlobalValue(idExp.Value)
+
+            //else if (idType is QsFunc funcId) // var s = F; // var s = () => F();
+            // else if (idTYpe is QsRefGlobalVar refglobalVar
+
             var result = context.GetValue(idExp.Value);
 
             if (result == null)

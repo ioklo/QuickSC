@@ -92,9 +92,27 @@ namespace QuickSC.StaticAnalyzer
             };
         }
 
-        bool GetFuncTypeValue_NormalTypeValue(
+        public QsFuncTypeValue MakeFuncTypeValue(QsNormalTypeValue? outer, QsFunc func, ImmutableArray<QsTypeValue> typeArgs, QsTypeValueServiceContext context)
+        {
+            var typeEnv = new Dictionary<QsTypeVarTypeValue, QsTypeValue>();
+
+            if (outer != null)
+                MakeTypeEnv(outer, context, typeEnv);
+
+            for (int i = 0; i < func.TypeParams.Length; i++)
+                typeEnv[new QsTypeVarTypeValue(func.FuncId, func.TypeParams[i])] = typeArgs[i];
+
+            return new QsFuncTypeValue(
+                ApplyTypeEnv(func.RetTypeValue, typeEnv),
+                ImmutableArray.CreateRange(func.ParamTypeValues, paramType => ApplyTypeEnv(paramType, typeEnv)));
+        }
+
+        // 
+        // GetFuncTypeValue_NormalTypeValue(X<int>.Y<short>, "Func", <bool>) =>   (int, short) => bool
+        // 
+        bool GetMemberFuncTypeValue_NormalTypeValue(
             bool bStaticOnly,
-            QsNormalTypeValue typeValue, 
+            QsNormalTypeValue typeValue,
             QsMemberFuncId memberFuncId, 
             ImmutableArray<QsTypeValue> typeArgs, 
             QsTypeValueServiceContext context,
@@ -107,13 +125,18 @@ namespace QuickSC.StaticAnalyzer
             if (!type.GetMemberFuncId(bStaticOnly, memberFuncId, out var funcId))
                 return false;
 
-            funcTypeValue = new QsFuncTypeValue(typeValue, funcId.Value, typeArgs);
+            var func = context.FuncsById[funcId.Value];
+
+            if (func.TypeParams.Length != typeArgs.Length)
+                return false;
+
+            funcTypeValue = MakeFuncTypeValue(typeValue, func, typeArgs, context);
             return true;
         }
 
-        public bool GetFuncTypeValue(
+        public bool GetMemberFuncTypeValue(
             bool bStaticOnly,
-            QsTypeValue typeValue, 
+            QsTypeValue typeValue,
             QsMemberFuncId memberFuncId, 
             ImmutableArray<QsTypeValue> typeArgs,
             QsTypeValueServiceContext context, 
@@ -122,7 +145,7 @@ namespace QuickSC.StaticAnalyzer
             // var / typeVar / normal / func
             return typeValue switch
             {
-                QsNormalTypeValue normalTypeValue => GetFuncTypeValue_NormalTypeValue(bStaticOnly, normalTypeValue, memberFuncId, typeArgs, context, out funcTypeValue),
+                QsNormalTypeValue normalTypeValue => GetMemberFuncTypeValue_NormalTypeValue(bStaticOnly, normalTypeValue, memberFuncId, typeArgs, context, out funcTypeValue),
                 _ => throw new NotImplementedException()
             };
         }
@@ -139,28 +162,13 @@ namespace QuickSC.StaticAnalyzer
 
             for(int i = 0; i < typeParams.Length; i++)            
                 typeEnv[new QsTypeVarTypeValue(typeValue.TypeId, typeParams[i])] = typeValue.TypeArgs[i];            
-        }
-
-        void MakeTypeEnv_FuncTypeValue(QsFuncTypeValue typeValue, QsTypeValueServiceContext context, Dictionary<QsTypeVarTypeValue, QsTypeValue> typeEnv)
-        {
-            if (typeValue.Outer != null)
-                MakeTypeEnv(typeValue.Outer, context, typeEnv);
-
-            var func = context.FuncsById[typeValue.FuncId];
-            var typeParams = func.TypeParams;
-
-            Debug.Assert(typeParams.Length == typeValue.TypeArgs.Length);
-
-            for (int i = 0; i < typeParams.Length; i++)
-                typeEnv[new QsTypeVarTypeValue(typeValue.FuncId, typeParams[i])] = typeValue.TypeArgs[i];
-        }
+        }        
 
         void MakeTypeEnv(QsTypeValue typeValue, QsTypeValueServiceContext context, Dictionary<QsTypeVarTypeValue, QsTypeValue> typeEnv)
         {
             switch (typeValue)
             {
                 case QsNormalTypeValue normalTypeValue: MakeTypeEnv_NormalTypeValue(normalTypeValue, context, typeEnv); return;
-                case QsFuncTypeValue funcTypeValue: MakeTypeEnv_FuncTypeValue(funcTypeValue, context, typeEnv); return;
                 default: throw new NotImplementedException();
             }
         }
@@ -181,20 +189,15 @@ namespace QuickSC.StaticAnalyzer
             return new QsNormalTypeValue(appliedOuter, typeValue.TypeId, appliedTypeArgsBuilder.MoveToImmutable());
         }
 
+
+        // 
         QsFuncTypeValue ApplyTypeEnv_FuncTypeValue(QsFuncTypeValue typeValue, Dictionary<QsTypeVarTypeValue, QsTypeValue> typeEnv)
         {
-            QsTypeValue? appliedOuter = (typeValue.Outer != null)
-                ? ApplyTypeEnv(typeValue.Outer, typeEnv)
-                : null;
-
-            var appliedTypeArgsBuilder = ImmutableArray.CreateBuilder<QsTypeValue>(typeValue.TypeArgs.Length);
-            foreach (var typeArg in typeValue.TypeArgs)
-            {
-                var appliedTypeArg = ApplyTypeEnv(typeArg, typeEnv);
-                appliedTypeArgsBuilder.Add(appliedTypeArg);
-            }
-
-            return new QsFuncTypeValue(appliedOuter, typeValue.FuncId, appliedTypeArgsBuilder.MoveToImmutable());
+            return new QsFuncTypeValue(
+                ApplyTypeEnv(typeValue.RetTypeValue, typeEnv),
+                ImmutableArray.CreateRange(
+                    typeValue.ParamTypeValues,
+                    paramTypeValue => ApplyTypeEnv(paramTypeValue, typeEnv)));
         }
 
         // T, [T -> ]
@@ -217,39 +220,52 @@ namespace QuickSC.StaticAnalyzer
             };
         }
 
-        public bool GetReturnTypeValue(QsFuncTypeValue funcTypeValue, QsTypeValueServiceContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        // class N<T> : B<T> => N.GetBaseType => B<T(N)>
+        bool GetBaseTypeValue_NormalTypeValue(QsNormalTypeValue typeValue, QsTypeValueServiceContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? outBaseTypeValue)
         {
-            // class X<T> { class Y<U> { T Func<U>() } }
-            // GetReturnTypeValue(((null, X, [int]), Y, [short]), Func, [bool])
-            
-            // func = T Func<U>            
-            var func = context.FuncsById[funcTypeValue.FuncId];
-
-            var typeEnv = new Dictionary<QsTypeVarTypeValue, QsTypeValue>();
-            MakeTypeEnv(funcTypeValue, context, typeEnv);
-            typeValue = ApplyTypeEnv(func.RetTypeValue, typeEnv);
-            return true;
-
-            // func.RetTypeValue;
-        }
-
-        public bool GetParamTypeValues(QsFuncTypeValue funcTypeValue, QsTypeValueServiceContext context, [NotNullWhen(returnValue: true)] out ImmutableArray<QsTypeValue>? paramTypeValues)
-        {
-            var func = context.FuncsById[funcTypeValue.FuncId];
-
-            var typeEnv = new Dictionary<QsTypeVarTypeValue, QsTypeValue>();
-            MakeTypeEnv(funcTypeValue, context, typeEnv);
-
-            var builder = ImmutableArray.CreateBuilder<QsTypeValue>(func.ParamTypeValues.Length);
-            foreach (var paramTypeValue in func.ParamTypeValues)
+            var type = context.TypesById[typeValue.TypeId];
+            var baseTypeValue = type.GetBaseTypeValue();
+            if (baseTypeValue == null)
             {
-                var applied = ApplyTypeEnv(paramTypeValue, typeEnv);
-                builder.Add(applied);
+                outBaseTypeValue = null;
+                return false;
             }
 
-            paramTypeValues = builder.MoveToImmutable();
+            var typeEnv = new Dictionary<QsTypeVarTypeValue, QsTypeValue>();
+            MakeTypeEnv(typeValue, context, typeEnv);
+
+            outBaseTypeValue = ApplyTypeEnv(baseTypeValue, typeEnv);
             return true;
         }
-        
+
+        bool GetBaseTypeValue(QsTypeValue typeValue, QsTypeValueServiceContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? baseTypeValue)
+        {
+            baseTypeValue = null;
+
+            return typeValue switch
+            {
+                QsNormalTypeValue normalTypeValue => GetBaseTypeValue_NormalTypeValue(normalTypeValue, context, out baseTypeValue),
+                _ => false
+            };
+        }
+
+        public bool IsAssignable(QsTypeValue toTypeValue, QsTypeValue fromTypeValue, QsTypeValueServiceContext context)
+        {
+            // B <- D
+            // 지금은 fromType의 base들을 찾아가면서 toTypeValue와 맞는 것이 있는지 본다
+            // TODO: toTypeValue가 interface라면, fromTypeValue의 interface들을 본다
+
+            QsTypeValue? curType = fromTypeValue;
+            while(true)
+            {
+                if (EqualityComparer<QsTypeValue>.Default.Equals(toTypeValue, curType))
+                    return true;
+
+                if (!GetBaseTypeValue(curType, context, out var outType))
+                    return false;
+
+                curType = outType;
+            }
+        }
     }
 }

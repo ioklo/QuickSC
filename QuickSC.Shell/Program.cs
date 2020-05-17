@@ -91,6 +91,13 @@ if (x is X.First)
                 var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem, ImmutableArray.Create<IQsMetadata>(runtimeModule));
                 if (analyzerContext == null || 0 < analyzerContext.Errors.Count)
                 {
+                    if( analyzerContext != null)
+                        foreach(var error in analyzerContext.Errors)
+                        {
+                            Console.WriteLine(error.Message);
+                        }
+
+
                     Console.WriteLine("분석에 실패했습니다");
                     return;
                 }
