@@ -8,9 +8,12 @@ namespace QuickSC
 {
     public interface IQsMetadata
     {
-        bool GetGlobalFuncTypeValue(string value, ImmutableArray<QsTypeValue> typeArgs, [NotNullWhen(returnValue: true)] out QsFuncTypeValue? outFuncTypeValue);
-        bool GetGlobalVarTypeValue(string value, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue);
+        bool GetGlobalType(string name, int typeParamCount, [NotNullWhen(returnValue: true)] out QsType? outType);
+        bool GetGlobalFunc(string name, [NotNullWhen(returnValue: true)] out QsFunc? outFunc);
+        bool GetGlobalVar(string name, [NotNullWhen(returnValue: true)] out QsVariable? outVar);
 
-        bool GetGlobalType(string name, int typeParamCount, [NotNullWhen(returnValue: true)] out QsType? type);
+        bool GetTypeById(QsTypeId typeId, [NotNullWhen(returnValue: true)] out QsType? outType);
+        bool GetFuncById(QsFuncId funcId, [NotNullWhen(returnValue: true)] out QsFunc? outFunc);
+        bool GetVarById(QsVarId typeId, [NotNullWhen(returnValue: true)] out QsVariable? outVar);
     }
 }

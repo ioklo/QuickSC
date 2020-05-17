@@ -8,7 +8,7 @@ namespace QuickSC
     public class QsFunc
     {
         public QsFuncId FuncId { get; }
-        public bool bThisCall { get; } // thiscall이라면 첫번째 ArgType은 this type이다
+        public bool bThisCall { get; }
         public string Name { get; }
         public ImmutableArray<string> TypeParams { get; }
         public QsTypeValue RetTypeValue { get; }

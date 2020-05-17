@@ -20,10 +20,12 @@ namespace QuickSC
         {
             this.evaluator = evaluator;
             this.runtimeModule = runtimeModule;
-        }
-
+        }        
+        
         QsEvalResult<QsValue> EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
         {
+            var variable = context.varsByIdExp[idExp]; // QsVariable
+
             // var idType = context.IdType[idExp]
 
             //if (idType is QsLocalVar)

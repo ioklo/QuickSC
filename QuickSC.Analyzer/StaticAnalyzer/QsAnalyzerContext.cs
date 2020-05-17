@@ -47,16 +47,8 @@ namespace QuickSC.StaticAnalyzer
     // Analyzer는 backtracking이 없어서, MutableContext를 쓴다 
     public class QsAnalyzerContext
     {
-        public ImmutableArray<IQsMetadata> RefMetadatas { get; }
-
         // TypeExp가 무슨 타입을 갖고 있는지. VarTypeValue를 여기서 교체할 수 있다
         public Dictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
-
-        // 전역 타입 정보
-        public ImmutableDictionary<string, QsType> GlobalTypes { get; }
-
-        // 전역 함수 정보
-        public ImmutableDictionary<string, QsFunc> GlobalFuncs { get; }
 
         // 에러
         public List<(object Obj, string Message)> Errors { get; }
@@ -70,52 +62,30 @@ namespace QuickSC.StaticAnalyzer
 
         public QsTypeValueServiceContext TypeValueServiceContext { get; }
 
-        // 현재 실행되고 있는 함수, null이면 글로벌        
-        public QsAnalyzerFuncContext? CurFunc { get; set; }
+        // 현재 실행되고 있는 함수
+        public QsAnalyzerFuncContext CurFunc { get; set; }
+
+        // CurFunc와 bGlobalScope를 나누는 이유는, globalScope에서 BlockStmt 안으로 들어가면 global이 아니기 때문이다
+        public bool bGlobalScope { get; set; }
 
         public Dictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> CaptureInfosByLocation { get; }
 
-        public QsAnalyzerContext(
-            ImmutableArray<IQsMetadata> refMetadatas,
-            ImmutableDictionary<QsTypeId, QsType> typesById,
-            ImmutableDictionary<QsFuncId, QsFunc> funcsById,
+        public QsAnalyzerContext(        
             Dictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
-            ImmutableDictionary<string, QsType> globalTypes,
-            ImmutableDictionary<string, QsFunc> globalFuncs)
-        {
-            RefMetadatas = refMetadatas;
+            List<(object obj, string msg)> errors,
+            QsTypeValueServiceContext typeValueServiceContext)
+        {   
             TypeValuesByTypeExp = typeValuesByTypeExp;
-            GlobalTypes = globalTypes;
-            GlobalFuncs = globalFuncs;            
 
-            Errors = new List<(object Obj, string Message)>();
+            Errors = errors;
             globalVarTypeValues = ImmutableDictionary<string, QsTypeValue>.Empty;
             TypeValuesByExp = new Dictionary<QsExp, QsTypeValue>(QsReferenceComparer<QsExp>.Instance);
-            TypeValueServiceContext = new QsTypeValueServiceContext(typesById, funcsById);
+            TypeValueServiceContext = typeValueServiceContext;
 
-            CurFunc = null;
+            CurFunc = new QsAnalyzerFuncContext(null, false);
+            bGlobalScope = true;
             CaptureInfosByLocation = new Dictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>>();
-        }
-        
-        public void AddGlobalVarTypeValue(string varName, QsTypeValue typeValue)
-        {
-            globalVarTypeValues = globalVarTypeValues.SetItem(varName, typeValue);
-        }
-
-        public bool GetGlobalVarTypeValue(string varName, out QsTypeValue typeValue)
-        {
-            return globalVarTypeValues.TryGetValue(varName, out typeValue);
-        }
-
-        public void SetGlobalVarTypeValues(ImmutableDictionary<string, QsTypeValue> newGlobalVarTypeValues)
-        {
-            globalVarTypeValues = newGlobalVarTypeValues;
-        }
-
-        public ImmutableDictionary<string, QsTypeValue> GetGlobalVarTypeValues()
-        {
-            return globalVarTypeValues;
-        }
+        }        
 
         // 1. exp가 무슨 타입을 가지는지
         // 2. callExp가 staticFunc을 호출할 경우 무슨 함수를 호출하는지

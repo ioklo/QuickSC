@@ -59,28 +59,16 @@ namespace QuickSC.StaticAnalyzer
 
             // 전역 변수/함수, 레퍼런스에서 검색
             var candidates = new List<QsTypeValue>();
-            if (idExp.TypeArgs.Length == 0 && context.GetGlobalVarTypeValue(idExp.Value, out var globalVarTypeValue))
+            if (idExp.TypeArgs.Length == 0 && analyzer.GetGlobalVar(idExp.Value, context, out var globalVar))
             {
                 // GlobalVar
-                candidates.Add(globalVarTypeValue);                
+                candidates.Add(globalVar.TypeValue);
             }
 
-            if (context.GlobalFuncs.TryGetValue(idExp.Value, out var func))
+            if (analyzer.GetGlobalFunc(idExp.Value, context, out var func))
             {
                 // GlobalFunc
-                var funcTypeValue = typeValueService.MakeFuncTypeValue(null, func, typeArgs, context.TypeValueServiceContext);
-                candidates.Add(funcTypeValue);
-            }
-
-            foreach(var refMetadata in context.RefMetadatas)
-            {
-                // RefGlobalVar
-                if (idExp.TypeArgs.Length == 0 && refMetadata.GetGlobalVarTypeValue(idExp.Value, out var outVarTypeValue))
-                    candidates.Add(outVarTypeValue);
-
-                // RefGlobalFunc
-                if (refMetadata.GetGlobalFuncTypeValue(idExp.Value, typeArgs, out var outFuncTypeValue))
-                    candidates.Add(outFuncTypeValue);
+                candidates.Add(typeValueService.MakeFuncTypeValue(null, func, typeArgs, context.TypeValueServiceContext));
             }
 
             if (candidates.Count == 1)

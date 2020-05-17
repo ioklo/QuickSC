@@ -23,7 +23,7 @@ namespace QuickSC.StaticAnalyzer
             this.expAnalyzer = new QsExpAnalyzer(this, typeValueService);
             this.stmtAnalyzer = new QsStmtAnalyzer(this, typeValueService);
             this.capturer = new QsCapturer();
-            this.typeValueService = new QsTypeValueService();
+            this.typeValueService = typeValueService;
         }
 
         internal bool AnalyzeExp(QsExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
@@ -45,28 +45,12 @@ namespace QuickSC.StaticAnalyzer
 
         public void AddVarTypeValue(string name, QsTypeValue typeValue, QsAnalyzerContext context)
         {
-            if (context.CurFunc != null)
+            if (!context.bGlobalScope)
                 context.CurFunc.AddVarTypeValue(name, typeValue);
             else
-                context.AddGlobalVarTypeValue(name, typeValue);
+                typeValueService.AddGlobalVar(name, typeValue, context.TypeValueServiceContext);
         }
-
-        public ImmutableDictionary<string, QsTypeValue> GetVarTypeValues(QsAnalyzerContext context)
-        {
-            if (context.CurFunc != null)
-                return context.CurFunc.GetVarTypeValues();
-            else
-                return context.GetGlobalVarTypeValues();
-        }
-
-        public void SetVarTypeValues(ImmutableDictionary<string, QsTypeValue> varTypeValues, QsAnalyzerContext context)
-        {
-            if (context.CurFunc != null)
-                context.CurFunc.SetVarTypeValues(varTypeValues);
-            else
-                context.SetGlobalVarTypeValues(varTypeValues);
-        }
-
+        
         internal void AnalyzeVarDecl(QsVarDecl varDecl, QsAnalyzerContext context)
         {
             // 1. int x  // x를 추가
@@ -126,42 +110,26 @@ namespace QuickSC.StaticAnalyzer
 
         public bool GetGlobalTypeValue(string name, ImmutableArray<QsTypeValue> typeArgs, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            var candidates = new List<QsTypeValue>();
-
-            // TODO: 추후 namespace 검색도 해야 한다
-            if (context.GlobalTypes.TryGetValue(name, out var globalType))
-                candidates.Add(new QsNormalTypeValue(null, globalType.TypeId, typeArgs));
-
-            foreach(var refMetadata in context.RefMetadatas)
-            {
-                if (refMetadata.GetGlobalType(name, typeArgs.Length, out var type))
-                    candidates.Add(new QsNormalTypeValue(null, type.TypeId, typeArgs));
-            }
-
-            if (candidates.Count == 1)
-            {
-                typeValue = candidates[0];
-                return true;
-            }
-            else if (1 < candidates.Count)
-            {
-                typeValue = null;
-                context.Errors.Add((name, $"이름이 같은 {name} 타입이 여러개 입니다"));
-                return false;
-            }
-            else
-            {
-                typeValue = null;
-                context.Errors.Add((name, $"{name} 타입을 찾지 못했습니다"));
-                return false;
-            }            
-            
+            return typeValueService.GetGlobalTypeValue(name, typeArgs, context.TypeValueServiceContext, out typeValue);
         }
+
+        public bool GetGlobalFunc(string name, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsFunc? outFunc)
+        {
+            return typeValueService.GetGlobalFunc(name, context.TypeValueServiceContext, out outFunc);
+        }
+
+        public bool GetGlobalVar(string name, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsVariable? outVar)
+        {
+            return typeValueService.GetGlobalVar(name, context.TypeValueServiceContext, out outVar);
+        }
+
+        
 
         public static QsAnalyzerContext? AnalyzeScript(QsScript script, ImmutableArray<IQsMetadata> refMetadatas)
         {
             var typeIdFactory = new QsTypeIdFactory();
             var funcIdFactory = new QsFuncIdFactory();
+            var varIdFactory = new QsVarIdFactory();
 
             var typeSkeletonCollector = new QsTypeSkeletonCollector(typeIdFactory, funcIdFactory);
 
@@ -170,7 +138,7 @@ namespace QuickSC.StaticAnalyzer
             var typeBuilder = new QsTypeAndFuncBuilder();
 
             var capturer = new QsCapturer();
-            var typeValueService = new QsTypeValueService();
+            var typeValueService = new QsTypeValueService(varIdFactory);
             var analyzer = new QsAnalyzer(capturer, typeValueService);
 
             var errors = new List<(object obj, string msg)>();
@@ -210,16 +178,20 @@ namespace QuickSC.StaticAnalyzer
             var globalTypes = builderContext.GlobalTypes.ToImmutableDictionary(type => type.GetName());
             var globalFuncs = builderContext.GlobalFuncs.ToImmutableDictionary(func => func.Name);
             var typesById = builderContext.Types.ToImmutableDictionary(type => type.TypeId);
-            var funcsById = builderContext.Funcs.ToImmutableDictionary(type => type.FuncId);
+            var funcsById = builderContext.Funcs.ToImmutableDictionary(func=> func.FuncId);
+
+            // globalVariable이 빠진상태
+            var varsById = builderContext.Vars.ToImmutableDictionary(var => var.VarId);
 
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
             var analyzerContext = new QsAnalyzerContext(
-                refMetadatas,
-                typesById,
-                funcsById,
-                new Dictionary<QsTypeExp, QsTypeValue>(typeExpEvaluatorContext.TypeValuesByTypeExp, QsReferenceComparer<QsTypeExp>.Instance), 
-                globalTypes,
-                globalFuncs);
+                new Dictionary<QsTypeExp, QsTypeValue>(typeExpEvaluatorContext.TypeValuesByTypeExp, QsReferenceComparer<QsTypeExp>.Instance),
+                errors,
+                new QsTypeValueServiceContext(
+                    refMetadatas,
+                    globalTypes,
+                    globalFuncs,
+                    typesById, funcsById, varsById, errors));
 
             analyzer.AnalyzeScript(script, analyzerContext);
 

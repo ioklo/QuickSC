@@ -16,7 +16,7 @@ namespace QuickSC
         public QsFuncId MakeFuncId()
         {
             funcIdCount++;
-            return new QsFuncId(funcIdCount);
+            return new QsFuncId(null, funcIdCount);
         }
     }
 }

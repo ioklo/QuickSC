@@ -26,9 +26,9 @@ namespace QuickSC.Runtime
                 null,
                 ImmutableDictionary<string, QsTypeId>.Empty,
                 ImmutableDictionary<string, QsFuncId>.Empty,
-                ImmutableDictionary<string, QsTypeValue>.Empty,
+                ImmutableDictionary<string, QsVarId>.Empty,
                 ImmutableDictionary<QsMemberFuncId, QsFuncId>.Empty,
-                ImmutableDictionary<string, QsTypeValue>.Empty);
+                ImmutableDictionary<string, QsVarId>.Empty);
         }
 
         public QsRuntimeModule()
@@ -74,19 +74,20 @@ namespace QuickSC.Runtime
             type = null;
             return false;
         }
+
+        public bool GetGlobalFunc(string name, [NotNullWhen(true)] out QsFunc? func)
+        {
+            func = null;
+            return false;
+        }
+
+        public bool GetGlobalVar(string name, [NotNullWhen(true)] out QsVariable? outVar)
+        {
+            outVar = null;
+            return false;
+        }
+
         
-        public bool GetGlobalFuncTypeValue(string value, ImmutableArray<QsTypeValue> typeArgs, [NotNullWhen(true)] out QsFuncTypeValue? outFuncTypeValue)
-        {
-            outFuncTypeValue = null;
-            return false;
-        }
-
-        public bool GetGlobalVarTypeValue(string value, [NotNullWhen(true)] out QsTypeValue? outTypeValue)
-        {
-            outTypeValue = null;
-            return false;
-        }
-
         public string? GetString(QsValue value)
         {
             if (value is QsObjectValue objValue && objValue.Object is QsStringObject strObj) return strObj.Data;
@@ -112,6 +113,40 @@ namespace QuickSC.Runtime
             return new QsStringObject(str);
         }
 
-        
+        public bool GetTypeById(QsTypeId typeId, [NotNullWhen(true)] out QsType? outType)
+        {
+            if (typeId == boolType.TypeId)
+            {
+                outType = boolType;
+                return true;
+            }
+            else if (typeId == intType.TypeId)
+            {
+                outType = intType;
+                return true;
+            }
+            else if (typeId == stringType.TypeId)
+            {
+                outType = stringType;
+                return true;
+            }
+            else
+            {
+                outType = null;
+                return false;
+            }
+        }
+
+        public bool GetFuncById(QsFuncId funcId, [NotNullWhen(true)] out QsFunc? outFunc)
+        {
+            outFunc = null;
+            return false;
+        }
+
+        public bool GetVarById(QsVarId typeId, [NotNullWhen(true)] out QsVariable? outVar)
+        {
+            outVar = null;
+            return false;
+        }
     }
 }

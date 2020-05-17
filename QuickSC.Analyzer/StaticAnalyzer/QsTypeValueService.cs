@@ -4,26 +4,68 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace QuickSC.StaticAnalyzer
 {
     public class QsTypeValueServiceContext
     {
+        public ImmutableArray<IQsMetadata> RefMetadatas { get; }
+        public ImmutableDictionary<string, QsType> GlobalTypes { get; }
+        public ImmutableDictionary<string, QsFunc> GlobalFuncs { get; }
         public ImmutableDictionary<QsTypeId, QsType> TypesById { get; }
         public ImmutableDictionary<QsFuncId, QsFunc> FuncsById { get; }
+        public ImmutableDictionary<QsVarId, QsVariable> VarsById { get; }
+        public List<(object Obj, string Message)> Errors { get; }
+
+        public Dictionary<string, QsVariable> GlobalVars { get; }
 
         public QsTypeValueServiceContext(
-            ImmutableDictionary<QsTypeId, QsType> TypesById,
-            ImmutableDictionary<QsFuncId, QsFunc> funcsById)
+            ImmutableArray<IQsMetadata> refMetadatas,
+            ImmutableDictionary<string, QsType> globalTypes,
+            ImmutableDictionary<string, QsFunc> globalFuncs,
+            ImmutableDictionary<QsTypeId, QsType> typesById,
+            ImmutableDictionary<QsFuncId, QsFunc> funcsById,
+            ImmutableDictionary<QsVarId, QsVariable> varsById,
+            List<(object Obj, string Message)> errors)
         {
-            this.TypesById = TypesById;
-            this.FuncsById = funcsById;
+            RefMetadatas = refMetadatas;
+            GlobalTypes = globalTypes;
+            GlobalFuncs = globalFuncs;
+            TypesById = typesById;
+            FuncsById = funcsById;
+            VarsById = varsById;
+            Errors = errors;
+            GlobalVars = new Dictionary<string, QsVariable>();
         }
     }
 
     public class QsTypeValueService
     {
+        QsVarIdFactory varIdFactory;
+
+        public QsTypeValueService(QsVarIdFactory varIdFactory)
+        {
+            this.varIdFactory = varIdFactory;
+        }
+
+        public bool GetTypeById(QsTypeId typeId, QsTypeValueServiceContext context, [NotNullWhen(returnValue: true)] out QsType? type)
+        {
+            if (typeId.Metadata != null)
+                return typeId.Metadata.GetTypeById(typeId, out type);
+
+            return context.TypesById.TryGetValue(typeId, out type);
+        }
+
+        public bool GetFuncById(QsFuncId funcId, QsTypeValueServiceContext context, [NotNullWhen(returnValue: true)] out QsFunc? func)
+        {
+            if (funcId.Metadata != null)
+                return funcId.Metadata.GetFuncById(funcId, out func);
+
+            return context.FuncsById.TryGetValue(funcId, out func);
+        }
+        
         public bool GetMemberTypeValue_NormalTypeValue(
             QsNormalTypeValue typeValue,
             string memberName,
@@ -32,7 +74,9 @@ namespace QuickSC.StaticAnalyzer
             [NotNullWhen(returnValue: true)] out QsTypeValue? memberTypeValue)
         {
             memberTypeValue = null;
-            var type = context.TypesById[typeValue.TypeId];
+
+            if (!GetTypeById(typeValue.TypeId, context, out var type))
+                return false;
 
             if (!type.GetMemberTypeId(memberName, out var memberTypeId))
                 return false;            
@@ -66,14 +110,18 @@ namespace QuickSC.StaticAnalyzer
             [NotNullWhen(returnValue: true)] out QsTypeValue? memberVarTypeValue)
         {
             memberVarTypeValue = null;
-            var type = context.TypesById[typeValue.TypeId];
 
-            if (!type.GetMemberVarTypeValue(bStaticOnly, memberName, out var varTypeValue))
+            if (!GetTypeById(typeValue.TypeId, context, out var type))
                 return false;
+
+            if (!type.GetMemberVarId(bStaticOnly, memberName, out var varId))
+                return false;
+
+            var variable = context.VarsById[varId.Value];
 
             var typeEnv = new Dictionary<QsTypeVarTypeValue, QsTypeValue>();
             MakeTypeEnv(typeValue, context, typeEnv);
-            memberVarTypeValue = ApplyTypeEnv(varTypeValue, typeEnv);
+            memberVarTypeValue = ApplyTypeEnv(variable.TypeValue, typeEnv);
             return true;
         }
 
@@ -90,6 +138,103 @@ namespace QuickSC.StaticAnalyzer
                 QsNormalTypeValue normalTypeValue => GetMemberVarTypeValue_NormalTypeValue(bStaticOnly, normalTypeValue, memberName, context, out memberVarTypeValue),
                 _ => throw new NotImplementedException()
             };
+        }
+
+        internal bool GetGlobalFunc(string name, QsTypeValueServiceContext context, out QsFunc? outGlobalFunc)
+        {
+            var funcs = new List<QsFunc>();
+
+            if (context.GlobalFuncs.TryGetValue(name, out var outFunc))
+                funcs.Add(outFunc);
+
+            foreach (var refMetadata in context.RefMetadatas)
+                if (refMetadata.GetGlobalFunc(name, out var outRefFunc))
+                    funcs.Add(outRefFunc);
+
+            if (funcs.Count == 1)
+            {
+                outGlobalFunc = funcs[0];
+                return true;
+            }
+            else if (1 < funcs.Count)
+            {
+                // TODO: syntaxNode를 가리키도록 해야 합니다
+                context.Errors.Add((name, $"한 개 이상의 {name} 전역 함수가 있습니다"));
+            }
+            else
+            {
+                context.Errors.Add((name, $"{name} 이름의 전역 함수가 없습니다"));
+            }
+
+            outGlobalFunc = null;
+            return false;
+        }
+
+        public bool GetGlobalVar(string name, QsTypeValueServiceContext context, out QsVariable? outGlobalVar)
+        {
+            var vars = new List<QsVariable>();
+
+            if (context.GlobalVars.TryGetValue(name, out var outVar))
+                vars.Add(outVar);
+
+            foreach (var refMetadata in context.RefMetadatas)
+                if (refMetadata.GetGlobalVar(name, out var outRefVar))
+                    vars.Add(outRefVar);
+
+            if (vars.Count == 1)
+            {
+                outGlobalVar = vars[0];
+                return true;
+            }
+            else if (1 < vars.Count)
+            {
+                // TODO: syntaxNode를 가리키도록 해야 합니다
+                context.Errors.Add((name, $"한 개 이상의 {name} 전역 변수가 있습니다"));
+            }
+            else
+            {
+                context.Errors.Add((name, $"{name} 이름의 전역 함수가 없습니다"));
+            }
+
+            outGlobalVar = null;
+            return false;
+        }
+
+        public bool GetGlobalTypeValue(
+            string name, 
+            ImmutableArray<QsTypeValue> typeArgs, 
+            QsTypeValueServiceContext context, 
+            [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        {
+            var candidates = new List<QsTypeValue>();
+
+            // TODO: 추후 namespace 검색도 해야 한다
+            if (context.GlobalTypes.TryGetValue(name, out var globalType))
+                candidates.Add(new QsNormalTypeValue(null, globalType.TypeId, typeArgs));
+
+            foreach (var refMetadata in context.RefMetadatas)
+            {
+                if (refMetadata.GetGlobalType(name, typeArgs.Length, out var type))
+                    candidates.Add(new QsNormalTypeValue(null, type.TypeId, typeArgs));
+            }
+
+            if (candidates.Count == 1)
+            {
+                typeValue = candidates[0];
+                return true;
+            }
+            else if (1 < candidates.Count)
+            {
+                typeValue = null;
+                context.Errors.Add((name, $"이름이 같은 {name} 타입이 여러개 입니다"));
+                return false;
+            }
+            else
+            {
+                typeValue = null;
+                context.Errors.Add((name, $"{name} 타입을 찾지 못했습니다"));
+                return false;
+            }
         }
 
         public QsFuncTypeValue MakeFuncTypeValue(QsNormalTypeValue? outer, QsFunc func, ImmutableArray<QsTypeValue> typeArgs, QsTypeValueServiceContext context)
@@ -120,12 +265,14 @@ namespace QuickSC.StaticAnalyzer
         {
             funcTypeValue = null;
 
-            var type = context.TypesById[typeValue.TypeId];
+            if (!GetTypeById(typeValue.TypeId, context, out var type))
+                return false;
 
             if (!type.GetMemberFuncId(bStaticOnly, memberFuncId, out var funcId))
                 return false;
 
-            var func = context.FuncsById[funcId.Value];
+            if (!GetFuncById(funcId.Value, context, out var func))
+                return false;
 
             if (func.TypeParams.Length != typeArgs.Length)
                 return false;
@@ -155,7 +302,9 @@ namespace QuickSC.StaticAnalyzer
             if (typeValue.Outer != null)
                 MakeTypeEnv(typeValue.Outer, context, typeEnv);
 
-            var type = context.TypesById[typeValue.TypeId];
+            if (!GetTypeById(typeValue.TypeId, context, out var type))
+                Debug.Assert(false);
+
             var typeParams = type.GetTypeParams();
 
             Debug.Assert(typeParams.Length == typeValue.TypeArgs.Length);                
@@ -223,7 +372,12 @@ namespace QuickSC.StaticAnalyzer
         // class N<T> : B<T> => N.GetBaseType => B<T(N)>
         bool GetBaseTypeValue_NormalTypeValue(QsNormalTypeValue typeValue, QsTypeValueServiceContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? outBaseTypeValue)
         {
-            var type = context.TypesById[typeValue.TypeId];
+            if (!GetTypeById(typeValue.TypeId, context, out var type))
+            {
+                outBaseTypeValue = null;
+                return false;
+            }
+
             var baseTypeValue = type.GetBaseTypeValue();
             if (baseTypeValue == null)
             {
@@ -266,6 +420,14 @@ namespace QuickSC.StaticAnalyzer
 
                 curType = outType;
             }
+        }
+
+        public void AddGlobalVar(string varName, QsTypeValue typeValue, QsTypeValueServiceContext context)
+        {
+            var varId = varIdFactory.MakeVarId();
+            var globalVar = new QsVariable(varId, typeValue, varName);
+
+            context.GlobalVars.Add(varName, globalVar);
         }
     }
 }

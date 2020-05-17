@@ -18,9 +18,9 @@ namespace QuickSC
         public abstract QsTypeValue? GetBaseTypeValue();
 
         // TODO: 셋은 같은 이름공간을 공유한다. 서로 이름이 같은 것이 나오면 안된다 (체크하자)
-        public abstract bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsTypeId? typeId);
-        public abstract bool GetMemberFuncId(bool bStaticOnly, QsMemberFuncId memberFuncId, [NotNullWhen(returnValue: true)] out QsFuncId? funcId);
-        public abstract bool GetMemberVarTypeValue(bool bStaticOnly, string varName, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue);
+        public abstract bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsTypeId? outTypeId);
+        public abstract bool GetMemberFuncId(bool bStaticOnly, QsMemberFuncId memberFuncId, [NotNullWhen(returnValue: true)] out QsFuncId? outFuncId);
+        public abstract bool GetMemberVarId(bool bStaticOnly, string varName, [NotNullWhen(returnValue: true)] out QsVarId? outVarId);
     }
 
     public class QsDefaultType : QsType
@@ -30,10 +30,10 @@ namespace QuickSC
         QsTypeValue? baseTypeValue;
         ImmutableDictionary<string, QsTypeId> memberTypeIds;
         ImmutableDictionary<string, QsFuncId> staticMemberFuncIds;
-        ImmutableDictionary<string, QsTypeValue> staticMemberVarTypeValues;
+        ImmutableDictionary<string, QsVarId> staticMemberVarIds;
 
         ImmutableDictionary<QsMemberFuncId, QsFuncId> memberFuncIds;
-        ImmutableDictionary<string, QsTypeValue> memberVarTypeValues;        
+        ImmutableDictionary<string, QsVarId> memberVarIds;        
 
         // 거의 모든 TypeValue에서 thisTypeValue를 쓰기 때문에 lazy하게 선언해야 한다
         public QsDefaultType(QsTypeId typeId,             
@@ -42,9 +42,9 @@ namespace QuickSC
             QsTypeValue? baseTypeValue,
             ImmutableDictionary<string, QsTypeId> memberTypes,
             ImmutableDictionary<string, QsFuncId> staticMemberFuncIds,
-            ImmutableDictionary<string, QsTypeValue> staticMemberVarTypeValues,
+            ImmutableDictionary<string, QsVarId> staticMemberVarIds,
             ImmutableDictionary<QsMemberFuncId, QsFuncId> memberFuncs,
-            ImmutableDictionary<string, QsTypeValue> memberVarTypeValues)
+            ImmutableDictionary<string, QsVarId> memberVarIds)
             : base(typeId)
         {
             this.typeParams = typeParams;
@@ -52,10 +52,10 @@ namespace QuickSC
             this.baseTypeValue = baseTypeValue;
             this.memberTypeIds = memberTypes;
             this.staticMemberFuncIds = staticMemberFuncIds;
-            this.staticMemberVarTypeValues = staticMemberVarTypeValues;
+            this.staticMemberVarIds = staticMemberVarIds;
 
             this.memberFuncIds = memberFuncs;
-            this.memberVarTypeValues = memberVarTypeValues;
+            this.memberVarIds = memberVarIds;
         }
 
         public override string GetName()
@@ -106,21 +106,21 @@ namespace QuickSC
             }
         }
 
-        public override bool GetMemberVarTypeValue(bool bStaticOnly, string varName, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        public override bool GetMemberVarId(bool bStaticOnly, string varName, [NotNullWhen(returnValue: true)] out QsVarId? outVarId)
         {
-            if (!bStaticOnly && memberVarTypeValues.TryGetValue(varName, out var typeValue))
+            if (!bStaticOnly && memberVarIds.TryGetValue(varName, out var varId))
             {
-                outTypeValue = typeValue;
+                outVarId = varId;
                 return true;
             }
-            else if (staticMemberVarTypeValues.TryGetValue(varName, out typeValue))
+            else if (staticMemberVarIds.TryGetValue(varName, out varId))
             {
-                outTypeValue = typeValue;
+                outVarId = varId;
                 return true;
             }
             else
             {
-                outTypeValue = null;
+                outVarId = null;
                 return false;
             }
         }
