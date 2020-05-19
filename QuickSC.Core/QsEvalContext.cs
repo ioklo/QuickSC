@@ -41,12 +41,15 @@ namespace QuickSC
     
     public class QsEvalContext
     {
+
         // TODO: QsFuncDecl을 직접 사용하지 않고, QsModule에서 정의한 Func을 사용해야 한다       
 
         // 실행을 위한 기본 정보
+        public ImmutableDictionary<QsExp, QsTypeValue> TypeValuesByExp { get; }
         public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
         public ImmutableDictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)> StoragesByExp { get; }
-        public ImmutableDictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> CaptureInfosByLocation { get; }
+        public ImmutableDictionary<QsMemberExp, QsStaticStorage> StaticStoragesByMemberExp { get; } // (Namespace.C).x // staticStorage
+        public ImmutableDictionary<QsCaptureInfoLocation, QsCaptureInfo> CaptureInfosByLocation { get; }
 
         // 모든 모듈의 전역 변수
         public Dictionary<(IQsMetadata?, string), QsValue> GlobalVars { get; } // TODO: IQsMetadata말고 다른 Id가 있어야 한다
@@ -54,20 +57,24 @@ namespace QuickSC
 
         public QsEvalFlowControl FlowControl { get; set; }
         public ImmutableArray<Task> Tasks { get; private set; }
-        public QsValue ThisValue { get; set; }
+        public QsValue? ThisValue { get; set; }
         public bool bGlobalScope { get; set; }
-        
+        public ImmutableDictionary<QsCallExp, QsFuncId> FuncIdsByCallExp { get; }
+        public ImmutableDictionary<QsMemberCallExp, QsFuncId> FuncIdsByMemberCallExp { get; }
+
         public QsEvalContext(
-            ImmutableDictionary<QsTypeExp, QsTypeValue> typeValues,
+            ImmutableDictionary<QsExp, QsTypeValue> typeValuesByExp,
+            ImmutableDictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
             ImmutableDictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)> storagesByExp,
-            ImmutableDictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> captureInfosByLocation,            
+            ImmutableDictionary<QsCaptureInfoLocation, QsCaptureInfo> captureInfosByLocation,            
             ImmutableDictionary<string, QsValue> localVars, 
             QsEvalFlowControl flowControl,
             ImmutableArray<Task> tasks,
-            QsValue thisValue,
+            QsValue? thisValue,
             bool bGlobalScope)
         {
-            TypeValuesByTypeExp = typeValues;
+            TypeValuesByExp = typeValuesByExp;
+            TypeValuesByTypeExp = typeValuesByTypeExp;
             StoragesByExp = storagesByExp;
             CaptureInfosByLocation = captureInfosByLocation;
             
@@ -79,9 +86,10 @@ namespace QuickSC
             this.bGlobalScope = bGlobalScope;
         }
 
-        public void SetLocalVars(ImmutableDictionary<string, QsValue> newLocalVars)
+        public QsEvalContext SetLocalVars(ImmutableDictionary<string, QsValue> newLocalVars)
         {
             LocalVars = newLocalVars;
+            return this;
         }
 
         public ImmutableDictionary<string, QsValue> GetLocalVars()
@@ -89,19 +97,20 @@ namespace QuickSC
             return LocalVars;
         }
 
-        public QsValue GetLocalValue(string varName)
+        public QsValue GetLocalVar(string varName)
         {
             return LocalVars[varName];
         }
         
-        public void SetLocalValue(string varName, QsValue value)
+        public void SetLocalVar(string varName, QsValue value)
         {
             LocalVars = LocalVars.SetItem(varName, value);
         }
 
-        public void SetTasks(ImmutableArray<Task> newTasks)
+        public QsEvalContext SetTasks(ImmutableArray<Task> newTasks)
         {
             Tasks = newTasks;
+            return this;
         }
 
         public ImmutableArray<Task> GetTasks()

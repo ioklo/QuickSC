@@ -73,7 +73,7 @@ namespace QuickSC.Runtime
             return new ValueTask<QsValue?>(QsNullValue.Instance);
         }
 
-        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
         {
             if (funcId.Kind == QsMemberFuncKind.Indexer)
             {

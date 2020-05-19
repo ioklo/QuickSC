@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using static QuickSC.QsEvaluator;
@@ -20,7 +21,7 @@ namespace QuickSC
         {
             this.evaluator = evaluator;
             this.runtimeModule = runtimeModule;
-        }                
+        }
         
         QsValue EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
         {
@@ -37,7 +38,7 @@ namespace QuickSC
             switch(storage)
             {
                 case QsLocalStorage localStorage:
-                    return context.GetLocalValue(idExp.Value);
+                    return context.GetLocalVar(idExp.Value);
 
                 case QsGlobalStorage globalStorage:
                     return context.GlobalVars[(globalStorage.Metadata, idExp.Value)];
@@ -142,6 +143,14 @@ namespace QuickSC
 
             throw new NotImplementedException();
         }
+
+        bool IsType(QsTypeValue typeValue, string name, QsEvalContext context)
+        {
+            if (!runtimeModule.GetGlobalType(name, 0, out var type))
+                return false;
+
+            return EqualityComparer<QsTypeValue>.Default.Equals(typeValue, new QsNormalTypeValue(null, type.TypeId));
+        }
         
         async ValueTask<QsValue> EvaluateBinaryOpExpAsync(QsBinaryOpExp exp, QsEvalContext context)
         {
@@ -177,277 +186,305 @@ namespace QuickSC
                 case QsBinaryOpKind.Add:
                     {
                         // TODO: 이쪽은 operator+로 교체될 것이므로 임시로 런타임 타입체크
-                        if (context.TypeValuesByExp[exp.Operand0] == intTypeValue &&
-                            context.TypeValuesByExp[exp.Operand1] == intTypeValue)
+                        if (IsType(context.TypeValuesByExp[exp.Operand0], "int", context) &&
+                            IsType(context.TypeValuesByExp[exp.Operand1], "int", context))
                         {
                             var intValue0 = runtimeModule.GetInt(operandValue0);
                             var intValue1 = runtimeModule.GetInt(operandValue1);
 
                             return runtimeModule.MakeInt(intValue0 + intValue1);
                         }
+                        else if (IsType(context.TypeValuesByExp[exp.Operand0], "string", context) &&
+                            IsType(context.TypeValuesByExp[exp.Operand1], "string", context))
+                        {
+                            var strValue0 = runtimeModule.GetString(operandValue0);
+                            var strValue1 = runtimeModule.GetString(operandValue1);
+
+                            return runtimeModule.MakeString(strValue0 + strValue1);
+                        }
                         else
                         {
-
+                            throw new InvalidOperationException();
                         }
-
-                        var strValue0 = runtimeModule.GetString(operandValue0.Value);
-                        if (strValue0 != null)
-                        {
-                            var strValue1 = runtimeModule.GetString(operandValue1.Value);
-                            if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
-
-                            return new QsEvalResult<QsValue>(runtimeModule.MakeString(strValue0 + strValue1), context);
-                        }
-
-                        return QsEvalResult<QsValue>.Invalid;
                     }
 
                 case QsBinaryOpKind.Subtract:
                     {
-                        var intValue0 = operandValue0.Value as QsValue<int>;
-                        if (intValue0 == null) return QsEvalResult<QsValue>.Invalid;
+                        var intValue0 = runtimeModule.GetInt(operandValue0);
+                        var intValue1 = runtimeModule.GetInt(operandValue1);
 
-                        var intValue1 = operandValue1.Value as QsValue<int>;
-                        if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
-
-                        return new QsEvalResult<QsValue>(runtimeModule.MakeInt(intValue0.Value - intValue1.Value), context);
+                        return runtimeModule.MakeInt(intValue0 - intValue1);
                     }
 
                 case QsBinaryOpKind.LessThan:
                     {
-                        var intValue0 = operandValue0.Value as QsValue<int>;
-                        if (intValue0 != null)
+                        // TODO: 이쪽은 operator<로 교체될 것이므로 임시로 런타임 타입체크
+                        if (IsType(context.TypeValuesByExp[exp.Operand0], "int", context) &&
+                            IsType(context.TypeValuesByExp[exp.Operand1], "int", context))
                         {
-                            var intValue1 = operandValue1.Value as QsValue<int>;
-                            if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
+                            var intValue0 = runtimeModule.GetInt(operandValue0);
+                            var intValue1 = runtimeModule.GetInt(operandValue1);
 
-                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(intValue0.Value < intValue1.Value), context);
+                            return runtimeModule.MakeBool(intValue0 < intValue1);
                         }
-
-                        var strValue0 = runtimeModule.GetString(operandValue0.Value);
-                        if (strValue0 != null)
+                        else if (IsType(context.TypeValuesByExp[exp.Operand0], "string", context) &&
+                            IsType(context.TypeValuesByExp[exp.Operand1], "string", context))
                         {
-                            var strValue1 = runtimeModule.GetString(operandValue1.Value);
-                            if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
+                            var strValue0 = runtimeModule.GetString(operandValue0);
+                            var strValue1 = runtimeModule.GetString(operandValue1);
 
-                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(strValue0.CompareTo(strValue1) < 0), context);
+                            return runtimeModule.MakeBool(strValue0.CompareTo(strValue1) < 0);
                         }
-
-                        return QsEvalResult<QsValue>.Invalid;
+                        else
+                        {
+                            throw new InvalidOperationException();
+                        }
                     }
 
                 case QsBinaryOpKind.GreaterThan:
                     {
-                        var intValue0 = operandValue0.Value as QsValue<int>;
-                        if (intValue0 != null)
+                        // TODO: 이쪽은 operator>로 교체될 것이므로 임시로 런타임 타입체크
+                        if (IsType(context.TypeValuesByExp[exp.Operand0], "int", context) &&
+                            IsType(context.TypeValuesByExp[exp.Operand1], "int", context))
                         {
-                            var intValue1 = operandValue1.Value as QsValue<int>;
-                            if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
+                            var intValue0 = runtimeModule.GetInt(operandValue0);
+                            var intValue1 = runtimeModule.GetInt(operandValue1);
 
-                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(intValue0.Value > intValue1.Value), context);
+                            return runtimeModule.MakeBool(intValue0 > intValue1);
                         }
-
-                        var strValue0 = runtimeModule.GetString(operandValue0.Value);
-                        if (strValue0 != null)
+                        else if (IsType(context.TypeValuesByExp[exp.Operand0], "string", context) &&
+                            IsType(context.TypeValuesByExp[exp.Operand1], "string", context))
                         {
-                            var strValue1 = runtimeModule.GetString(operandValue1.Value);
-                            if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
+                            var strValue0 = runtimeModule.GetString(operandValue0);
+                            var strValue1 = runtimeModule.GetString(operandValue1);
 
-                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(strValue0.CompareTo(strValue1) > 0), context);
+                            return runtimeModule.MakeBool(strValue0.CompareTo(strValue1) > 0);
                         }
-
-                        return QsEvalResult<QsValue>.Invalid;
+                        else
+                        {
+                            throw new InvalidOperationException();
+                        }
                     }
 
                 case QsBinaryOpKind.LessThanOrEqual:
                     {
-                        var intValue0 = operandValue0.Value as QsValue<int>;
-                        if (intValue0 != null)
+                        // TODO: 이쪽은 operator<= 로 교체될 것이므로 임시로 런타임 타입체크
+                        if (IsType(context.TypeValuesByExp[exp.Operand0], "int", context) &&
+                            IsType(context.TypeValuesByExp[exp.Operand1], "int", context))
                         {
-                            var intValue1 = operandValue1.Value as QsValue<int>;
-                            if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
+                            var intValue0 = runtimeModule.GetInt(operandValue0);
+                            var intValue1 = runtimeModule.GetInt(operandValue1);
 
-                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(intValue0.Value <= intValue1.Value), context);
+                            return runtimeModule.MakeBool(intValue0 <= intValue1);
                         }
-
-                        var strValue0 = runtimeModule.GetString(operandValue0.Value);
-                        if (strValue0 != null)
+                        else if (IsType(context.TypeValuesByExp[exp.Operand0], "string", context) &&
+                            IsType(context.TypeValuesByExp[exp.Operand1], "string", context))
                         {
-                            var strValue1 = runtimeModule.GetString(operandValue1.Value);
-                            if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
+                            var strValue0 = runtimeModule.GetString(operandValue0);
+                            var strValue1 = runtimeModule.GetString(operandValue1);
 
-                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(strValue0.CompareTo(strValue1) <= 0), context);
+                            return runtimeModule.MakeBool(strValue0.CompareTo(strValue1) <= 0);
                         }
-
-                        return QsEvalResult<QsValue>.Invalid;
+                        else
+                        {
+                            throw new InvalidOperationException();
+                        }
                     }
 
                 case QsBinaryOpKind.GreaterThanOrEqual:
                     {
-                        var intValue0 = operandValue0.Value as QsValue<int>;
-                        if (intValue0 != null)
+                        // TODO: 이쪽은 operator>= 로 교체될 것이므로 임시로 런타임 타입체크
+                        if (IsType(context.TypeValuesByExp[exp.Operand0], "int", context) &&
+                            IsType(context.TypeValuesByExp[exp.Operand1], "int", context))
                         {
-                            var intValue1 = operandValue1.Value as QsValue<int>;
-                            if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
+                            var intValue0 = runtimeModule.GetInt(operandValue0);
+                            var intValue1 = runtimeModule.GetInt(operandValue1);
 
-                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(intValue0.Value >= intValue1.Value), context);
+                            return runtimeModule.MakeBool(intValue0 >= intValue1);
                         }
-
-                        var strValue0 = runtimeModule.GetString(operandValue0.Value);
-                        if (strValue0 != null)
+                        else if (IsType(context.TypeValuesByExp[exp.Operand0], "string", context) &&
+                            IsType(context.TypeValuesByExp[exp.Operand1], "string", context))
                         {
-                            var strValue1 = runtimeModule.GetString(operandValue1.Value);
-                            if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
+                            var strValue0 = runtimeModule.GetString(operandValue0);
+                            var strValue1 = runtimeModule.GetString(operandValue1);
 
-                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(strValue0.CompareTo(strValue1) >= 0), context);
+                            return runtimeModule.MakeBool(strValue0.CompareTo(strValue1) >= 0);
                         }
-
-                        return QsEvalResult<QsValue>.Invalid;
+                        else
+                        {
+                            throw new InvalidOperationException();
+                        }
                     }
 
                 case QsBinaryOpKind.Equal:
-                    return new QsEvalResult<QsValue>(runtimeModule.MakeBool(operandValue0.Value == operandValue1.Value), context);
+                    return runtimeModule.MakeBool(operandValue0.Equals(operandValue1));
 
                 case QsBinaryOpKind.NotEqual:
-                    return new QsEvalResult<QsValue>(runtimeModule.MakeBool(operandValue0.Value != operandValue1.Value), context);
+                    return runtimeModule.MakeBool(!operandValue0.Equals(operandValue1));
 
                 case QsBinaryOpKind.Assign:
                     {
-                        // TODO: 평가 순서가 operand1부터 해야 하지 않나
-                        if (operandValue0.Value.SetLocalValue(operandValue1.Value))
-                            return new QsEvalResult<QsValue>(operandValue0.Value, context);
-
-                        return QsEvalResult<QsValue>.Invalid;
+                        operandValue0.SetValue(operandValue1);
+                        return operandValue0;
                     }
-
             }
 
             throw new NotImplementedException();
         }
 
         // TODO: QsFuncDecl을 직접 사용하지 않고, QsModule에서 정의한 Func을 사용해야 한다
-        private async ValueTask<QsEvalResult<QsCallable>> EvaluateCallExpCallableAsync(QsExp exp, QsEvalContext context)
+        //private async ValueTask<QsCallable> EvaluateCallExpCallableAsync(QsExp exp, QsEvalContext context)
+        //{
+        //    if (exp is QsIdentifierExp idExp)
+        //    {
+        //        // 일단 idExp가 variable로 존재하는지 봐야 한다
+        //        if (!context.HasLocalVar(idExp.Value))
+        //        {
+        //            var func = context.GetFunc(idExp.Value);
+
+        //            if (func == null)
+        //                return QsEvalResult<QsCallable>.Invalid;
+
+        //            return new QsEvalResult<QsCallable>(new QsFuncCallable(func), context);
+        //        }
+        //    }
+
+        //    if (!Eval(await EvaluateExpAsync(exp, context), ref context, out var expCallable))
+        //        return QsEvalResult<QsCallable>.Invalid;
+
+        //    // TODO: Lambda 지원 다시
+        //    //if (expCallable! is QsObjectValue objValue && objValue.Object is QsLambdaObject lambdaObj)
+        //    //    return new QsEvalResult<QsCallable>(lambdaObj.Callable, context);
+
+        //    return QsEvalResult<QsCallable>.Invalid;            
+        //}
+        
+        
+        async ValueTask<QsValue> EvaluateCallExpAsync(QsCallExp exp, QsEvalContext context)
         {
-            if (exp is QsIdentifierExp idExp)
+            QsFuncInst funcInst;
+
+            if (context.FuncIdsByCallExp.TryGetValue(exp, out var funcId))
             {
-                // 일단 idExp가 variable로 존재하는지 봐야 한다
-                if (!context.HasLocalVar(idExp.Value))
-                {
-                    var func = context.GetFunc(idExp.Value);
+                // TODO: 1. thisFunc, (TODO: 현재 class가 없으므로 virtual staticFunc 패스)            
 
-                    if (func == null)
-                        return QsEvalResult<QsCallable>.Invalid;
-
-                    return new QsEvalResult<QsCallable>(new QsFuncCallable(func), context);
-                }
+                // 2. globalFunc (localFunc는 없으므로 패스), or 
+                var typeArgs = ImmutableArray.CreateRange(exp.TypeArgs, typeArg => evaluator.GetTypeInst(typeArg));
+                funcInst = evaluator.GetFuncInst(funcId, typeArgs, context);
+            }
+            else
+            {
+                var value = await EvaluateExpAsync(exp.Callable, context);
+                var funcInstValue = (QsFuncInstValue)value;
+                funcInst = funcInstValue.FuncInst;
             }
 
-            if (!Eval(await EvaluateExpAsync(exp, context), ref context, out var expCallable))
-                return QsEvalResult<QsCallable>.Invalid;
-
-            // TODO: Lambda 지원 다시
-            //if (expCallable! is QsObjectValue objValue && objValue.Object is QsLambdaObject lambdaObj)
-            //    return new QsEvalResult<QsCallable>(lambdaObj.Callable, context);
-
-            return QsEvalResult<QsCallable>.Invalid;            
-        }
-
-        async ValueTask<QsEvalResult<QsValue>> EvaluateCallExpAsync(QsCallExp exp, QsEvalContext context)
-        {
-            if (!Eval(await EvaluateCallExpCallableAsync(exp.Callable, context), ref context, out var callable))
-                return QsEvalResult<QsValue>.Invalid;
-
-            var args = ImmutableArray.CreateBuilder<QsValue>(exp.Args.Length);
+            var argsBuilder = ImmutableArray.CreateBuilder<QsValue>(exp.Args.Length);
             foreach (var argExp in exp.Args)
             {
-                if (!Eval(await EvaluateExpAsync(argExp, context), ref context, out var arg))
-                    return QsEvalResult<QsValue>.Invalid;
-
-                args.Add(arg!);
+                var arg = await EvaluateExpAsync(argExp, context);
+                argsBuilder.Add(arg);
             }
+            var args = argsBuilder.MoveToImmutable();
 
-            return await evaluator.EvaluateCallableAsync(callable!, QsNullValue.Instance, args.ToImmutable(), context);
+            // sequence call?
+
+            return await EvaluateFuncInstAsync(context.ThisValue, funcInst, args, context);
         }
 
-        QsEvalResult<QsValue> EvaluateLambdaExp(QsLambdaExp exp, QsEvalContext context)
+        // 여기서 직접 만들어야 한다
+
+        QsValue EvaluateLambdaExp(QsLambdaExp exp, QsEvalContext context)
         {
-            throw new NotImplementedException();
+            // TODO: global변수, static변수는 캡쳐하지 않는다. 오직 local만 캡쳐한다
+            var captureInfo = context.CaptureInfosByLocation[QsCaptureInfoLocation.Make(exp)];
 
-            //var captureInfo = context.StaticContext.CaptureInfosByLocation[QsCaptureInfoLocation.Make(exp)];
+            var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
+            foreach (var (name, kind) in captureInfo.Captures)
+            {
+                var origValue = context.GetLocalVar(name);
 
-            //var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
-            //foreach (var (name, kind) in captureInfo)
+                QsValue value;
+                if (kind == QsCaptureContextCaptureKind.Copy)
+                {
+                    value = origValue.MakeCopy();
+                }
+                else
+                {
+                    Debug.Assert(kind == QsCaptureContextCaptureKind.Ref);
+                    value = origValue;
+                }
+
+                captures.Add(name, value);
+            }
+
+            return new QsFuncInstValue(new QsScriptFuncInst(
+                false,
+                false, 
+                captureInfo.bCaptureThis ? context.ThisValue : null,
+                captures.ToImmutable(),
+                ImmutableArray.CreateRange(exp.Params, param => param.Name),
+                exp.Body));
+        }
+        
+        async ValueTask<QsValue> EvaluateMemberCallExpAsync(QsMemberCallExp exp, QsEvalContext context)
+        {
+            // a.b (2, 3, 4), 
+            var thisValue = await EvaluateExpAsync(exp.Object, context);
+
+            var argsBuilder = ImmutableArray.CreateBuilder<QsValue>(exp.Args.Length);
+            foreach (var argExp in exp.Args)
+            {
+                var arg = await EvaluateExpAsync(argExp, context);
+                argsBuilder.Add(arg);
+            }
+            var args = argsBuilder.MoveToImmutable();
+
+            // 1. a.b(2, 3, 4)가 A.b(this a, 2, 3, 4); 인 경우            
+            QsFuncInst funcInst;
+            if (context.FuncIdsByMemberCallExp.TryGetValue(exp, out var funcId))
+            {
+                var typeArgs = ImmutableArray.CreateRange(exp.MemberTypeArgs, typeArg => evaluator.GetTypeInst(typeArg));
+                funcInst = evaluator.GetFuncInst(thisValue, funcId, typeArgs);
+            }
+            // 2. a.b(2, 3, 4)가 (a.b) (2, 3, 4)인 경우 (2, 3, 4)
+            else
+            {
+                funcInst = ((QsFuncInstValue)thisValue).FuncInst;
+            }
+
+            return await EvaluateFuncInstAsync(thisValue, funcInst, args, context);
+
+            
+            //var callable = thisValue.GetMemberFuncs(new QsMemberFuncId(exp.MemberFuncName));
+            //if (callable == null) return QsEvalResult<QsValue>.Invalid;
+            // return await evaluator.EvaluateCallableAsync(callable, thisValue!, args.ToImmutable(), context);
+        }
+
+        async ValueTask<QsValue> EvaluateMemberExpAsync(QsMemberExp exp, QsEvalContext context)
+        {
+            // TODO: namespace가 있으면 MemberExp 자체가 Global(N.x의 경우), Static(N.C.x의 경우) 이 될수 있다.  
+            //if (context.StaticStoragesByMemberExp.TryGetValue(exp, out var staticStorage))
             //{
-            //    var origValue = context.GetValue(name);
-            //    if (origValue == null) return QsEvalResult<QsValue>.Invalid;
-
-            //    QsValue value;
-            //    if (kind == QsCaptureContextCaptureKind.Copy)
-            //    {
-            //        value = origValue.MakeCopy();
-            //    }
-            //    else
-            //    {
-            //        Debug.Assert(kind == QsCaptureContextCaptureKind.Ref);
-            //        value = origValue;
-            //    }
-
-            //    captures.Add(name, value);
+            //    // return context.GetStaticValue(staticStorage.TypeValue;
+            //    throw new NotImplementedException();
             //}
 
-            //// QsValue<QsCallable>을 리턴한다
-            //return new QsEvalResult<QsValue>(
-            //    new QsObjectValue(new QsLambdaObject(new QsLambdaCallable(exp, captures.ToImmutable()))),
-            //    context);
+            var thisValue = await EvaluateExpAsync(exp.Object, context);
+            return thisValue.GetMemberValue(exp.MemberName);
         }
 
-        async ValueTask<QsEvalResult<QsValue>> EvaluateMemberCallExpAsync(QsMemberCallExp exp, QsEvalContext context)
-        {
-            // a.b (2, 3, 4)
-            if (!Eval(await EvaluateExpAsync(exp.Object, context), ref context, out var thisValue))
-                return QsEvalResult<QsValue>.Invalid;
-
-            var callable = thisValue!.GetMemberFuncs(new QsMemberFuncId(exp.MemberFuncName));
-            if (callable == null) return QsEvalResult<QsValue>.Invalid;
-
-            // 
-            var args = ImmutableArray.CreateBuilder<QsValue>(exp.Args.Length);
-            foreach (var argExp in exp.Args)
-            {
-                if (!Eval(await EvaluateExpAsync(argExp, context), ref context, out var arg))
-                    return QsEvalResult<QsValue>.Invalid;
-
-                args.Add(arg!);
-            }
-
-            return await evaluator.EvaluateCallableAsync(callable, thisValue!, args.ToImmutable(), context);
-        }
-
-        async ValueTask<QsEvalResult<QsValue>> EvaluateMemberExpAsync(QsMemberExp exp, QsEvalContext context)
-        {
-            if (!Eval(await EvaluateExpAsync(exp.Object, context), ref context, out var thisValue))
-                return QsEvalResult<QsValue>.Invalid;
-
-            var value = thisValue!.GetMemberValue(exp.MemberName);
-            if (value == null) return QsEvalResult<QsValue>.Invalid;
-
-            return new QsEvalResult<QsValue>(value, context);
-        }
-
-        async ValueTask<QsEvalResult<QsValue>> EvaluateListExpAsync(QsListExp listExp, QsEvalContext context)
+        async ValueTask<QsValue> EvaluateListExpAsync(QsListExp listExp, QsEvalContext context)
         {
             var elems = new List<QsValue>(listExp.Elems.Length);
 
             foreach (var elemExp in listExp.Elems)
             {
-                var elemResult = await EvaluateExpAsync(elemExp, context);
-                if (!elemResult.HasValue) return QsEvalResult<QsValue>.Invalid;
-                context = elemResult.Context;
-
-                elems.Add(elemResult.Value);
+                var elem = await EvaluateExpAsync(elemExp, context);
+                elems.Add(elem);
             }
 
-            return new QsEvalResult<QsValue>(new QsObjectValue(runtimeModule.MakeListObject(elems)), context);
+            return runtimeModule.MakeList(elems);
         }
 
         internal async ValueTask<QsValue> EvaluateExpAsync(QsExp exp, QsEvalContext context)

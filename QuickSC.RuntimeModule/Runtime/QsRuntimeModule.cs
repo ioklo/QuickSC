@@ -98,16 +98,15 @@ namespace QuickSC.Runtime
             return null;
         }
 
-        public QsObject MakeAsyncEnumerableObject(IAsyncEnumerable<QsValue> asyncEnumerable)
+        public QsValue MakeAsyncEnumerable(IAsyncEnumerable<QsValue> asyncEnumerable)
         {
-            return new QsAsyncEnumerableObject(asyncEnumerable);
+            return new QsObjectValue(new QsAsyncEnumerableObject(asyncEnumerable));
         }
 
-        public QsObject MakeListObject(List<QsValue> elems)
+        public QsValue MakeListObject(List<QsValue> elems)
         {
-            return new QsListObject(elems);
+            return new QsObjectValue(new QsListObject(elems));
         }
-        
 
         public bool GetTypeById(QsTypeId typeId, [NotNullWhen(true)] out QsType? outType)
         {
@@ -158,6 +157,31 @@ namespace QuickSC.Runtime
         public QsValue MakeString(string str)
         {
             return new QsObjectValue(new QsStringObject(str));
+        }
+
+        public QsValue MakeList(List<QsValue> elems)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int GetInt(QsValue value)
+        {
+            return ((QsValue<int>)value).Value;
+        }
+
+        public void SetInt(QsValue value, int i)
+        {
+            ((QsValue<int>)value).Value = i;
+        }
+
+        public bool GetBool(QsValue value)
+        {
+            return ((QsValue<bool>)value).Value;
+        }
+
+        public void SetBool(QsValue value, bool b)
+        {
+            ((QsValue<bool>)value).Value = b;
         }
     }
 }

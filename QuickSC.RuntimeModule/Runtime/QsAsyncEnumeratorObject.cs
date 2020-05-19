@@ -33,7 +33,7 @@ namespace QuickSC.Runtime
             return new ValueTask<QsValue?>(enumeratorObj.enumerator.Current);
         }
 
-        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
         {
             if (funcId.Name == "MoveNext")
             {
@@ -47,9 +47,9 @@ namespace QuickSC.Runtime
             return null;
         }
 
-        public override QsValue? GetMemberValue(string varName)
+        public override QsValue GetMemberValue(string varName)
         {
-            return null;
+            throw new InvalidOperationException();
         }
     }
 }

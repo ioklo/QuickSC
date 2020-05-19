@@ -27,20 +27,15 @@ namespace QuickSC
         }
 
         // TODO: CommandProvider가 Parser도 제공해야 할 것 같다
-        internal async ValueTask<QsEvalContext?> EvaluateCommandStmtAsync(QsCommandStmt stmt, QsEvalContext context)
+        internal async ValueTask EvaluateCommandStmtAsync(QsCommandStmt stmt, QsEvalContext context)
         {
             foreach (var command in stmt.Commands)
             {
-                var cmdResult = await expEvaluator.EvaluateStringExpAsync(command, context);
-                if (!cmdResult.HasValue) return null;
-                context = cmdResult.Context;
-
-                var cmdText = runtimeModule.GetString(cmdResult.Value);
-                if (cmdText == null) return null;
+                var cmdValue = await expEvaluator.EvaluateStringExpAsync(command, context);                
+                var cmdText = runtimeModule.GetString(cmdValue);                
 
                 await commandProvider.ExecuteAsync(cmdText);
             }
-            return context;
         }
 
         internal async ValueTask<QsEvalContext?> EvaluateVarDeclStmtAsync(QsVarDeclStmt stmt, QsEvalContext context)
@@ -70,7 +65,7 @@ namespace QuickSC
                 if (context.bGlobalScope)
                     context = context.SetGlobalValue(elem.VarName, value);
                 else
-                    context = context.SetLocalValue(elem.VarName, value);
+                    context = context.SetLocalVar(elem.VarName, value);
             }
 
             return context;
@@ -326,7 +321,7 @@ namespace QuickSC
             var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
             foreach (var (name, kind) in captureInfo)
             {
-                var origValue = context.GetLocalValue(name);
+                var origValue = context.GetLocalVar(name);
 
                 if (origValue == null)
                     origValue = context.GetGlobalValue(name);
@@ -395,7 +390,7 @@ namespace QuickSC
             var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
             foreach (var (name, kind) in captureInfo)
             {
-                var origValue = context.GetLocalValue(name);
+                var origValue = context.GetLocalVar(name);
 
                 if (origValue == null)
                     origValue = context.GetGlobalValue(name);
@@ -436,69 +431,48 @@ namespace QuickSC
         internal async IAsyncEnumerable<QsEvalContext?> EvaluateForeachStmtAsync(QsForeachStmt foreachStmt, QsEvalContext context)
         {
             var (prevVars, bPrevGlobalScope) = (context.LocalVars, context.bGlobalScope);
-            context = context.SetGlobalScope(false);
+            context.bGlobalScope = false;
 
-            var expResult = await expEvaluator.EvaluateExpAsync(foreachStmt.Obj, context);
-            if (!expResult.HasValue) { yield return null; yield break; }
-            context = expResult.Context;
+            var info = context.ForEachInfosByForEachStmt[foreachStmt];
 
-            var objValue = expResult.Value as QsObjectValue;
-            if (objValue == null) { yield return null; yield break; }
+            var objValue = await expEvaluator.EvaluateExpAsync(foreachStmt.Obj, context);
 
-            var callable = objValue.GetMemberFuncs(new QsMemberFuncId("GetEnumerator"));
-            if (callable == null) { yield return null; yield break; }
+            var getEnumeratorInst = evaluator.GetFuncInst(objValue, info.getEnumeratorId, ImmutableArray<QsTypeInst>.Empty, context);
+            //var callable = objValue.GetMemberFuncs(new QsMemberFuncId("GetEnumerator"));
+            //if (callable == null) { yield return null; yield break; }
 
-            var callableResult = await evaluator.EvaluateCallableAsync(callable, objValue, ImmutableArray<QsValue>.Empty, context);
-            if (!callableResult.HasValue) { yield return null; yield break; }
-            context = callableResult.Context;
+            var enumerator = await evaluator.EvaluateFuncInstAsync(objValue, getEnumeratorInst, ImmutableArray<QsValue>.Empty, context);
 
-            var enumeratorValue = callableResult.Value as QsObjectValue;
-            if (enumeratorValue == null) { yield return null; yield break; }
+            var moveNextInst = evaluator.GetFuncInst(enumerator, info.moveNextId, ImmutableArray<QsTypeInst>.Empty, context);
+            // enumeratorValue.GetMemberFuncs(new QsMemberFuncId("MoveNext"));
 
-            var moveNextFunc = enumeratorValue.GetMemberFuncs(new QsMemberFuncId("MoveNext"));
-            if (moveNextFunc == null) { yield return null; yield break; }
-
-            var getCurrentFunc = enumeratorValue.GetMemberFuncs(new QsMemberFuncId("GetCurrent"));
-            if (getCurrentFunc == null) { yield return null; yield break; }
+            var getCurrentInst = evaluator.GetFuncInst(enumerator, info.getCurrentId, ImmutableArray<QsTypeInst>.Empty, context);
+            // enumeratorValue.GetMemberFuncs(new QsMemberFuncId("GetCurrent"));
 
             while (true)
             {
-                var moveNextResult = await evaluator.EvaluateCallableAsync(moveNextFunc, enumeratorValue, ImmutableArray<QsValue>.Empty, context);
-                if (!moveNextResult.HasValue) { yield return null; yield break; }
-                context = moveNextResult.Context;
-
-                if (!(moveNextResult.Value is QsValue<bool> moveNextReturn)) { yield return null; yield break; }
-
-                if (!moveNextReturn.Value) break;
+                var moveNextResult = await evaluator.EvaluateFuncInstAsync(enumerator, moveNextInst, ImmutableArray<QsValue>.Empty, context);
+                if (!runtimeModule.GetBool(moveNextResult)) break;
 
                 // GetCurrent
-                var getCurrentResult = await evaluator.EvaluateCallableAsync(getCurrentFunc, enumeratorValue, ImmutableArray<QsValue>.Empty, context);
-                if (!getCurrentResult.HasValue) { yield return null; yield break; }
-                context = getCurrentResult.Context;
+                var getCurrentResult = await evaluator.EvaluateFuncInstAsync(enumerator, getCurrentInst, ImmutableArray<QsValue>.Empty, context);
 
                 // NOTICE: COPY
-                context = context.SetLocalValue(foreachStmt.VarName, getCurrentResult.Value.MakeCopy());
+                context.SetLocalVar(foreachStmt.VarName, getCurrentResult.MakeCopy());
 
-                await foreach (var result in EvaluateStmtAsync(foreachStmt.Body, context))
+                await foreach (var value in EvaluateStmtAsync(foreachStmt.Body, context))
                 {
-                    if (!result.HasValue) { yield return null; yield break; }
-
-                    context = result.Value;
-                    if (context.FlowControl is QsYieldEvalFlowControl)
-                    {
-                        yield return context;
-                        context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
-                    }
+                    yield return value;
                 }
 
                 if (context.FlowControl == QsBreakEvalFlowControl.Instance)
                 {
-                    context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                    context.SetFlowControl(QsNoneEvalFlowControl.Instance);
                     break;
                 }
                 else if (context.FlowControl == QsContinueEvalFlowControl.Instance)
                 {
-                    context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                    context.SetFlowControl(QsNoneEvalFlowControl.Instance);
                 }
                 else if (context.FlowControl is QsReturnEvalFlowControl)
                 {
@@ -525,7 +499,7 @@ namespace QuickSC
             yield return context.SetFlowControl(new QsYieldEvalFlowControl(yieldValue));
         }
         
-        internal async IAsyncEnumerable<QsEvalContext?> EvaluateStmtAsync(QsStmt stmt, QsEvalContext context)
+        internal async IAsyncEnumerable<QsValue> EvaluateStmtAsync(QsStmt stmt, QsEvalContext context)
         {
             switch (stmt)
             {

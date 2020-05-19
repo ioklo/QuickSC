@@ -1,4 +1,5 @@
-﻿using System;
+﻿using QuickSC;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
@@ -20,11 +21,11 @@ namespace QuickSC
     // runtime placeholder
     public abstract class QsValue
     {
-        public abstract bool SetValue(QsValue v);
+        public abstract void SetValue(QsValue v);
         public abstract QsValue MakeCopy();
 
         // 뭘 리턴해야 하는거냐
-        public abstract QsCallable? GetMemberFuncs(QsMemberFuncId funcId);
+        public abstract QsFuncInst GetMemberFuncInst(QsFuncId funcId);
         public abstract QsValue GetMemberValue(string varName);
 
         public abstract bool IsType(QsTypeInst typeInst);
@@ -38,15 +39,9 @@ namespace QuickSC
             Value = value;
         }
 
-        public override bool SetValue(QsValue v)
+        public override void SetValue(QsValue v)
         {
-            if (v is QsValue<T> tv)
-            {
-                Value = tv.Value;
-                return true;
-            }
-
-            return false;
+            Value = ((QsValue<T>)v).Value;
         }
 
         public override QsValue MakeCopy()
@@ -54,9 +49,9 @@ namespace QuickSC
             return new QsValue<T>(Value);
         }
 
-        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
         {
-            return null;
+            throw new InvalidOperationException();
         }
 
         public override QsValue GetMemberValue(string varName)
@@ -82,9 +77,9 @@ namespace QuickSC
             this.values = values;
         }
 
-        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
         {
-            return null;
+            throw new InvalidOperationException();
         }
 
         public override QsValue GetMemberValue(string varName)
@@ -102,15 +97,9 @@ namespace QuickSC
             return new QsEnumValue(TypeInst, newValues.ToImmutable());
         }
 
-        public override bool SetValue(QsValue v)
+        public override void SetValue(QsValue v)
         {
-            if (v is QsEnumValue recordValue)
-            {
-                this.values = recordValue.values;
-                return true;
-            }
-
-            return false;
+            this.values = ((QsEnumValue)v).values;
         }
 
         public override bool IsType(QsTypeInst typeInst)
@@ -126,15 +115,51 @@ namespace QuickSC
             return false;
         }
     }
+
+    public class QsFuncInstValue : QsValue
+    {
+        public QsFuncInst FuncInst { get; private set; }
+
+        public QsFuncInstValue(QsFuncInst funcInst)
+        {
+            FuncInst = funcInst;
+        }
+
+        public override void SetValue(QsValue v)
+        {
+            FuncInst = ((QsFuncInstValue)v).FuncInst;
+        }
+
+        public override QsValue MakeCopy()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override QsValue GetMemberValue(string varName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool IsType(QsTypeInst typeInst)
+        {
+            throw new NotImplementedException();
+        }
+    }
     
     public class QsNullValue : QsValue
     {
         public static QsNullValue Instance { get; } = new QsNullValue();
         private QsNullValue() { }
 
-        public override bool SetValue(QsValue v)
+        public override void SetValue(QsValue v)
         {
-            return v is QsNullValue;
+            if (!(v is QsNullValue))
+                throw new InvalidOperationException(); 
         }
 
         public override QsValue MakeCopy()
@@ -142,7 +167,7 @@ namespace QuickSC
             return Instance;
         }
 
-        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
         {
             throw new InvalidOperationException();
         }
@@ -157,11 +182,50 @@ namespace QuickSC
             return false;
         }
     }
-    
+
+    // void 
+    public class QsVoidValue : QsValue
+    {
+        public static QsVoidValue Instance { get; } = new QsVoidValue();
+        private QsVoidValue() { }
+
+        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
+        {
+            throw new InvalidOperationException();
+        }
+
+        public override QsValue GetMemberValue(string varName)
+        {
+            throw new InvalidOperationException();
+        }
+
+        public override bool IsType(QsTypeInst typeInst)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override QsValue MakeCopy()
+        {
+            throw new InvalidOperationException();
+        }
+
+        public override void SetValue(QsValue v)
+        {
+            throw new InvalidOperationException();
+        }
+    }
+
     public abstract class QsObject
     {
-        public virtual QsCallable? GetMemberFuncs(QsMemberFuncId funcId) { return null; }
-        public virtual QsValue? GetMemberValue(string varName) { return null; }
+        public virtual QsFuncInst GetMemberFuncInst(QsFuncId funcId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual QsValue GetMemberValue(string varName) 
+        {
+            throw new NotImplementedException();
+        }
 
         protected static TObject? GetObject<TObject>(QsValue value) where TObject : QsObject
         {
@@ -181,12 +245,12 @@ namespace QuickSC
             Object = obj;
         }
 
-        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
         {
-            return Object.GetMemberFuncs(funcId);
+            return Object.GetMemberFuncInst(funcId);
         }
 
-        public override QsValue? GetMemberValue(string varName)
+        public override QsValue GetMemberValue(string varName)
         {
             return Object.GetMemberValue(varName);
         }
@@ -196,15 +260,9 @@ namespace QuickSC
             return new QsObjectValue(Object);
         }
 
-        public override bool SetValue(QsValue value)
+        public override void SetValue(QsValue value)
         {
-            if (value is QsObjectValue objValue)
-            {
-                Object = objValue.Object;
-                return true;
-            }
-
-            return false;
+            Object = ((QsObjectValue)value).Object;
         }
 
         public override bool IsType(QsTypeInst type)

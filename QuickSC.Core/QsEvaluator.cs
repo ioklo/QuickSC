@@ -15,34 +15,114 @@ namespace QuickSC
     public class QsEvaluator
     {
         QsExpEvaluator expEvaluator;
-        QsCallableEvaluator callableEvaluator;
         QsStmtEvaluator stmtEvaluator;
-
-        internal static bool Eval<TValue>(QsEvalResult<TValue> result, ref QsEvalContext context, out TValue? value) where TValue : class
-        {
-            if (!result.HasValue)
-            {
-                value = null;
-                return false;
-            }
-
-            context = result.Context;
-            value = result.Value;
-            return true;
-        }
 
         public QsEvaluator(IQsCommandProvider commandProvider, IQsRuntimeModule runtimeModule)
         {            
             this.expEvaluator = new QsExpEvaluator(this, runtimeModule);
             this.stmtEvaluator = new QsStmtEvaluator(this, expEvaluator, commandProvider, runtimeModule);
-
-            this.callableEvaluator = new QsCallableEvaluator(stmtEvaluator, runtimeModule);
         }
 
-        internal ValueTask<QsEvalResult<QsValue>> EvaluateCallableAsync(QsCallable callable, QsValue thisValue, ImmutableArray<QsValue> args, QsEvalContext context)
+        // virtual이냐 아니냐만 해도 될것 같다
+        public QsFuncInst GetFuncInst(QsFuncId funcId, ImmutableArray<QsTypeInst> typeArgs, QsEvalContext context)
         {
-            return callableEvaluator.EvaluateCallableAsync(callable, thisValue, args, context);
+            throw new NotImplementedException();
         }
+
+        public QsFuncInst GetFuncInst(QsValue thisValue, QsFuncId funcId, ImmutableArray<QsTypeInst> typeArgs, QsEvalContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        public QsTypeInst GetTypeInst(QsTypeExp typeExp)
+        {
+            // context.TypeValuesByTypeExp[typeExp]
+
+            throw new NotImplementedException();
+        }
+
+        async IAsyncEnumerable<QsValue> EvaluateScriptFuncInstSeqAsync(
+            QsScriptFuncInst scriptFuncInst,
+            ImmutableArray<QsValue> args,
+            QsEvalContext context)
+        {
+            Debug.Assert(scriptFuncInst.Params.Length == args.Length);
+            for (int i = 0; i < args.Length; i++)
+                context.SetLocalVar(scriptFuncInst.Params[i], args[i]);
+
+            await foreach (var _ in EvaluateStmtAsync(scriptFuncInst.Body, context))
+            {
+                if (context.FlowControl is QsYieldEvalFlowControl yieldFlowControl)
+                    yield return yieldFlowControl.Value;
+            }
+        }
+
+        public async ValueTask<QsValue> EvaluateFuncInstAsync(QsValue? thisValue, QsFuncInst funcInst, ImmutableArray<QsValue> args, QsEvalContext context)
+        {
+            if (funcInst is QsScriptFuncInst scriptFuncInst)
+            {
+                // (Capture한 곳의 this), (MemberExp의 this), Static의 경우 this
+                if (scriptFuncInst.CapturedThis != null)
+                    thisValue = scriptFuncInst.CapturedThis;
+                else if (!scriptFuncInst.bThisCall)
+                    thisValue = null;
+
+                if (scriptFuncInst.bSeqCall)
+                {
+                    // context 복제
+                    QsEvalContext newContext = new QsEvalContext(
+                        context.TypeValuesByExp,
+                        context.TypeValuesByTypeExp,
+                        context.StoragesByExp,
+                        context.CaptureInfosByLocation,
+                        scriptFuncInst.Captures,
+                        QsNoneEvalFlowControl.Instance,
+                        ImmutableArray<Task>.Empty,
+                        thisValue,
+                        false);
+
+                    var asyncEnum = EvaluateScriptFuncInstSeqAsync(scriptFuncInst, args, newContext);
+                    return runtimeModule.MakeAsyncEnumerable(asyncEnum);
+                }
+
+                var (prevLocalVars, prevTasks, prevThisValue) = (context.GetLocalVars(), context.GetTasks(), context.ThisValue);
+
+                context.SetLocalVars(scriptFuncInst.Captures)
+                        .SetTasks(ImmutableArray<Task>.Empty);
+                context.ThisValue = thisValue;
+
+                Debug.Assert(scriptFuncInst.Params.Length == args.Length);
+                for (int i = 0; i < args.Length; i++)
+                    context.SetLocalVar(scriptFuncInst.Params[i], args[i]);
+
+                await foreach (var _ in evaluator.EvaluateStmtAsync(scriptFuncInst.Body, context)) { }
+
+                context.SetLocalVars(prevLocalVars)
+                        .SetTasks(prevTasks);
+                context.ThisValue = prevThisValue;
+
+                if (context.FlowControl is QsReturnEvalFlowControl returnFlowControl)
+                {
+                    context.FlowControl = QsNoneEvalFlowControl.Instance;
+                    return returnFlowControl.Value;
+                }
+                else
+                {
+                    Debug.Assert(context.FlowControl == QsNoneEvalFlowControl.Instance);
+                    return QsVoidValue.Instance;
+                }
+            }
+            else if (funcInst is QsNativeFuncInst nativeFuncInst)
+            {
+                return await nativeFuncInst.CallAsync(thisValue, args);
+            }
+            else
+            {
+                throw new InvalidOperationException();
+            }
+        }
+
+
 
         public IAsyncEnumerable<QsEvalContext?> EvaluateStmtAsync(QsStmt stmt, QsEvalContext context)
         {

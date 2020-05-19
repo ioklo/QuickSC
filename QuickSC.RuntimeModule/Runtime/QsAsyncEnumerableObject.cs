@@ -24,7 +24,7 @@ namespace QuickSC.Runtime
             return new ValueTask<QsValue?>(new QsObjectValue(new QsAsyncEnumeratorObject(enumerableObject.enumerable.GetAsyncEnumerator())));
         }
 
-        public override QsCallable? GetMemberFuncs(QsMemberFuncId funcId)
+        public override QsCallable? GetMemberFuncInst(QsMemberFuncId funcId)
         {
             if (funcId.Name == "GetEnumerator")
             {
