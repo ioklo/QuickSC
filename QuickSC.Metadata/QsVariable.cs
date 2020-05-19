@@ -9,8 +9,6 @@ namespace QuickSC
         public QsVarId VarId { get; }
         public QsTypeValue TypeValue { get; }
         public string Name { get; }
-        public QsFuncId? FuncId { get; }
-        public int LocalIndex { get; }
 
         public QsVariable(QsVarId varId, QsTypeValue typeValue, string name)
         {

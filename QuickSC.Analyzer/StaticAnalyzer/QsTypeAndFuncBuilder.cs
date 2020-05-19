@@ -64,8 +64,11 @@ namespace QuickSC.StaticAnalyzer
     // TODO: 이름을 TypeAndFuncBuilder로..
     internal class QsTypeAndFuncBuilder
     {
-        public QsTypeAndFuncBuilder()
+        QsVarIdFactory varIdFactory;
+
+        public QsTypeAndFuncBuilder(QsVarIdFactory varIdFactory)
         {
+            this.varIdFactory = varIdFactory;
         }
         
         void BuildEnumDeclElement(QsEnumDeclElement elem, QsTypeAndFuncBuilderContext context)
@@ -111,7 +114,6 @@ namespace QuickSC.StaticAnalyzer
             {
                 // NOTICE : E.First 타입이 아니라 E 타입이다 var x = E.First; 에서 x는 E여야 하기 떄문
                 var variable = MakeVar(
-                    context.VarIdByLocation[QsVarIdLocation.Make(elem)],
                     thisTypeValue,
                     elem.Name,
                     context);
@@ -136,13 +138,12 @@ namespace QuickSC.StaticAnalyzer
             return func;
         }
 
-
         private QsVariable MakeVar(
-            QsVarId varId,
             QsTypeValue typeValue,
-            string name,
+            string name,            
             QsTypeAndFuncBuilderContext context)
         {
+            var varId = varIdFactory.MakeVarId();
             var variable = new QsVariable(varId, typeValue, name);
             context.Vars.Add(variable);
 
@@ -169,7 +170,7 @@ namespace QuickSC.StaticAnalyzer
                 enumDecl.Name,
                 enumDecl.TypeParams,
                 null, // TODO: Enum이던가 Object여야 한다,
-                context.TypeBuilder.MemberTypes.ToImmutableDictionary(),
+                context.TypeBuilder.MemberTypeIds.ToImmutableDictionary(),
                 context.TypeBuilder.StaticMemberFuncIds.ToImmutableDictionary(),
                 context.TypeBuilder.StaticMemberVarIds.ToImmutableDictionary(),
                 context.TypeBuilder.MemberFuncIds.ToImmutableDictionary(),

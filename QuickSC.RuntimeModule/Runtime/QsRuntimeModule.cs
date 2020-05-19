@@ -107,11 +107,7 @@ namespace QuickSC.Runtime
         {
             return new QsListObject(elems);
         }
-
-        public QsObject MakeStringObject(string str)
-        {
-            return new QsStringObject(str);
-        }
+        
 
         public bool GetTypeById(QsTypeId typeId, [NotNullWhen(true)] out QsType? outType)
         {
@@ -147,6 +143,21 @@ namespace QuickSC.Runtime
         {
             outVar = null;
             return false;
+        }
+
+        public QsValue MakeBool(bool b)
+        {
+            return new QsValue<bool>(b);
+        }
+
+        public QsValue MakeInt(int i)
+        {
+            return new QsValue<int>(i);
+        }
+
+        public QsValue MakeString(string str)
+        {
+            return new QsObjectValue(new QsStringObject(str));
         }
     }
 }

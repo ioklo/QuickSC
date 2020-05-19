@@ -110,13 +110,7 @@ namespace QuickSC.StaticAnalyzer
         }
         
         void AnalyzeReturnStmt(QsReturnStmt returnStmt, QsAnalyzerContext context)
-        {
-            if (context.CurFunc == null)
-            {
-                context.Errors.Add((returnStmt, $"함수 내부가 아닌곳에서 return을 사용했습니다"));
-                return;
-            }
-            
+        {   
             if (returnStmt.Value != null)
             {
                 if (context.CurFunc.bSequence)
@@ -148,8 +142,8 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeBlockStmt(QsBlockStmt blockStmt, QsAnalyzerContext context)
         {
-            var prevFunc = context.CurFunc;
-            var prevVarTypeValues = analyzer.GetVarTypeValues(context);
+            var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
+            context.bGlobalScope = false;
 
             foreach (var stmt in blockStmt.Stmts)
             {
@@ -157,7 +151,8 @@ namespace QuickSC.StaticAnalyzer
             }
 
             Debug.Assert(prevFunc == context.CurFunc);
-            analyzer.SetVarTypeValues(prevVarTypeValues, context);
+            context.bGlobalScope = bPrevGlobalScope;
+            context.CurFunc.SetVariables(prevVarTypeValues);
         }
 
         void AnalyzeExpStmt(QsExpStmt expStmt, QsAnalyzerContext context)
@@ -186,13 +181,14 @@ namespace QuickSC.StaticAnalyzer
 
             context.CaptureInfosByLocation.Add(QsCaptureInfoLocation.Make(taskStmt), captureContext.NeedCaptures);
 
-            var prevFunc = context.CurFunc;
-            var prevVarTypeValues = analyzer.GetVarTypeValues(context);
+            var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
+            context.bGlobalScope = false;
 
             AnalyzeStmt(taskStmt.Body, context);
 
             Debug.Assert(prevFunc == context.CurFunc);
-            analyzer.SetVarTypeValues(prevVarTypeValues, context);
+            context.bGlobalScope = bPrevGlobalScope;
+            context.CurFunc.SetVariables(prevVarTypeValues);
         }
 
         void AnalyzeAwaitStmt(QsAwaitStmt awaitStmt, QsAnalyzerContext context)
@@ -207,25 +203,27 @@ namespace QuickSC.StaticAnalyzer
 
             // TODO: 스코프 내에 await 할 것들이 있는지 검사.. 
 
-            var prevFunc = context.CurFunc;
-            var prevVarTypeValues = analyzer.GetVarTypeValues(context);
-            
+            var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
+            context.bGlobalScope = false;
+
             AnalyzeStmt(awaitStmt.Body, context);
 
             Debug.Assert(prevFunc == context.CurFunc);
-            analyzer.SetVarTypeValues(prevVarTypeValues, context);
+            context.bGlobalScope = bPrevGlobalScope;
+            context.CurFunc.SetVariables(prevVarTypeValues);
         }
 
         void AnalyzeAsyncStmt(QsAsyncStmt asyncStmt, QsAnalyzerContext context)
         {
             // TODO: 스코프 내에 await 할 것들이 있는지 검사.. 
-            var prevFunc = context.CurFunc;
-            var prevVarTypeValues = analyzer.GetVarTypeValues(context);
+            var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
+            context.bGlobalScope = false;
 
             AnalyzeStmt(asyncStmt.Body, context);
 
             Debug.Assert(prevFunc == context.CurFunc);
-            analyzer.SetVarTypeValues(prevVarTypeValues, context);
+            context.bGlobalScope = bPrevGlobalScope;
+            context.CurFunc.SetVariables(prevVarTypeValues);
         }
         
         void AnalyzeForeachStmt(QsForeachStmt foreachStmt, QsAnalyzerContext context)
@@ -279,19 +277,20 @@ namespace QuickSC.StaticAnalyzer
                     context.Errors.Add((foreachStmt, $"foreach(T ... in obj) 에서 obj.GetEnumerator().GetCurrent()의 결과를 {elemTypeValue} 타입으로 캐스팅할 수 없습니다"));
             }
 
-            var prevFunc = context.CurFunc;
-            var prevVarTypeValues = analyzer.GetVarTypeValues(context);
-            analyzer.AddVarTypeValue(foreachStmt.VarName, elemTypeValue, context);
+            var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
+            context.bGlobalScope = false;
+            analyzer.AddVariable(foreachStmt.VarName, elemTypeValue, context);
             
             AnalyzeStmt(foreachStmt.Body, context);
 
             Debug.Assert(prevFunc == context.CurFunc);
-            analyzer.SetVarTypeValues(prevVarTypeValues, context);
+            context.bGlobalScope = bPrevGlobalScope;
+            context.CurFunc.SetVariables(prevVarTypeValues);
         }
 
         void AnalyzeYieldStmt(QsYieldStmt yieldStmt, QsAnalyzerContext context)
         {
-            if (context.CurFunc == null || !context.CurFunc.bSequence)
+            if (!context.CurFunc.bSequence)
             {
                 context.Errors.Add((yieldStmt, "seq 함수 내부에서만 yield를 사용할 수 있습니다"));
                 return;

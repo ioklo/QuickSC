@@ -14,33 +14,33 @@ namespace QuickSC.StaticAnalyzer
         public bool bSequence { get; } // 시퀀스 여부
 
         // 현재 변수의 타입
-        ImmutableDictionary<string, QsTypeValue> varTypeValues;
+        ImmutableDictionary<string, QsVariable> vars;
 
         public QsAnalyzerFuncContext(QsTypeValue? retTypeValue, bool bSequence)
         {
             RetTypeValue = retTypeValue;
             this.bSequence = bSequence;
-            varTypeValues = ImmutableDictionary<string, QsTypeValue>.Empty;
+            vars = ImmutableDictionary<string, QsVariable>.Empty;
         }
 
-        public void AddVarTypeValue(string varName, QsTypeValue typeValue)
+        public void AddVariable(QsVariable variable)
         {
-            varTypeValues = varTypeValues.SetItem(varName, typeValue);
+            vars = vars.SetItem(variable.Name, variable);
         }
 
-        public bool GetVarTypeValue(string varName, out QsTypeValue typeValue)
+        public bool GetVariable(string varName, out QsVariable outVar)
         {
-            return varTypeValues.TryGetValue(varName, out typeValue);
+            return vars.TryGetValue(varName, out outVar);
         }
 
-        public void SetVarTypeValues(ImmutableDictionary<string, QsTypeValue> newVarTypeValues)
+        public void SetVariables(ImmutableDictionary<string, QsVariable> newVars)
         {
-            varTypeValues = newVarTypeValues;
+            vars = newVars;
         }
 
-        public ImmutableDictionary<string, QsTypeValue> GetVarTypeValues()
+        public ImmutableDictionary<string, QsVariable> GetVariables()
         {
-            return varTypeValues;
+            return vars;
         }
     }
 
@@ -59,6 +59,7 @@ namespace QuickSC.StaticAnalyzer
 
         // Exp가 무슨 타입을 갖고 있는지 저장
         public Dictionary<QsExp, QsTypeValue> TypeValuesByExp { get; }
+        public Dictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)> StoragesByExp { get; }
 
         public QsTypeValueServiceContext TypeValueServiceContext { get; }
 
@@ -80,6 +81,7 @@ namespace QuickSC.StaticAnalyzer
             Errors = errors;
             globalVarTypeValues = ImmutableDictionary<string, QsTypeValue>.Empty;
             TypeValuesByExp = new Dictionary<QsExp, QsTypeValue>(QsReferenceComparer<QsExp>.Instance);
+            StoragesByExp = new Dictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)>(QsReferenceComparer<QsExp>.Instance);
             TypeValueServiceContext = typeValueServiceContext;
 
             CurFunc = new QsAnalyzerFuncContext(null, false);

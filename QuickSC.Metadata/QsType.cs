@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data.SqlTypes;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
@@ -19,8 +20,8 @@ namespace QuickSC
 
         // TODO: 셋은 같은 이름공간을 공유한다. 서로 이름이 같은 것이 나오면 안된다 (체크하자)
         public abstract bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsTypeId? outTypeId);
-        public abstract bool GetMemberFuncId(bool bStaticOnly, QsMemberFuncId memberFuncId, [NotNullWhen(returnValue: true)] out QsFuncId? outFuncId);
-        public abstract bool GetMemberVarId(bool bStaticOnly, string varName, [NotNullWhen(returnValue: true)] out QsVarId? outVarId);
+        public abstract bool GetMemberFuncId(QsMemberFuncId memberFuncId, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFuncId FuncId)? outValue);
+        public abstract bool GetMemberVarId(string varName, [NotNullWhen(returnValue: true)] out (bool bStatic, QsVarId VarId)? outValue);
     }
 
     public class QsDefaultType : QsType
@@ -87,42 +88,42 @@ namespace QuickSC
             }
         }
 
-        public override bool GetMemberFuncId(bool bStaticOnly, QsMemberFuncId memberFuncId, [NotNullWhen(returnValue: true)] out QsFuncId? outFuncId)
+        public override bool GetMemberFuncId(QsMemberFuncId memberFuncId, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFuncId FuncId)? outValue)
         {   
-            if (!bStaticOnly && memberFuncIds.TryGetValue(memberFuncId, out var funcId))
+            // TODO: 같은 이름 체크?
+            if (memberFuncIds.TryGetValue(memberFuncId, out var funcId))
             {
-                outFuncId = funcId;
+                outValue = (false, funcId);
                 return true;
             }
-            else if (!string.IsNullOrEmpty(memberFuncId.Name) && staticMemberFuncIds.TryGetValue(memberFuncId.Name, out funcId))
+
+            if (!string.IsNullOrEmpty(memberFuncId.Name) && staticMemberFuncIds.TryGetValue(memberFuncId.Name, out funcId))
             {
-                outFuncId = funcId;
+                outValue = (true, funcId);
                 return true;
-            }
-            else
-            {
-                outFuncId = null;
-                return false;
-            }
+            }            
+            
+            outValue = null;
+            return false;
         }
 
-        public override bool GetMemberVarId(bool bStaticOnly, string varName, [NotNullWhen(returnValue: true)] out QsVarId? outVarId)
+        public override bool GetMemberVarId(string varName, [NotNullWhen(returnValue: true)] out (bool bStatic, QsVarId VarId)? outValue)
         {
-            if (!bStaticOnly && memberVarIds.TryGetValue(varName, out var varId))
+            // TODO: 같은 이름 체크
+            if (memberVarIds.TryGetValue(varName, out var varId))
             {
-                outVarId = varId;
+                outValue = (false, varId);
                 return true;
             }
-            else if (staticMemberVarIds.TryGetValue(varName, out varId))
+
+            if (staticMemberVarIds.TryGetValue(varName, out varId))
             {
-                outVarId = varId;
+                outValue = (true, varId);
                 return true;
             }
-            else
-            {
-                outVarId = null;
-                return false;
-            }
+
+            outValue = null;
+            return false;            
         }
     }
 

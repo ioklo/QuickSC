@@ -1,6 +1,7 @@
 ﻿using QuickSC.Runtime;
 using QuickSC.StaticAnalyzer;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Text;
@@ -88,14 +89,14 @@ if (x is X.First)
                     return;
                 }
 
-                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem, ImmutableArray.Create<IQsMetadata>(runtimeModule));
-                if (analyzerContext == null || 0 < analyzerContext.Errors.Count)
-                {
-                    if( analyzerContext != null)
-                        foreach(var error in analyzerContext.Errors)
-                        {
-                            Console.WriteLine(error.Message);
-                        }
+                var errors = new List<(object obj, string Message)>();
+                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem, errors, ImmutableArray.Create<IQsMetadata>(runtimeModule));
+                if (analyzerContext == null || 0 < errors.Count)
+                {   
+                    foreach(var error in errors)
+                    {
+                        Console.WriteLine(error.Message);
+                    }
 
 
                     Console.WriteLine("분석에 실패했습니다");
@@ -104,6 +105,7 @@ if (x is X.First)
 
                 var evalStaticContext = new QsEvalStaticContext(
                     analyzerContext.TypeValuesByTypeExp.ToImmutableDictionary(),
+                    analyzerContext.StoragesByExp.ToImmutableDictionary(),
                     analyzerContext.CaptureInfosByLocation.ToImmutableDictionary());
                 var evalContext = QsEvalContext.Make(evalStaticContext);
                 var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);

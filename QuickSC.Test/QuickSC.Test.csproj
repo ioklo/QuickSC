@@ -32,4 +32,8 @@
     <ProjectReference Include="..\QuickSC.Syntax\QuickSC.Syntax.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Input\LiteralExp\" />
+  </ItemGroup>
+
 </Project>

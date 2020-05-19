@@ -51,10 +51,11 @@ namespace QuickSC
             Assert.True(scriptResult.HasValue);
 
             var runtimeModule = new QsRuntimeModule();
-            var context = QsAnalyzer.AnalyzeScript(scriptResult.Elem, ImmutableArray.Create<IQsMetadata>(runtimeModule));
+            var errors = new List<(object obj, string Message)>();
+            var context = QsAnalyzer.AnalyzeScript(scriptResult.Elem, errors, ImmutableArray.Create<IQsMetadata>(runtimeModule));
             
             // 통과만 하는 시나리오
-            Assert.False(context == null || 0 < context.Errors.Count);
+            Assert.False(context == null || 0 < errors.Count);
         }
 
         public static IEnumerable<object[]> GetScriptData()

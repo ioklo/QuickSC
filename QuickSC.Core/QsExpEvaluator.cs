@@ -20,45 +20,51 @@ namespace QuickSC
         {
             this.evaluator = evaluator;
             this.runtimeModule = runtimeModule;
-        }        
+        }                
         
-        QsEvalResult<QsValue> EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
+        QsValue EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
         {
-            var variable = context.varsByIdExp[idExp]; // QsVariable
+            // id를 어디서 가져와야 하는지,
+            var (storage, kind) = context.StoragesByExp[idExp];
 
-            // var idType = context.IdType[idExp]
+            // TODO: 일단 기본적인 storage부터 구현한다. 람다는 추후에
+            if (kind == QsStorageKind.Func)
+                throw new NotImplementedException();
 
-            //if (idType is QsLocalVar)
-            //    return context.GetValue(idExp.Value);
+            Debug.Assert(kind == QsStorageKind.Var);
 
-            //else if (idType is QsGlobalVar)
-            //    return context.GetGlobalValue(idExp.Value)
+            // 전역 변수는 
+            switch(storage)
+            {
+                case QsLocalStorage localStorage:
+                    return context.GetLocalValue(idExp.Value);
 
-            //else if (idType is QsFunc funcId) // var s = F; // var s = () => F();
-            // else if (idTYpe is QsRefGlobalVar refglobalVar
+                case QsGlobalStorage globalStorage:
+                    return context.GlobalVars[(globalStorage.Metadata, idExp.Value)];
 
-            var result = context.GetValue(idExp.Value);
+                case QsStaticStorage staticStorage:
+                    throw new NotImplementedException();
+                //    return context.GetStaticValue(staticStorage.TypeValue;
 
-            if (result == null)
-                result = context.GetGlobalValue(idExp.Value);
+                case QsInstanceStorage instStorage:
+                    return context.ThisValue.GetMemberValue(idExp.Value);
 
-            if (result == null)
-                return QsEvalResult<QsValue>.Invalid;
-
-            return new QsEvalResult<QsValue>(result, context);
+                default:
+                    throw new InvalidOperationException();
+            }
         }
 
-        QsEvalResult<QsValue> EvaluateBoolLiteralExp(QsBoolLiteralExp boolLiteralExp, QsEvalContext context)
+        QsValue EvaluateBoolLiteralExp(QsBoolLiteralExp boolLiteralExp, QsEvalContext context)
         {
-            return new QsEvalResult<QsValue>(new QsValue<bool>(boolLiteralExp.Value), context);
+            return runtimeModule.MakeBool(boolLiteralExp.Value);
         }
 
-        QsEvalResult<QsValue> EvaluateIntLiteralExp(QsIntLiteralExp intLiteralExp, QsEvalContext context)
+        QsValue EvaluateIntLiteralExp(QsIntLiteralExp intLiteralExp, QsEvalContext context)
         {
-            return new QsEvalResult<QsValue>(new QsValue<int>(intLiteralExp.Value), context);
+            return runtimeModule.MakeInt(intLiteralExp.Value);
         }
 
-        internal async ValueTask<QsEvalResult<QsValue>> EvaluateStringExpAsync(QsStringExp stringExp, QsEvalContext context)
+        internal async ValueTask<QsValue> EvaluateStringExpAsync(QsStringExp stringExp, QsEvalContext context)
         {
             // stringExp는 element들의 concatenation
             var sb = new StringBuilder();
@@ -72,16 +78,9 @@ namespace QuickSC
 
                     case QsExpStringExpElement expElem:
                         var result = await EvaluateExpAsync(expElem.Exp, context);
-                        if (!result.HasValue)
-                            return QsEvalResult<QsValue>.Invalid;
 
-                        var strValue = runtimeModule.GetString(result.Value);
-
-                        if (strValue == null)
-                            return QsEvalResult<QsValue>.Invalid;
-
+                        var strValue = runtimeModule.GetString(result);
                         sb.Append(strValue);
-                        context = result.Context;
                         break;
 
                     default:
@@ -89,143 +88,115 @@ namespace QuickSC
                 }
             }
 
-            ;
-
-            return new QsEvalResult<QsValue>(new QsObjectValue(runtimeModule.MakeStringObject(sb.ToString())), context);
+            return runtimeModule.MakeString(sb.ToString());
         }
 
-        async ValueTask<QsEvalResult<QsValue>> EvaluateUnaryOpExpAsync(QsUnaryOpExp exp, QsEvalContext context)
+        async ValueTask<QsValue> EvaluateUnaryOpExpAsync(QsUnaryOpExp exp, QsEvalContext context)
         {
             switch (exp.Kind)
             {
                 case QsUnaryOpKind.PostfixInc:  // i++
                     {
-                        var operandResult = await EvaluateExpAsync(exp.Operand, context);
-                        if (!operandResult.HasValue) return QsEvalResult<QsValue>.Invalid;
+                        var operandValue = await EvaluateExpAsync(exp.Operand, context);
 
-                        var intValue = operandResult.Value as QsValue<int>;
-                        if (intValue == null) return QsEvalResult<QsValue>.Invalid;
+                        var intValue = runtimeModule.GetInt(operandValue);
+                        var retValue = runtimeModule.MakeInt(intValue);
+                        runtimeModule.SetInt(operandValue, intValue + 1);
 
-                        var retValue = new QsValue<int>(intValue.Value);
-                        intValue.Value++;
-                        return new QsEvalResult<QsValue>(retValue, operandResult.Context);
+                        return retValue;
                     }
 
                 case QsUnaryOpKind.PostfixDec:
                     {
-                        var operandResult = await EvaluateExpAsync(exp.Operand, context);
-                        if (!operandResult.HasValue) return QsEvalResult<QsValue>.Invalid;
+                        var operandValue = await EvaluateExpAsync(exp.Operand, context);
 
-                        var intValue = operandResult.Value as QsValue<int>;
-                        if (intValue == null) return QsEvalResult<QsValue>.Invalid;
-
-                        var retValue = new QsValue<int>(intValue.Value);
-                        intValue.Value--;
-                        return new QsEvalResult<QsValue>(retValue, operandResult.Context);
+                        var intValue = runtimeModule.GetInt(operandValue);
+                        var retValue = runtimeModule.MakeInt(intValue);
+                        runtimeModule.SetInt(operandValue, intValue - 1);
+                        return retValue;
                     }
 
                 case QsUnaryOpKind.LogicalNot:
                     {
-                        var operandResult = await EvaluateExpAsync(exp.Operand, context);
-                        if (!operandResult.HasValue) return QsEvalResult<QsValue>.Invalid;
-
-                        var boolValue = operandResult.Value as QsValue<bool>;
-                        if (boolValue == null) return QsEvalResult<QsValue>.Invalid;
-
-                        return new QsEvalResult<QsValue>(new QsValue<bool>(!boolValue.Value), operandResult.Context);
+                        var operandValue = await EvaluateExpAsync(exp.Operand, context);
+                        var boolValue = runtimeModule.GetBool(operandValue);
+                        return runtimeModule.MakeBool(!boolValue);
                     }
 
                 case QsUnaryOpKind.PrefixInc:
                     {
-                        var operandResult = await EvaluateExpAsync(exp.Operand, context);
-                        if (!operandResult.HasValue) return QsEvalResult<QsValue>.Invalid;
-
-                        var intValue = operandResult.Value as QsValue<int>;
-                        if (intValue == null) return QsEvalResult<QsValue>.Invalid;
-
-                        intValue.Value++;
-                        return new QsEvalResult<QsValue>(operandResult.Value, operandResult.Context);
+                        var operandValue = await EvaluateExpAsync(exp.Operand, context);
+                        var intValue = runtimeModule.GetInt(operandValue);
+                        runtimeModule.SetInt(operandValue, intValue + 1);
+                        return operandValue;
                     }
 
                 case QsUnaryOpKind.PrefixDec:
                     {
-                        var operandResult = await EvaluateExpAsync(exp.Operand, context);
-                        if (!operandResult.HasValue) return QsEvalResult<QsValue>.Invalid;
-
-                        var intValue = operandResult.Value as QsValue<int>;
-                        if (intValue == null) return QsEvalResult<QsValue>.Invalid;
-
-                        intValue.Value--;
-                        return new QsEvalResult<QsValue>(operandResult.Value, operandResult.Context);
+                        var operandValue = await EvaluateExpAsync(exp.Operand, context);
+                        var intValue = runtimeModule.GetInt(operandValue);
+                        runtimeModule.SetInt(operandValue, intValue - 1);
+                        return operandValue;
                     }
             }
 
             throw new NotImplementedException();
         }
         
-        async ValueTask<QsEvalResult<QsValue>> EvaluateBinaryOpExpAsync(QsBinaryOpExp exp, QsEvalContext context)
+        async ValueTask<QsValue> EvaluateBinaryOpExpAsync(QsBinaryOpExp exp, QsEvalContext context)
         {
-            var operandResult0 = await EvaluateExpAsync(exp.Operand0, context);
-            if (!operandResult0.HasValue) return QsEvalResult<QsValue>.Invalid;
-            context = operandResult0.Context;
-
-            var operandResult1 = await EvaluateExpAsync(exp.Operand1, context);
-            if (!operandResult1.HasValue) return QsEvalResult<QsValue>.Invalid;
-            context = operandResult1.Context;
+            var operandValue0 = await EvaluateExpAsync(exp.Operand0, context);
+            var operandValue1 = await EvaluateExpAsync(exp.Operand1, context);
 
             switch (exp.Kind)
             {
                 case QsBinaryOpKind.Multiply:
                     {
-                        var intValue0 = operandResult0.Value as QsValue<int>;
-                        if (intValue0 == null) return QsEvalResult<QsValue>.Invalid;
+                        var intValue0 = runtimeModule.GetInt(operandValue0);
+                        var intValue1 = runtimeModule.GetInt(operandValue1);
 
-                        var intValue1 = operandResult1.Value as QsValue<int>;
-                        if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
-
-                        return new QsEvalResult<QsValue>(new QsValue<int>(intValue0.Value * intValue1.Value), context);
+                        return runtimeModule.MakeInt(intValue0 * intValue1);
                     }
 
                 case QsBinaryOpKind.Divide:
                     {
-                        var intValue0 = operandResult0.Value as QsValue<int>;
-                        if (intValue0 == null) return QsEvalResult<QsValue>.Invalid;
+                        var intValue0 = runtimeModule.GetInt(operandValue0);
+                        var intValue1 = runtimeModule.GetInt(operandValue1);
 
-                        var intValue1 = operandResult1.Value as QsValue<int>;
-                        if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
-
-                        return new QsEvalResult<QsValue>(new QsValue<int>(intValue0.Value / intValue1.Value), context);
+                        return runtimeModule.MakeInt(intValue0 / intValue1);
                     }
 
                 case QsBinaryOpKind.Modulo:
                     {
-                        var intValue0 = operandResult0.Value as QsValue<int>;
-                        if (intValue0 == null) return QsEvalResult<QsValue>.Invalid;
+                        var intValue0 = runtimeModule.GetInt(operandValue0);
+                        var intValue1 = runtimeModule.GetInt(operandValue1);
 
-                        var intValue1 = operandResult1.Value as QsValue<int>;
-                        if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
-
-                        return new QsEvalResult<QsValue>(new QsValue<int>(intValue0.Value % intValue1.Value), context);
+                        return runtimeModule.MakeInt(intValue0 % intValue1);
                     }
 
                 case QsBinaryOpKind.Add:
                     {
-                        var intValue0 = operandResult0.Value as QsValue<int>;
-                        if (intValue0 != null)
+                        // TODO: 이쪽은 operator+로 교체될 것이므로 임시로 런타임 타입체크
+                        if (context.TypeValuesByExp[exp.Operand0] == intTypeValue &&
+                            context.TypeValuesByExp[exp.Operand1] == intTypeValue)
                         {
-                            var intValue1 = operandResult1.Value as QsValue<int>;
-                            if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
+                            var intValue0 = runtimeModule.GetInt(operandValue0);
+                            var intValue1 = runtimeModule.GetInt(operandValue1);
 
-                            return new QsEvalResult<QsValue>(new QsValue<int>(intValue0.Value + intValue1.Value), context);
+                            return runtimeModule.MakeInt(intValue0 + intValue1);
+                        }
+                        else
+                        {
+
                         }
 
-                        var strValue0 = runtimeModule.GetString(operandResult0.Value);
+                        var strValue0 = runtimeModule.GetString(operandValue0.Value);
                         if (strValue0 != null)
                         {
-                            var strValue1 = runtimeModule.GetString(operandResult1.Value);
+                            var strValue1 = runtimeModule.GetString(operandValue1.Value);
                             if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                            return new QsEvalResult<QsValue>(new QsObjectValue(runtimeModule.MakeStringObject(strValue0 + strValue1)), context);
+                            return new QsEvalResult<QsValue>(runtimeModule.MakeString(strValue0 + strValue1), context);
                         }
 
                         return QsEvalResult<QsValue>.Invalid;
@@ -233,33 +204,33 @@ namespace QuickSC
 
                 case QsBinaryOpKind.Subtract:
                     {
-                        var intValue0 = operandResult0.Value as QsValue<int>;
+                        var intValue0 = operandValue0.Value as QsValue<int>;
                         if (intValue0 == null) return QsEvalResult<QsValue>.Invalid;
 
-                        var intValue1 = operandResult1.Value as QsValue<int>;
+                        var intValue1 = operandValue1.Value as QsValue<int>;
                         if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                        return new QsEvalResult<QsValue>(new QsValue<int>(intValue0.Value - intValue1.Value), context);
+                        return new QsEvalResult<QsValue>(runtimeModule.MakeInt(intValue0.Value - intValue1.Value), context);
                     }
 
                 case QsBinaryOpKind.LessThan:
                     {
-                        var intValue0 = operandResult0.Value as QsValue<int>;
+                        var intValue0 = operandValue0.Value as QsValue<int>;
                         if (intValue0 != null)
                         {
-                            var intValue1 = operandResult1.Value as QsValue<int>;
+                            var intValue1 = operandValue1.Value as QsValue<int>;
                             if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                            return new QsEvalResult<QsValue>(new QsValue<bool>(intValue0.Value < intValue1.Value), context);
+                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(intValue0.Value < intValue1.Value), context);
                         }
 
-                        var strValue0 = runtimeModule.GetString(operandResult0.Value);
+                        var strValue0 = runtimeModule.GetString(operandValue0.Value);
                         if (strValue0 != null)
                         {
-                            var strValue1 = runtimeModule.GetString(operandResult1.Value);
+                            var strValue1 = runtimeModule.GetString(operandValue1.Value);
                             if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                            return new QsEvalResult<QsValue>(new QsValue<bool>(strValue0.CompareTo(strValue1) < 0), context);
+                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(strValue0.CompareTo(strValue1) < 0), context);
                         }
 
                         return QsEvalResult<QsValue>.Invalid;
@@ -267,22 +238,22 @@ namespace QuickSC
 
                 case QsBinaryOpKind.GreaterThan:
                     {
-                        var intValue0 = operandResult0.Value as QsValue<int>;
+                        var intValue0 = operandValue0.Value as QsValue<int>;
                         if (intValue0 != null)
                         {
-                            var intValue1 = operandResult1.Value as QsValue<int>;
+                            var intValue1 = operandValue1.Value as QsValue<int>;
                             if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                            return new QsEvalResult<QsValue>(new QsValue<bool>(intValue0.Value > intValue1.Value), context);
+                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(intValue0.Value > intValue1.Value), context);
                         }
 
-                        var strValue0 = runtimeModule.GetString(operandResult0.Value);
+                        var strValue0 = runtimeModule.GetString(operandValue0.Value);
                         if (strValue0 != null)
                         {
-                            var strValue1 = runtimeModule.GetString(operandResult1.Value);
+                            var strValue1 = runtimeModule.GetString(operandValue1.Value);
                             if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                            return new QsEvalResult<QsValue>(new QsValue<bool>(strValue0.CompareTo(strValue1) > 0), context);
+                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(strValue0.CompareTo(strValue1) > 0), context);
                         }
 
                         return QsEvalResult<QsValue>.Invalid;
@@ -290,22 +261,22 @@ namespace QuickSC
 
                 case QsBinaryOpKind.LessThanOrEqual:
                     {
-                        var intValue0 = operandResult0.Value as QsValue<int>;
+                        var intValue0 = operandValue0.Value as QsValue<int>;
                         if (intValue0 != null)
                         {
-                            var intValue1 = operandResult1.Value as QsValue<int>;
+                            var intValue1 = operandValue1.Value as QsValue<int>;
                             if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                            return new QsEvalResult<QsValue>(new QsValue<bool>(intValue0.Value <= intValue1.Value), context);
+                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(intValue0.Value <= intValue1.Value), context);
                         }
 
-                        var strValue0 = runtimeModule.GetString(operandResult0.Value);
+                        var strValue0 = runtimeModule.GetString(operandValue0.Value);
                         if (strValue0 != null)
                         {
-                            var strValue1 = runtimeModule.GetString(operandResult1.Value);
+                            var strValue1 = runtimeModule.GetString(operandValue1.Value);
                             if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                            return new QsEvalResult<QsValue>(new QsValue<bool>(strValue0.CompareTo(strValue1) <= 0), context);
+                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(strValue0.CompareTo(strValue1) <= 0), context);
                         }
 
                         return QsEvalResult<QsValue>.Invalid;
@@ -313,38 +284,38 @@ namespace QuickSC
 
                 case QsBinaryOpKind.GreaterThanOrEqual:
                     {
-                        var intValue0 = operandResult0.Value as QsValue<int>;
+                        var intValue0 = operandValue0.Value as QsValue<int>;
                         if (intValue0 != null)
                         {
-                            var intValue1 = operandResult1.Value as QsValue<int>;
+                            var intValue1 = operandValue1.Value as QsValue<int>;
                             if (intValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                            return new QsEvalResult<QsValue>(new QsValue<bool>(intValue0.Value >= intValue1.Value), context);
+                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(intValue0.Value >= intValue1.Value), context);
                         }
 
-                        var strValue0 = runtimeModule.GetString(operandResult0.Value);
+                        var strValue0 = runtimeModule.GetString(operandValue0.Value);
                         if (strValue0 != null)
                         {
-                            var strValue1 = runtimeModule.GetString(operandResult1.Value);
+                            var strValue1 = runtimeModule.GetString(operandValue1.Value);
                             if (strValue1 == null) return QsEvalResult<QsValue>.Invalid;
 
-                            return new QsEvalResult<QsValue>(new QsValue<bool>(strValue0.CompareTo(strValue1) >= 0), context);
+                            return new QsEvalResult<QsValue>(runtimeModule.MakeBool(strValue0.CompareTo(strValue1) >= 0), context);
                         }
 
                         return QsEvalResult<QsValue>.Invalid;
                     }
 
                 case QsBinaryOpKind.Equal:
-                    return new QsEvalResult<QsValue>(new QsValue<bool>(operandResult0.Value == operandResult1.Value), context);
+                    return new QsEvalResult<QsValue>(runtimeModule.MakeBool(operandValue0.Value == operandValue1.Value), context);
 
                 case QsBinaryOpKind.NotEqual:
-                    return new QsEvalResult<QsValue>(new QsValue<bool>(operandResult0.Value != operandResult1.Value), context);
+                    return new QsEvalResult<QsValue>(runtimeModule.MakeBool(operandValue0.Value != operandValue1.Value), context);
 
                 case QsBinaryOpKind.Assign:
                     {
                         // TODO: 평가 순서가 operand1부터 해야 하지 않나
-                        if (operandResult0.Value.SetValue(operandResult1.Value))
-                            return new QsEvalResult<QsValue>(operandResult0.Value, context);
+                        if (operandValue0.Value.SetLocalValue(operandValue1.Value))
+                            return new QsEvalResult<QsValue>(operandValue0.Value, context);
 
                         return QsEvalResult<QsValue>.Invalid;
                     }
@@ -360,7 +331,7 @@ namespace QuickSC
             if (exp is QsIdentifierExp idExp)
             {
                 // 일단 idExp가 variable로 존재하는지 봐야 한다
-                if (!context.HasVar(idExp.Value))
+                if (!context.HasLocalVar(idExp.Value))
                 {
                     var func = context.GetFunc(idExp.Value);
 
@@ -479,7 +450,7 @@ namespace QuickSC
             return new QsEvalResult<QsValue>(new QsObjectValue(runtimeModule.MakeListObject(elems)), context);
         }
 
-        internal async ValueTask<QsEvalResult<QsValue>> EvaluateExpAsync(QsExp exp, QsEvalContext context)
+        internal async ValueTask<QsValue> EvaluateExpAsync(QsExp exp, QsEvalContext context)
         {
             return exp switch
             {

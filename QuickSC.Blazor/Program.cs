@@ -89,9 +89,10 @@ namespace QuickSC.Blazor
                 }
 
                 var runtimeModule = new QsRuntimeModule();
-                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem, ImmutableArray.Create<IQsMetadata>(runtimeModule));
+                var errors = new List<(object obj, string Message)>();
+                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem, errors, ImmutableArray.Create<IQsMetadata>(runtimeModule));
 
-                if (analyzerContext == null || 0 < analyzerContext.Errors.Count)
+                if (analyzerContext == null || 0 < errors.Count)
                 {
                     await WriteAsync("에러 (타입 체킹 실패)"); // 다들 아는 단어로
                     return false;
@@ -102,6 +103,7 @@ namespace QuickSC.Blazor
                 var evaluator = new QsEvaluator(demoCmdProvider, runtimeModule);
                 var evalContext = QsEvalContext.Make(new QsEvalStaticContext(
                     analyzerContext.TypeValuesByTypeExp.ToImmutableDictionary(),
+                    analyzerContext.StoragesByExp.ToImmutableDictionary(),
                     analyzerContext.CaptureInfosByLocation.ToImmutableDictionary()));
 
                 var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);

@@ -38,151 +38,82 @@ namespace QuickSC
         public QsValue Value { get; }
         public QsYieldEvalFlowControl(QsValue value) { Value = value; }
     }
-
-    public class QsEvalStaticContext
+    
+    public class QsEvalContext
     {
-        public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValues { get; }
+        // TODO: QsFuncDecl을 직접 사용하지 않고, QsModule에서 정의한 Func을 사용해야 한다       
+
+        // 실행을 위한 기본 정보
+        public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
+        public ImmutableDictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)> StoragesByExp { get; }
         public ImmutableDictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> CaptureInfosByLocation { get; }
 
-        public QsEvalStaticContext(
-            ImmutableDictionary<QsTypeExp, QsTypeValue> typeValues,
-            ImmutableDictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> captureInfosByLocation)
-        {
-            TypeValues = typeValues;
-            CaptureInfosByLocation = captureInfosByLocation;
-        }
-    }
+        // 모든 모듈의 전역 변수
+        public Dictionary<(IQsMetadata?, string), QsValue> GlobalVars { get; } // TODO: IQsMetadata말고 다른 Id가 있어야 한다
+        public ImmutableDictionary<string, QsValue> LocalVars { get; private set; }
 
-    // TODO: EvalContext는 백트래킹을 할 것이 아니기 때문에 mutable로 바꿀 수 있을것 같다
-    public struct QsEvalContext
-    {
-        // TODO: QsFuncDecl을 직접 사용하지 않고, QsModule에서 정의한 Func을 사용해야 한다        
-        public QsEvalStaticContext StaticContext { get; }
-        public ImmutableDictionary<string, QsFuncDecl> Funcs { get; }
-        public ImmutableDictionary<string, QsValue> GlobalVars { get; }
-        public ImmutableDictionary<string, QsValue> Vars { get; }
-
-        public QsEvalFlowControl FlowControl { get; }
-        public ImmutableArray<Task> Tasks { get; }
-        public QsValue ThisValue { get; }
-        public bool bGlobalScope { get; }
+        public QsEvalFlowControl FlowControl { get; set; }
+        public ImmutableArray<Task> Tasks { get; private set; }
+        public QsValue ThisValue { get; set; }
+        public bool bGlobalScope { get; set; }
         
-
-        public static QsEvalContext Make(QsEvalStaticContext StaticContext)
-        {
-            return new QsEvalContext(
-                StaticContext,
-                ImmutableDictionary<string, QsFuncDecl>.Empty,
-                ImmutableDictionary<string, QsValue>.Empty, 
-                ImmutableDictionary<string, QsValue>.Empty, 
-                QsNoneEvalFlowControl.Instance,
-                ImmutableArray<Task>.Empty,
-                QsNullValue.Instance,
-                true);
-        }
-
-        private QsEvalContext(
-            QsEvalStaticContext StaticContext,
-            ImmutableDictionary<string, QsFuncDecl> funcs,
-            ImmutableDictionary<string, QsValue> globalVars, 
-            ImmutableDictionary<string, QsValue> vars, 
+        public QsEvalContext(
+            ImmutableDictionary<QsTypeExp, QsTypeValue> typeValues,
+            ImmutableDictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)> storagesByExp,
+            ImmutableDictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> captureInfosByLocation,            
+            ImmutableDictionary<string, QsValue> localVars, 
             QsEvalFlowControl flowControl,
             ImmutableArray<Task> tasks,
             QsValue thisValue,
             bool bGlobalScope)
         {
-            this.StaticContext = StaticContext;
-            this.Funcs = funcs;
-            this.GlobalVars = globalVars;
-            this.Vars = vars;
-            this.FlowControl = flowControl;
-            this.Tasks = tasks;
-            this.ThisValue = thisValue;
+            TypeValuesByTypeExp = typeValues;
+            StoragesByExp = storagesByExp;
+            CaptureInfosByLocation = captureInfosByLocation;
+            
+            GlobalVars = new Dictionary<(IQsMetadata?, string), QsValue>();
+            LocalVars = localVars;
+            FlowControl = flowControl;
+            Tasks = tasks;
+            ThisValue = thisValue;
             this.bGlobalScope = bGlobalScope;
         }
 
-        public QsEvalContext SetVars(ImmutableDictionary<string, QsValue> newVars)
+        public void SetLocalVars(ImmutableDictionary<string, QsValue> newLocalVars)
         {
-            return new QsEvalContext(StaticContext, Funcs, GlobalVars, newVars, FlowControl, Tasks, ThisValue, bGlobalScope);
+            LocalVars = newLocalVars;
         }
 
-        public QsEvalContext SetFlowControl(QsEvalFlowControl newFlowControl)
+        public ImmutableDictionary<string, QsValue> GetLocalVars()
         {
-            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars, newFlowControl, Tasks, ThisValue, bGlobalScope);
-        }
-        
-        public QsEvalContext SetTasks(ImmutableArray<Task> newTasks)
-        {
-            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars, FlowControl, newTasks, ThisValue, bGlobalScope);
+            return LocalVars;
         }
 
-        public QsEvalContext SetThisValue(QsValue newThisValue)
+        public QsValue GetLocalValue(string varName)
         {
-            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars, FlowControl, Tasks, newThisValue, bGlobalScope);
-        }
-
-        public QsEvalContext SetGlobalValue(string varName, QsValue value)
-        {
-            return new QsEvalContext(StaticContext, Funcs, GlobalVars.SetItem(varName, value), Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
-        }
-
-        public QsEvalContext SetValue(string varName, QsValue value)
-        {
-            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars.SetItem(varName, value), FlowControl, Tasks, ThisValue, bGlobalScope);
+            return LocalVars[varName];
         }
         
-        public QsEvalContext AddFunc(QsFuncDecl funcDecl)
+        public void SetLocalValue(string varName, QsValue value)
         {
-            return new QsEvalContext(StaticContext, Funcs.SetItem(funcDecl.Name, funcDecl), GlobalVars, Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
+            LocalVars = LocalVars.SetItem(varName, value);
         }
 
-        public QsEvalContext AddGlobalVar(string name, QsValue value)
+        public void SetTasks(ImmutableArray<Task> newTasks)
         {
-            return new QsEvalContext(StaticContext, Funcs, GlobalVars.Add(name, value), Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
+            Tasks = newTasks;
         }
 
-        public QsEvalContext AddTask(Task task)
+        public ImmutableArray<Task> GetTasks()
         {
-            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars, FlowControl, Tasks.Add(task), ThisValue, bGlobalScope);
-        }
-
-        public QsEvalContext SetGlobalScope(bool bGlobalScope)
+            return Tasks;
+        }       
+       
+        public void AddTask(Task task)
         {
-            return new QsEvalContext(StaticContext, Funcs, GlobalVars, Vars, FlowControl, Tasks, ThisValue, bGlobalScope);
+            Tasks = Tasks.Add(task);
         }
-
-        public QsTypeValue? GetTypeValue(QsTypeExp typeExp)
-        {
-            if (StaticContext.TypeValues.TryGetValue(typeExp, out var typeValue))
-                return typeValue;
-
-            return null;
-        }
-
-        public QsValue? GetValue(string varName)
-        {
-            if (Vars.TryGetValue(varName, out var retValue))
-                return retValue;
-
-            return null;
-        }
-
-        public QsValue? GetGlobalValue(string varName)
-        {
-            if (GlobalVars.TryGetValue(varName, out var retValue))
-                return retValue;
-
-            return null;
-        }
-
-        public bool HasVar(string varName)
-        {
-            return Vars.ContainsKey(varName) || GlobalVars.ContainsKey(varName);
-        }
-
-        public QsFuncDecl? GetFunc(string funcName)
-        {
-            return Funcs.GetValueOrDefault(funcName);
-        }
+        
+        
     }
 }

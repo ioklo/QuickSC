@@ -23,9 +23,9 @@ namespace QuickSC
         async IAsyncEnumerable<QsEvalResult<QsValue>> EvaluateSequenceCallAsync(QsStmt body, QsValue thisValue, ImmutableDictionary<string, QsValue> vars, QsEvalContext context)
         {
             // 프레임 전환 
-            var (prevThisValue, prevVars, prevTasks) = (context.ThisValue, context.Vars, context.Tasks);
+            var (prevThisValue, prevVars, prevTasks) = (context.ThisValue, context.LocalVars, context.Tasks);
 
-            context = context.SetThisValue(thisValue).SetVars(vars).SetTasks(ImmutableArray<Task>.Empty);
+            context = context.SetThisValue(thisValue).SetLocalVars(vars).SetTasks(ImmutableArray<Task>.Empty);
 
             // 현재 funcContext
             await foreach (var result in stmtEvaluator.EvaluateStmtAsync(body, context))
@@ -47,9 +47,9 @@ namespace QuickSC
         async ValueTask<QsEvalResult<QsValue>> EvaluateNormalCallAsync(QsStmt body, QsValue thisValue, ImmutableDictionary<string, QsValue> vars, QsEvalContext context)
         {
             // 프레임 전환 
-            var (prevThisValue, prevVars, prevTasks) = (context.ThisValue, context.Vars, context.Tasks);
+            var (prevThisValue, prevVars, prevTasks) = (context.ThisValue, context.LocalVars, context.Tasks);
 
-            context = context.SetThisValue(thisValue).SetVars(vars).SetTasks(ImmutableArray<Task>.Empty);
+            context = context.SetThisValue(thisValue).SetLocalVars(vars).SetTasks(ImmutableArray<Task>.Empty);
 
             // 현재 funcContext
             await foreach (var result in stmtEvaluator.EvaluateStmtAsync(body, context))
@@ -62,7 +62,7 @@ namespace QuickSC
                     throw new InvalidOperationException();
             }
 
-            context = context.SetVars(prevVars).SetTasks(prevTasks).SetThisValue(prevThisValue);
+            context = context.SetLocalVars(prevVars).SetTasks(prevTasks).SetThisValue(prevThisValue);
 
             if (context.FlowControl is QsReturnEvalFlowControl returnFlowControl)
             {

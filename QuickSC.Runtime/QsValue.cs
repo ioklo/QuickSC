@@ -25,7 +25,7 @@ namespace QuickSC
 
         // 뭘 리턴해야 하는거냐
         public abstract QsCallable? GetMemberFuncs(QsMemberFuncId funcId);
-        public abstract QsValue? GetMemberValue(string varName);
+        public abstract QsValue GetMemberValue(string varName);
 
         public abstract bool IsType(QsTypeInst typeInst);
     }
@@ -59,9 +59,9 @@ namespace QuickSC
             return null;
         }
 
-        public override QsValue? GetMemberValue(string varName)
+        public override QsValue GetMemberValue(string varName)
         {
-            return null;
+            throw new InvalidOperationException();
         }
 
         public override bool IsType(QsTypeInst typeInst)
@@ -87,12 +87,9 @@ namespace QuickSC
             return null;
         }
 
-        public override QsValue? GetMemberValue(string varName)
+        public override QsValue GetMemberValue(string varName)
         {
-            if (values.TryGetValue(varName, out var value))
-                return value;
-
-            return null;
+            return values[varName];
         }
 
         public override QsValue MakeCopy()

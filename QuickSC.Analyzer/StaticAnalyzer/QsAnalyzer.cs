@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net;
 using System.Text;
 
@@ -15,15 +16,17 @@ namespace QuickSC.StaticAnalyzer
         QsStmtAnalyzer stmtAnalyzer;
         QsCapturer capturer;
         QsTypeValueService typeValueService;
+        QsVarIdFactory varIdFactory;
 
-        public QsAnalyzer(QsCapturer capturer, QsTypeValueService typeValueService)
+        public QsAnalyzer(QsCapturer capturer, QsTypeValueService typeValueService, QsVarIdFactory varIdFactory)
         {
             // 내부 전용 클래스는 new를 써서 직접 만들어도 된다 (DI, 인자로 받을 필요 없이)
 
-            this.expAnalyzer = new QsExpAnalyzer(this, typeValueService);
+            this.expAnalyzer = new QsExpAnalyzer(this, typeValueService, varIdFactory);
             this.stmtAnalyzer = new QsStmtAnalyzer(this, typeValueService);
             this.capturer = new QsCapturer();
             this.typeValueService = typeValueService;
+            this.varIdFactory = varIdFactory;
         }
 
         internal bool AnalyzeExp(QsExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
@@ -43,12 +46,22 @@ namespace QuickSC.StaticAnalyzer
             return false;
         }
 
-        public void AddVarTypeValue(string name, QsTypeValue typeValue, QsAnalyzerContext context)
+        public void AddVariable(string name, QsTypeValue typeValue, QsAnalyzerContext context)
         {
+            // TODO: 정리 필요
+            var varId = varIdFactory.MakeVarId();
+
             if (!context.bGlobalScope)
-                context.CurFunc.AddVarTypeValue(name, typeValue);
+            {
+                var variable = new QsVariable(varId, typeValue, name);
+                context.CurFunc.AddVariable(variable);
+                typeValueService.AddVar(variable, context.TypeValueServiceContext);
+            }
             else
-                typeValueService.AddGlobalVar(name, typeValue, context.TypeValueServiceContext);
+            {
+                var variable = new QsVariable(varId, typeValue, name);
+                typeValueService.AddGlobalVar(variable, context.TypeValueServiceContext);
+            }
         }
         
         internal void AnalyzeVarDecl(QsVarDecl varDecl, QsAnalyzerContext context)
@@ -67,7 +80,7 @@ namespace QuickSC.StaticAnalyzer
                     if (declTypeValue is QsVarTypeValue)
                         context.Errors.Add((elem, $"{elem.VarName}의 타입을 추론할 수 없습니다"));
                     else
-                        AddVarTypeValue(elem.VarName, declTypeValue, context);
+                        AddVariable(elem.VarName, declTypeValue, context);
                 }
                 else
                 {
@@ -88,7 +101,7 @@ namespace QuickSC.StaticAnalyzer
                             context.Errors.Add((elem, $"타입 {initExpTypeValue}의 값은 타입 {varDecl.Type}의 변수 {elem.VarName}에 대입할 수 없습니다."));
                     }
 
-                    AddVarTypeValue(elem.VarName, typeValue, context);
+                    AddVariable(elem.VarName, typeValue, context);
                 }
             }
         }
@@ -123,9 +136,7 @@ namespace QuickSC.StaticAnalyzer
             return typeValueService.GetGlobalVar(name, context.TypeValueServiceContext, out outVar);
         }
 
-        
-
-        public static QsAnalyzerContext? AnalyzeScript(QsScript script, ImmutableArray<IQsMetadata> refMetadatas)
+        public static QsAnalyzerContext? AnalyzeScript(QsScript script, List<(object obj, string msg)> errors, ImmutableArray<IQsMetadata> refMetadatas)
         {
             var typeIdFactory = new QsTypeIdFactory();
             var funcIdFactory = new QsFuncIdFactory();
@@ -135,13 +146,11 @@ namespace QuickSC.StaticAnalyzer
 
             var typeExpEvaluator = new QsTypeExpEvaluator();            
             
-            var typeBuilder = new QsTypeAndFuncBuilder();
+            var typeBuilder = new QsTypeAndFuncBuilder(varIdFactory);
 
             var capturer = new QsCapturer();
-            var typeValueService = new QsTypeValueService(varIdFactory);
-            var analyzer = new QsAnalyzer(capturer, typeValueService);
-
-            var errors = new List<(object obj, string msg)>();
+            var typeValueService = new QsTypeValueService();
+            var analyzer = new QsAnalyzer(capturer, typeValueService, varIdFactory);
             
             // 1. type skeleton 모으기
             var skeletonCollectorContext = new QsTypeSkeletonCollectorContext();
@@ -180,8 +189,7 @@ namespace QuickSC.StaticAnalyzer
             var typesById = builderContext.Types.ToImmutableDictionary(type => type.TypeId);
             var funcsById = builderContext.Funcs.ToImmutableDictionary(func=> func.FuncId);
 
-            // globalVariable이 빠진상태
-            var varsById = builderContext.Vars.ToImmutableDictionary(var => var.VarId);
+            // globalVariable이 빠진상태            
 
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
             var analyzerContext = new QsAnalyzerContext(
@@ -191,7 +199,7 @@ namespace QuickSC.StaticAnalyzer
                     refMetadatas,
                     globalTypes,
                     globalFuncs,
-                    typesById, funcsById, varsById, errors));
+                    typesById, funcsById, builderContext.Vars.ToDictionary(var => var.VarId), errors));
 
             analyzer.AnalyzeScript(script, analyzerContext);
 
