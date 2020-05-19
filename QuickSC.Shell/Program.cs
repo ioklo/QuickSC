@@ -104,10 +104,8 @@ if (x is X.First)
                 }
 
                 var evalStaticContext = new QsEvalStaticContext(
-                    analyzerContext.TypeValuesByTypeExp.ToImmutableDictionary(),
-                    analyzerContext.StoragesByExp.ToImmutableDictionary(),
-                    analyzerContext.CaptureInfosByLocation.ToImmutableDictionary());
-                var evalContext = QsEvalContext.Make(evalStaticContext);
+                    
+                var evalContext = QsEvalContext.Make(analyzerContext);
                 var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);
                 if (!newEvalContext.HasValue)
                 {

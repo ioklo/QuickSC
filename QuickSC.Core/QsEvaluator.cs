@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using QuickSC.Runtime;
+using QuickSC.StaticAnalyzer;
 using QuickSC.Syntax;
 
 namespace QuickSC
@@ -16,11 +17,13 @@ namespace QuickSC
     {
         QsExpEvaluator expEvaluator;
         QsStmtEvaluator stmtEvaluator;
+        IQsRuntimeModule runtimeModule;
 
         public QsEvaluator(IQsCommandProvider commandProvider, IQsRuntimeModule runtimeModule)
         {            
             this.expEvaluator = new QsExpEvaluator(this, runtimeModule);
             this.stmtEvaluator = new QsStmtEvaluator(this, expEvaluator, commandProvider, runtimeModule);
+            this.runtimeModule = runtimeModule;
         }
 
         // virtual이냐 아니냐만 해도 될것 같다
@@ -34,12 +37,38 @@ namespace QuickSC
             throw new NotImplementedException();
         }
 
-        public QsTypeInst GetTypeInst(QsTypeExp typeExp)
+        public QsTypeInst GetTypeInst(QsTypeValue typeValue, QsEvalContext context)
         {
             // context.TypeValuesByTypeExp[typeExp]
+            // return new QsRawTypeInst(testTypeValue);
 
             throw new NotImplementedException();
         }
+
+        public ImmutableDictionary<string, QsValue?> MakeCaptures(QsCaptureInfo captureInfo, QsEvalContext context)
+        {
+            var captures = ImmutableDictionary.CreateBuilder<string, QsValue?>();
+            foreach (var (name, kind) in captureInfo.Captures)
+            {
+                var origValue = context.GetLocalVar(name);
+
+                QsValue value;
+                if (kind == QsCaptureContextCaptureKind.Copy)
+                {
+                    value = origValue!.MakeCopy();
+                }
+                else
+                {
+                    Debug.Assert(kind == QsCaptureContextCaptureKind.Ref);
+                    value = origValue!;
+                }
+
+                captures.Add(name, value);
+            }
+
+            return captures.ToImmutable();
+        }
+
 
         async IAsyncEnumerable<QsValue> EvaluateScriptFuncInstSeqAsync(
             QsScriptFuncInst scriptFuncInst,
@@ -50,10 +79,9 @@ namespace QuickSC
             for (int i = 0; i < args.Length; i++)
                 context.SetLocalVar(scriptFuncInst.Params[i], args[i]);
 
-            await foreach (var _ in EvaluateStmtAsync(scriptFuncInst.Body, context))
+            await foreach (var value in EvaluateStmtAsync(scriptFuncInst.Body, context))
             {
-                if (context.FlowControl is QsYieldEvalFlowControl yieldFlowControl)
-                    yield return yieldFlowControl.Value;
+                yield return value;
             }
         }
 
@@ -70,16 +98,12 @@ namespace QuickSC
                 if (scriptFuncInst.bSeqCall)
                 {
                     // context 복제
-                    QsEvalContext newContext = new QsEvalContext(
-                        context.TypeValuesByExp,
-                        context.TypeValuesByTypeExp,
-                        context.StoragesByExp,
-                        context.CaptureInfosByLocation,
-                        scriptFuncInst.Captures,
-                        QsNoneEvalFlowControl.Instance,
-                        ImmutableArray<Task>.Empty,
-                        thisValue,
-                        false);
+                    QsEvalContext newContext = context.MakeCopy();
+                    newContext.SetLocalVars(scriptFuncInst.Captures);
+                    newContext.SetTasks(ImmutableArray<Task>.Empty);
+                    newContext.FlowControl = QsNoneEvalFlowControl.Instance;
+                    newContext.ThisValue = thisValue;
+                    newContext.bGlobalScope = false;
 
                     var asyncEnum = EvaluateScriptFuncInstSeqAsync(scriptFuncInst, args, newContext);
                     return runtimeModule.MakeAsyncEnumerable(asyncEnum);
@@ -95,7 +119,7 @@ namespace QuickSC
                 for (int i = 0; i < args.Length; i++)
                     context.SetLocalVar(scriptFuncInst.Params[i], args[i]);
 
-                await foreach (var _ in evaluator.EvaluateStmtAsync(scriptFuncInst.Body, context)) { }
+                await foreach (var _ in EvaluateStmtAsync(scriptFuncInst.Body, context)) { }
 
                 context.SetLocalVars(prevLocalVars)
                         .SetTasks(prevTasks);
@@ -123,8 +147,7 @@ namespace QuickSC
         }
 
 
-
-        public IAsyncEnumerable<QsEvalContext?> EvaluateStmtAsync(QsStmt stmt, QsEvalContext context)
+        public IAsyncEnumerable<QsValue> EvaluateStmtAsync(QsStmt stmt, QsEvalContext context)
         {
             return stmtEvaluator.EvaluateStmtAsync(stmt, context);
         }
@@ -135,20 +158,13 @@ namespace QuickSC
             {
                 if (elem is QsStmtScriptElement statementElem)
                 {
-                    await foreach (var result in stmtEvaluator.EvaluateStmtAsync(statementElem.Stmt, context))
+                    await foreach (var value in stmtEvaluator.EvaluateStmtAsync(statementElem.Stmt, context))
                     {
-                        if (!result.HasValue) return null;
-                        context = result.Value;
                     }
                 }
             }
 
             return context;
-        }
-
-        internal QsTypeInst InstantiateType(QsTypeValue testTypeValue, QsEvalContext context)
-        {
-            return new QsRawTypeInst(testTypeValue);
         }
     }
 }

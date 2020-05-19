@@ -179,7 +179,7 @@ namespace QuickSC.StaticAnalyzer
             if (!analyzer.CaptureStmt(taskStmt.Body, ref captureContext))
                 context.Errors.Add((taskStmt, "변수 캡쳐에 실패했습니다"));
 
-            context.CaptureInfosByLocation.Add(QsCaptureInfoLocation.Make(taskStmt), captureContext.NeedCaptures);
+            context.CaptureInfosByLocation.Add(QsCaptureInfoLocation.Make(taskStmt), new QsCaptureInfo( captureContext.NeedCaptures));
 
             var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
             context.bGlobalScope = false;

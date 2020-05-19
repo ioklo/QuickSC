@@ -38,17 +38,17 @@ namespace QuickSC
             switch(storage)
             {
                 case QsLocalStorage localStorage:
-                    return context.GetLocalVar(idExp.Value);
+                    return context.GetLocalVar(idExp.Value)!;
 
                 case QsGlobalStorage globalStorage:
-                    return context.GlobalVars[(globalStorage.Metadata, idExp.Value)];
+                    return context.GlobalVars[(globalStorage.Metadata, idExp.Value)]!;
 
                 case QsStaticStorage staticStorage:
                     throw new NotImplementedException();
                 //    return context.GetStaticValue(staticStorage.TypeValue;
 
                 case QsInstanceStorage instStorage:
-                    return context.ThisValue.GetMemberValue(idExp.Value);
+                    return context.ThisValue!.GetMemberValue(idExp.Value);
 
                 default:
                     throw new InvalidOperationException();
@@ -369,7 +369,7 @@ namespace QuickSC
                 // TODO: 1. thisFunc, (TODO: 현재 class가 없으므로 virtual staticFunc 패스)            
 
                 // 2. globalFunc (localFunc는 없으므로 패스), or 
-                var typeArgs = ImmutableArray.CreateRange(exp.TypeArgs, typeArg => evaluator.GetTypeInst(typeArg));
+                var typeArgs = ImmutableArray.CreateRange(exp.TypeArgs, typeArg => evaluator.GetTypeInst(context.TypeValuesByTypeExp[typeArg], context));
                 funcInst = evaluator.GetFuncInst(funcId, typeArgs, context);
             }
             else
@@ -387,9 +387,7 @@ namespace QuickSC
             }
             var args = argsBuilder.MoveToImmutable();
 
-            // sequence call?
-
-            return await EvaluateFuncInstAsync(context.ThisValue, funcInst, args, context);
+            return await evaluator.EvaluateFuncInstAsync(context.ThisValue, funcInst, args, context);
         }
 
         // 여기서 직접 만들어야 한다
@@ -398,31 +396,13 @@ namespace QuickSC
         {
             // TODO: global변수, static변수는 캡쳐하지 않는다. 오직 local만 캡쳐한다
             var captureInfo = context.CaptureInfosByLocation[QsCaptureInfoLocation.Make(exp)];
-
-            var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
-            foreach (var (name, kind) in captureInfo.Captures)
-            {
-                var origValue = context.GetLocalVar(name);
-
-                QsValue value;
-                if (kind == QsCaptureContextCaptureKind.Copy)
-                {
-                    value = origValue.MakeCopy();
-                }
-                else
-                {
-                    Debug.Assert(kind == QsCaptureContextCaptureKind.Ref);
-                    value = origValue;
-                }
-
-                captures.Add(name, value);
-            }
-
+            var captures = evaluator.MakeCaptures(captureInfo, context);
+            
             return new QsFuncInstValue(new QsScriptFuncInst(
                 false,
                 false, 
                 captureInfo.bCaptureThis ? context.ThisValue : null,
-                captures.ToImmutable(),
+                captures,
                 ImmutableArray.CreateRange(exp.Params, param => param.Name),
                 exp.Body));
         }
@@ -444,8 +424,8 @@ namespace QuickSC
             QsFuncInst funcInst;
             if (context.FuncIdsByMemberCallExp.TryGetValue(exp, out var funcId))
             {
-                var typeArgs = ImmutableArray.CreateRange(exp.MemberTypeArgs, typeArg => evaluator.GetTypeInst(typeArg));
-                funcInst = evaluator.GetFuncInst(thisValue, funcId, typeArgs);
+                var typeArgs = ImmutableArray.CreateRange(exp.MemberTypeArgs, typeArg => evaluator.GetTypeInst(context.TypeValuesByTypeExp[typeArg], context));
+                funcInst = evaluator.GetFuncInst(thisValue, funcId, typeArgs, context);
             }
             // 2. a.b(2, 3, 4)가 (a.b) (2, 3, 4)인 경우 (2, 3, 4)
             else
@@ -453,7 +433,7 @@ namespace QuickSC
                 funcInst = ((QsFuncInstValue)thisValue).FuncInst;
             }
 
-            return await EvaluateFuncInstAsync(thisValue, funcInst, args, context);
+            return await evaluator.EvaluateFuncInstAsync(thisValue, funcInst, args, context);
 
             
             //var callable = thisValue.GetMemberFuncs(new QsMemberFuncId(exp.MemberFuncName));

@@ -69,7 +69,7 @@ namespace QuickSC.StaticAnalyzer
         // CurFunc와 bGlobalScope를 나누는 이유는, globalScope에서 BlockStmt 안으로 들어가면 global이 아니기 때문이다
         public bool bGlobalScope { get; set; }
 
-        public Dictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>> CaptureInfosByLocation { get; }
+        public Dictionary<QsCaptureInfoLocation, QsCaptureInfo> CaptureInfosByLocation { get; }
 
         public QsAnalyzerContext(        
             Dictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
@@ -86,7 +86,7 @@ namespace QuickSC.StaticAnalyzer
 
             CurFunc = new QsAnalyzerFuncContext(null, false);
             bGlobalScope = true;
-            CaptureInfosByLocation = new Dictionary<QsCaptureInfoLocation, ImmutableDictionary<string, QsCaptureContextCaptureKind>>();
+            CaptureInfosByLocation = new Dictionary<QsCaptureInfoLocation, QsCaptureInfo>();
         }        
 
         // 1. exp가 무슨 타입을 가지는지

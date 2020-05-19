@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static QuickSC.QsEvaluator;
 
@@ -38,187 +39,106 @@ namespace QuickSC
             }
         }
 
-        internal async ValueTask<QsEvalContext?> EvaluateVarDeclStmtAsync(QsVarDeclStmt stmt, QsEvalContext context)
+        internal ValueTask EvaluateVarDeclStmtAsync(QsVarDeclStmt stmt, QsEvalContext context)
         {
-            return await EvaluateVarDeclAsync(stmt.VarDecl, context);
+            return EvaluateVarDeclAsync(stmt.VarDecl, context);
         }
 
-        internal async ValueTask<QsEvalContext?> EvaluateVarDeclAsync(QsVarDecl varDecl, QsEvalContext context)
+        internal async ValueTask EvaluateVarDeclAsync(QsVarDecl varDecl, QsEvalContext context)
         {
             foreach (var elem in varDecl.Elements)
             {
-                QsValue value;
-                if (elem.InitExp != null)
-                {
-                    var expResult = await expEvaluator.EvaluateExpAsync(elem.InitExp, context);
-                    if (!expResult.HasValue)
-                        return null;
+                QsValue? value = null;
 
-                    value = expResult.Value;
-                    context = expResult.Context;
-                }
-                else
-                {
-                    value = QsNullValue.Instance;
-                }
+                if (elem.InitExp != null)
+                    value = await expEvaluator.EvaluateExpAsync(elem.InitExp, context);
 
                 if (context.bGlobalScope)
-                    context = context.SetGlobalValue(elem.VarName, value);
+                    context.GlobalVars.Add((null, elem.VarName), value);
                 else
-                    context = context.SetLocalVar(elem.VarName, value);
+                    context.SetLocalVar(elem.VarName, value);
             }
-
-            return context;
         }
 
-        internal async IAsyncEnumerable<QsEvalContext?> EvaluateIfStmtAsync(QsIfStmt stmt, QsEvalContext context)
+        internal async IAsyncEnumerable<QsValue> EvaluateIfStmtAsync(QsIfStmt stmt, QsEvalContext context)
         {
             var bPrevGlobalScope = context.bGlobalScope;
-            context = context.SetGlobalScope(false);
+            context.bGlobalScope = false;
 
-            if (!Eval(await expEvaluator.EvaluateExpAsync(stmt.Cond, context), ref context, out var condValue))
-            { 
-                yield return null; yield break; 
-            }
+            var condValue = await expEvaluator.EvaluateExpAsync(stmt.Cond, context);            
 
             bool bTestPassed;
             if (stmt.TestType == null)
             {
-                var condBoolValue = condValue! as QsValue<bool>;
-                if (condBoolValue == null) { yield return null; yield break; }
-
-                bTestPassed = condBoolValue.Value;
+                bTestPassed = runtimeModule.GetBool(condValue);
             }
             else
             {
                 // 타입체커가 미리 계산해 놓은 TypeValue를 가져온다
                 var testTypeValue = context.TypeValuesByTypeExp[stmt.TestType];
-                if (testTypeValue == null) { yield return null; yield break; }
+                var testTypeInst = evaluator.GetTypeInst(testTypeValue, context);
 
-                var testTypeInst = evaluator.InstantiateType(testTypeValue, context);
-
-                bTestPassed = condValue!.IsType(testTypeInst); // typeValue.GetTypeId는 Type의 TypeId일것이다
+                bTestPassed = condValue.IsType(testTypeInst); // typeValue.GetTypeId는 Type의 TypeId일것이다
             }
 
             if (bTestPassed)
             {
-                await foreach (var result in EvaluateStmtAsync(stmt.Body, context))
-                {
-                    if (!result.HasValue)
-                    {
-                        yield return null;
-                        yield break;
-                    }
-
-                    context = result.Value;
-                    if (context.FlowControl is QsYieldEvalFlowControl)
-                    {
-                        yield return context;
-                        context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
-                    }
-                }
+                await foreach (var value in EvaluateStmtAsync(stmt.Body, context))
+                    yield return value;
             }
             else
             {
                 if (stmt.ElseBody != null)
-                {
-                    await foreach (var result in EvaluateStmtAsync(stmt.ElseBody, context))
-                    {
-                        if (!result.HasValue)
-                        {
-                            yield return null;
-                            yield break;
-                        }
-
-                        context = result.Value;
-                        if (context.FlowControl is QsYieldEvalFlowControl)
-                        {
-                            yield return context;
-                            context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
-                        }
-                    }
-                }
+                    await foreach (var value in EvaluateStmtAsync(stmt.ElseBody, context))
+                        yield return value;
             }
-            
-            yield return context.SetGlobalScope(bPrevGlobalScope);
+
+            context.bGlobalScope = bPrevGlobalScope;
         }
 
-        internal async IAsyncEnumerable<QsEvalContext?> EvaluateForStmtAsync(QsForStmt forStmt, QsEvalContext context)
+        internal async IAsyncEnumerable<QsValue> EvaluateForStmtAsync(QsForStmt forStmt, QsEvalContext context)
         {
             var (prevVars, bPrevGlobalScope) = (context.LocalVars, context.bGlobalScope);
-            context = context.SetGlobalScope(false);
+            context.bGlobalScope = false;
 
-            switch (forStmt.Initializer)
+            if (forStmt.Initializer != null)
             {
-                case QsExpForStmtInitializer expInitializer:
-                    {
-                        var valueResult = await expEvaluator.EvaluateExpAsync(expInitializer.Exp, context);
-                        if (!valueResult.HasValue) { yield return null; yield break; }
-                        context = valueResult.Context;
+                switch (forStmt.Initializer)
+                {
+                    case QsExpForStmtInitializer expInitializer:
+                        await expEvaluator.EvaluateExpAsync(expInitializer.Exp, context);
                         break;
-                    }
-                case QsVarDeclForStmtInitializer varDeclInitializer:
-                    {
-                        var evalResult = await EvaluateVarDeclAsync(varDeclInitializer.VarDecl, context);
-                        if (!evalResult.HasValue) { yield return null; yield break; }
-                        context = evalResult.Value;
+
+                    case QsVarDeclForStmtInitializer varDeclInitializer:
+                        await EvaluateVarDeclAsync(varDeclInitializer.VarDecl, context);
                         break;
-                    }
 
-                case null:
-                    break;
-
-                default:
-                    throw new NotImplementedException();
+                    default:
+                        throw new NotImplementedException();
+                }
             }
 
             while (true)
             {
                 if (forStmt.CondExp != null)
                 {
-                    var condExpResult = await expEvaluator.EvaluateExpAsync(forStmt.CondExp, context);
-                    if (!condExpResult.HasValue)
-                    {
-                        yield return null;
-                        yield break;
-                    }
+                    var condValue = await expEvaluator.EvaluateExpAsync(forStmt.CondExp, context);                    
 
-                    var condExpBoolValue = condExpResult.Value as QsValue<bool>;
-                    if (condExpBoolValue == null)
-                    {
-                        yield return null;
-                        yield break;
-                    }
-
-                    context = condExpResult.Context;
-                    if (!condExpBoolValue.Value)
+                    if (!runtimeModule.GetBool(condValue)) 
                         break;
                 }
 
-                await foreach (var result in EvaluateStmtAsync(forStmt.Body, context))
-                {
-                    if (!result.HasValue)
-                    {
-                        yield return null;
-                        yield break;
-                    }
-
-                    context = result.Value;
-                    if (context.FlowControl is QsYieldEvalFlowControl)
-                    {
-                        yield return context;
-                        context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
-                    }
-                }
+                await foreach (var value in EvaluateStmtAsync(forStmt.Body, context))
+                    yield return value;
 
                 if (context.FlowControl == QsBreakEvalFlowControl.Instance)
                 {
-                    context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                    context.FlowControl = QsNoneEvalFlowControl.Instance;
                     break;
                 }
                 else if (context.FlowControl == QsContinueEvalFlowControl.Instance)
                 {
-                    context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                    context.FlowControl = QsNoneEvalFlowControl.Instance;
                 }
                 else if (context.FlowControl is QsReturnEvalFlowControl)
                 {
@@ -230,224 +150,132 @@ namespace QuickSC
                 }
 
                 if (forStmt.ContinueExp != null)
-                {
-                    var contExpResult = await expEvaluator.EvaluateExpAsync(forStmt.ContinueExp, context);
-                    if (!contExpResult.HasValue)
-                    {
-                        yield return null;
-                        yield break;
-                    }
-
-                    context = contExpResult.Context;
-                }
+                    await expEvaluator.EvaluateExpAsync(forStmt.ContinueExp, context);
             }
 
-            yield return context.SetLocalVars(prevVars).SetGlobalScope(bPrevGlobalScope);
+            context.SetLocalVars(prevVars);
+            context.bGlobalScope = bPrevGlobalScope;
         }
 
-        internal QsEvalContext? EvaluateContinueStmt(QsContinueStmt continueStmt, QsEvalContext context)
+        internal void EvaluateContinueStmt(QsContinueStmt continueStmt, QsEvalContext context)
         {
-            return context.SetFlowControl(QsContinueEvalFlowControl.Instance);
+            context.FlowControl = QsContinueEvalFlowControl.Instance;
         }
 
-        internal QsEvalContext? EvaluateBreakStmt(QsBreakStmt breakStmt, QsEvalContext context)
+        internal void EvaluateBreakStmt(QsBreakStmt breakStmt, QsEvalContext context)
         {
-            return context.SetFlowControl(QsBreakEvalFlowControl.Instance);
+            context.FlowControl = QsBreakEvalFlowControl.Instance;
         }
 
-        internal async ValueTask<QsEvalContext?> EvaluateReturnStmtAsync(QsReturnStmt returnStmt, QsEvalContext context)
+        internal async ValueTask EvaluateReturnStmtAsync(QsReturnStmt returnStmt, QsEvalContext context)
         {
             QsValue returnValue;
+
             if (returnStmt.Value != null)
-            {
-                var returnValueResult = await expEvaluator.EvaluateExpAsync(returnStmt.Value, context);
-                if (!returnValueResult.HasValue)
-                    return null;
-
-                returnValue = returnValueResult.Value;
-            }
+                returnValue = await expEvaluator.EvaluateExpAsync(returnStmt.Value, context);
             else
-            {
-                returnValue = QsNullValue.Instance;
-            }
+                returnValue = QsVoidValue.Instance;
 
-            return context.SetFlowControl(new QsReturnEvalFlowControl(returnValue));
+            context.FlowControl = new QsReturnEvalFlowControl(returnValue);
         }
 
-        internal async IAsyncEnumerable<QsEvalContext?> EvaluateBlockStmtAsync(QsBlockStmt blockStmt, QsEvalContext context)
+        internal async IAsyncEnumerable<QsValue> EvaluateBlockStmtAsync(QsBlockStmt blockStmt, QsEvalContext context)
         {
             var (prevVars, bPrevGlobalScope) = (context.LocalVars, context.bGlobalScope);
-            context = context.SetGlobalScope(false);
+            context.bGlobalScope = false;
 
             foreach (var stmt in blockStmt.Stmts)
             {
-                await foreach (var result in EvaluateStmtAsync(stmt, context))
+                await foreach (var value in EvaluateStmtAsync(stmt, context))
                 {
-                    if (!result.HasValue)
-                    {
-                        yield return null;
-                        yield break;
-                    }
+                    yield return value;
 
-                    context = result.Value;
-                    if (context.FlowControl is QsYieldEvalFlowControl)
-                    {
-                        yield return context;
-                        context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
-                    }
-                    else if (context.FlowControl != QsNoneEvalFlowControl.Instance)
-                    {
-                        yield return context.SetLocalVars(prevVars);
-                        yield break;
-                    }
+                    // 확실하지 않아서 걸어둔다
+                    Debug.Assert(context.FlowControl == QsNoneEvalFlowControl.Instance);
                 }
+
+                if (context.FlowControl != QsNoneEvalFlowControl.Instance)
+                    break;
             }
 
-            yield return context.SetLocalVars(prevVars).SetGlobalScope(bPrevGlobalScope);
+            context.SetLocalVars(prevVars);
+            context.bGlobalScope = bPrevGlobalScope;
         }
 
-        internal async ValueTask<QsEvalContext?> EvaluateExpStmtAsync(QsExpStmt expStmt, QsEvalContext context)
+        internal async ValueTask EvaluateExpStmtAsync(QsExpStmt expStmt, QsEvalContext context)
         {
-            var expResult = await expEvaluator.EvaluateExpAsync(expStmt.Exp, context);
-            if (!expResult.HasValue) return null;
-
-            return expResult.Context;
+            await expEvaluator.EvaluateExpAsync(expStmt.Exp, context);
         }
 
-        internal QsEvalContext? EvaluateTaskStmt(QsTaskStmt taskStmt, QsEvalContext context)
+        internal void EvaluateTaskStmt(QsTaskStmt taskStmt, QsEvalContext context)
         {
-            var captureInfo = context.StaticContext.CaptureInfosByLocation[QsCaptureInfoLocation.Make(taskStmt)];
+            var captureInfo = context.CaptureInfosByLocation[QsCaptureInfoLocation.Make(taskStmt)];
+            var captures = evaluator.MakeCaptures(captureInfo, context);
 
-            var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
-            foreach (var (name, kind) in captureInfo)
-            {
-                var origValue = context.GetLocalVar(name);
-
-                if (origValue == null)
-                    origValue = context.GetGlobalValue(name);
-
-                if (origValue == null) return null;
-
-                QsValue value;
-                if (kind == QsCaptureContextCaptureKind.Copy)
-                {
-                    value = origValue.MakeCopy();
-                }
-                else
-                {
-                    Debug.Assert(kind == QsCaptureContextCaptureKind.Ref);
-                    value = origValue;
-                }
-
-                captures.Add(name, value);
-            }
-
-            var newContext = QsEvalContext.Make(context.StaticContext);
-            newContext = newContext.SetLocalVars(captures.ToImmutable()).SetGlobalScope(false);
+            var newContext = context.MakeCopy();
+            newContext.SetLocalVars(captures);
+            newContext.bGlobalScope = false;
 
             var task = Task.Run(async () =>
             {
                 await foreach (var result in EvaluateStmtAsync(taskStmt.Body, context))
                 {
-                    if (!result.HasValue) return;
-                    context = result.Value;
                 }
             });
 
-            return context.AddTask(task);
+            context.AddTask(task);
         }
-
-        async IAsyncEnumerable<QsEvalContext?> EvaluateAwaitStmtAsync(QsAwaitStmt stmt, QsEvalContext context)
+        
+        async IAsyncEnumerable<QsValue> EvaluateAwaitStmtAsync(QsAwaitStmt stmt, QsEvalContext context)
         {
             var (prevTasks, prevVars, bPrevGlobalScope) = (context.Tasks, context.LocalVars, context.bGlobalScope);
-            context = context.SetTasks(ImmutableArray<Task>.Empty).SetGlobalScope(false);
+            context.SetTasks(ImmutableArray<Task>.Empty);
+            context.bGlobalScope = false;
 
-            await foreach (var result in EvaluateStmtAsync(stmt.Body, context))
-            {
-                if (!result.HasValue)
-                {
-                    yield return null;
-                    yield break;
-                }
-
-                context = result.Value;
-                if (context.FlowControl is QsYieldEvalFlowControl)
-                {
-                    yield return context;
-                    context = context.SetFlowControl(QsNoneEvalFlowControl.Instance);
-                }
-            }
+            await foreach (var value in EvaluateStmtAsync(stmt.Body, context))
+                yield return value;
 
             await Task.WhenAll(context.Tasks.ToArray());
 
-            yield return context.SetTasks(prevTasks).SetLocalVars(prevVars).SetGlobalScope(bPrevGlobalScope);
+            context.SetTasks(prevTasks)
+                .SetLocalVars(prevVars);
+
+            context.bGlobalScope = bPrevGlobalScope;
         }
 
-        internal QsEvalContext? EvaluateAsyncStmt(QsAsyncStmt asyncStmt, QsEvalContext context)
+        internal void EvaluateAsyncStmt(QsAsyncStmt asyncStmt, QsEvalContext context)
         {
-            var captureInfo = context.StaticContext.CaptureInfosByLocation[QsCaptureInfoLocation.Make(asyncStmt)];
+            var captureInfo = context.CaptureInfosByLocation[QsCaptureInfoLocation.Make(asyncStmt)];
+            var captures = evaluator.MakeCaptures(captureInfo, context);
 
-            var captures = ImmutableDictionary.CreateBuilder<string, QsValue>();
-            foreach (var (name, kind) in captureInfo)
-            {
-                var origValue = context.GetLocalVar(name);
-
-                if (origValue == null)
-                    origValue = context.GetGlobalValue(name);
-
-                if (origValue == null)
-                    return null;
-
-                QsValue value;
-                if (kind == QsCaptureContextCaptureKind.Copy)
-                {
-                    value = origValue.MakeCopy();
-                }
-                else
-                {
-                    Debug.Assert(kind == QsCaptureContextCaptureKind.Ref);
-                    value = origValue;
-                }
-
-                captures.Add(name, value);
-            }
-
-            var newContext = QsEvalContext.Make(context.StaticContext);
-            newContext = newContext.SetLocalVars(captures.ToImmutable()).SetGlobalScope(false);
+            var newContext = context.MakeCopy();
+            newContext.SetLocalVars(captures);
+            newContext.bGlobalScope = false;
 
             Func<Task> asyncFunc = async () =>
             {
                 await foreach (var result in EvaluateStmtAsync(asyncStmt.Body, newContext))
                 {
-                    if (!result.HasValue) return;
-                    context = result.Value;
                 }
             };
 
             var task = asyncFunc();
-            return context.AddTask(task);
+            context.AddTask(task);
         }
 
-        internal async IAsyncEnumerable<QsEvalContext?> EvaluateForeachStmtAsync(QsForeachStmt foreachStmt, QsEvalContext context)
+        internal async IAsyncEnumerable<QsValue> EvaluateForeachStmtAsync(QsForeachStmt foreachStmt, QsEvalContext context)
         {
             var (prevVars, bPrevGlobalScope) = (context.LocalVars, context.bGlobalScope);
             context.bGlobalScope = false;
 
-            var info = context.ForEachInfosByForEachStmt[foreachStmt];
+            var info = context.ForeachInfosByForEachStmt[foreachStmt];
 
             var objValue = await expEvaluator.EvaluateExpAsync(foreachStmt.Obj, context);
-
-            var getEnumeratorInst = evaluator.GetFuncInst(objValue, info.getEnumeratorId, ImmutableArray<QsTypeInst>.Empty, context);
-            //var callable = objValue.GetMemberFuncs(new QsMemberFuncId("GetEnumerator"));
-            //if (callable == null) { yield return null; yield break; }
+            var getEnumeratorInst = evaluator.GetFuncInst(objValue, info.GetEnumeratorId, ImmutableArray<QsTypeInst>.Empty, context);
 
             var enumerator = await evaluator.EvaluateFuncInstAsync(objValue, getEnumeratorInst, ImmutableArray<QsValue>.Empty, context);
-
-            var moveNextInst = evaluator.GetFuncInst(enumerator, info.moveNextId, ImmutableArray<QsTypeInst>.Empty, context);
-            // enumeratorValue.GetMemberFuncs(new QsMemberFuncId("MoveNext"));
-
-            var getCurrentInst = evaluator.GetFuncInst(enumerator, info.getCurrentId, ImmutableArray<QsTypeInst>.Empty, context);
-            // enumeratorValue.GetMemberFuncs(new QsMemberFuncId("GetCurrent"));
+            var moveNextInst = evaluator.GetFuncInst(enumerator, info.MoveNextId, ImmutableArray<QsTypeInst>.Empty, context);
+            var getCurrentInst = evaluator.GetFuncInst(enumerator, info.GetCurrentId, ImmutableArray<QsTypeInst>.Empty, context);
 
             while (true)
             {
@@ -467,12 +295,12 @@ namespace QuickSC
 
                 if (context.FlowControl == QsBreakEvalFlowControl.Instance)
                 {
-                    context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                    context.FlowControl = QsNoneEvalFlowControl.Instance;
                     break;
                 }
                 else if (context.FlowControl == QsContinueEvalFlowControl.Instance)
                 {
-                    context.SetFlowControl(QsNoneEvalFlowControl.Instance);
+                    context.FlowControl = QsNoneEvalFlowControl.Instance;
                 }
                 else if (context.FlowControl is QsReturnEvalFlowControl)
                 {
@@ -483,57 +311,51 @@ namespace QuickSC
                     Debug.Assert(context.FlowControl == QsNoneEvalFlowControl.Instance);
                 }
             }
-            
-            yield return context.SetLocalVars(prevVars).SetGlobalScope(bPrevGlobalScope);
+
+            context.SetLocalVars(prevVars);
+            context.bGlobalScope = bPrevGlobalScope;
         }
 
-        async IAsyncEnumerable<QsEvalContext?> EvaluateYieldStmtAsync(QsYieldStmt yieldStmt, QsEvalContext context)
+        async IAsyncEnumerable<QsValue> EvaluateYieldStmtAsync(QsYieldStmt yieldStmt, QsEvalContext context)
         {
-            QsValue yieldValue;
-
-            var yieldValueResult = await expEvaluator.EvaluateExpAsync(yieldStmt.Value, context);
-            if (!yieldValueResult.HasValue) { yield return null; yield break; }
-
-            yieldValue = yieldValueResult.Value;
-
-            yield return context.SetFlowControl(new QsYieldEvalFlowControl(yieldValue));
+            yield return await expEvaluator.EvaluateExpAsync(yieldStmt.Value, context);
         }
         
         internal async IAsyncEnumerable<QsValue> EvaluateStmtAsync(QsStmt stmt, QsEvalContext context)
         {
             switch (stmt)
             {
-                case QsCommandStmt cmdStmt: yield return await EvaluateCommandStmtAsync(cmdStmt, context); break;
-                case QsVarDeclStmt varDeclStmt: yield return await EvaluateVarDeclStmtAsync(varDeclStmt, context); break;
+                case QsCommandStmt cmdStmt: await EvaluateCommandStmtAsync(cmdStmt, context); break;
+                case QsVarDeclStmt varDeclStmt: await EvaluateVarDeclStmtAsync(varDeclStmt, context); break;
                 case QsIfStmt ifStmt:
-                    await foreach (var result in EvaluateIfStmtAsync(ifStmt, context))
-                        yield return result;
+                    await foreach (var value in EvaluateIfStmtAsync(ifStmt, context))
+                        yield return value;
                     break;
 
                 case QsForStmt forStmt:
-                    await foreach (var result in EvaluateForStmtAsync(forStmt, context))
-                        yield return result;
+                    await foreach (var value in EvaluateForStmtAsync(forStmt, context))
+                        yield return value;
                     break;
 
-                case QsContinueStmt continueStmt: yield return EvaluateContinueStmt(continueStmt, context); break;
-                case QsBreakStmt breakStmt: yield return EvaluateBreakStmt(breakStmt, context); break;
-                case QsReturnStmt returnStmt: yield return await EvaluateReturnStmtAsync(returnStmt, context); break;
+                case QsContinueStmt continueStmt: EvaluateContinueStmt(continueStmt, context); break;
+                case QsBreakStmt breakStmt: EvaluateBreakStmt(breakStmt, context); break;
+                case QsReturnStmt returnStmt: await EvaluateReturnStmtAsync(returnStmt, context); break;
                 case QsBlockStmt blockStmt:
                     await foreach (var result in EvaluateBlockStmtAsync(blockStmt, context))
                         yield return result;
                     break;
 
-                case QsExpStmt expStmt: yield return await EvaluateExpStmtAsync(expStmt, context); break;
-                case QsTaskStmt taskStmt: yield return EvaluateTaskStmt(taskStmt, context); break;
+                case QsExpStmt expStmt: await EvaluateExpStmtAsync(expStmt, context); break;
+                case QsTaskStmt taskStmt: EvaluateTaskStmt(taskStmt, context); break;
                 case QsAwaitStmt awaitStmt:
-                    await foreach (var result in EvaluateAwaitStmtAsync(awaitStmt, context))
-                        yield return result;
+                    await foreach (var value in EvaluateAwaitStmtAsync(awaitStmt, context))
+                        yield return value;
                     break;
 
-                case QsAsyncStmt asyncStmt: yield return EvaluateAsyncStmt(asyncStmt, context); break;
+                case QsAsyncStmt asyncStmt: EvaluateAsyncStmt(asyncStmt, context); break;
                 case QsForeachStmt foreachStmt:
-                    await foreach (var result in EvaluateForeachStmtAsync(foreachStmt, context))
-                        yield return result;
+                    await foreach (var value in EvaluateForeachStmtAsync(foreachStmt, context))
+                        yield return value;
                     break;
 
                 case QsYieldStmt yieldStmt:
