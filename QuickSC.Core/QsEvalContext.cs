@@ -15,8 +15,7 @@ namespace QuickSC
         public ImmutableDictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)> StoragesByExp { get; }
         // public ImmutableDictionary<QsMemberExp, QsStaticStorage> StaticStoragesByMemberExp { get; } // (Namespace.C).x // staticStorage
         public ImmutableDictionary<QsCaptureInfoLocation, QsCaptureInfo> CaptureInfosByLocation { get; }
-        public ImmutableDictionary<QsCallExp, QsFuncId> FuncIdsByCallExp { get; }
-        public ImmutableDictionary<QsMemberCallExp, QsFuncId> FuncIdsByMemberCallExp { get; }
+        public ImmutableDictionary<QsExp, QsFuncValue> FuncValuesByExp { get; }
         public ImmutableDictionary<QsForeachStmt, QsForeachInfo> ForeachInfosByForEachStmt { get; internal set; }
 
         // 모든 모듈의 전역 변수

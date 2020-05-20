@@ -20,7 +20,7 @@ namespace QuickSC
 
         // TODO: 셋은 같은 이름공간을 공유한다. 서로 이름이 같은 것이 나오면 안된다 (체크하자)
         public abstract bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsTypeId? outTypeId);
-        public abstract bool GetMemberFuncId(QsMemberFuncId memberFuncId, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFuncId FuncId)? outValue);
+        public abstract bool GetMemberFuncId(QsFuncName memberFuncId, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFuncId FuncId)? outValue);
         public abstract bool GetMemberVarId(string varName, [NotNullWhen(returnValue: true)] out (bool bStatic, QsVarId VarId)? outValue);
     }
 
@@ -33,7 +33,7 @@ namespace QuickSC
         ImmutableDictionary<string, QsFuncId> staticMemberFuncIds;
         ImmutableDictionary<string, QsVarId> staticMemberVarIds;
 
-        ImmutableDictionary<QsMemberFuncId, QsFuncId> memberFuncIds;
+        ImmutableDictionary<QsFuncName, QsFuncId> memberFuncIds;
         ImmutableDictionary<string, QsVarId> memberVarIds;        
 
         // 거의 모든 TypeValue에서 thisTypeValue를 쓰기 때문에 lazy하게 선언해야 한다
@@ -44,7 +44,7 @@ namespace QuickSC
             ImmutableDictionary<string, QsTypeId> memberTypes,
             ImmutableDictionary<string, QsFuncId> staticMemberFuncIds,
             ImmutableDictionary<string, QsVarId> staticMemberVarIds,
-            ImmutableDictionary<QsMemberFuncId, QsFuncId> memberFuncs,
+            ImmutableDictionary<QsFuncName, QsFuncId> memberFuncs,
             ImmutableDictionary<string, QsVarId> memberVarIds)
             : base(typeId)
         {
@@ -88,7 +88,7 @@ namespace QuickSC
             }
         }
 
-        public override bool GetMemberFuncId(QsMemberFuncId memberFuncId, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFuncId FuncId)? outValue)
+        public override bool GetMemberFuncId(QsFuncName memberFuncId, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFuncId FuncId)? outValue)
         {   
             // TODO: 같은 이름 체크?
             if (memberFuncIds.TryGetValue(memberFuncId, out var funcId))

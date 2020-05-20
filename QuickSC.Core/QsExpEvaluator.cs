@@ -364,13 +364,12 @@ namespace QuickSC
         {
             QsFuncInst funcInst;
 
-            if (context.FuncIdsByCallExp.TryGetValue(exp, out var funcId))
+            if (context.FuncValuesByExp.TryGetValue(exp, out var funcValue))
             {
                 // TODO: 1. thisFunc, (TODO: 현재 class가 없으므로 virtual staticFunc 패스)            
 
                 // 2. globalFunc (localFunc는 없으므로 패스), or 
-                var typeArgs = ImmutableArray.CreateRange(exp.TypeArgs, typeArg => evaluator.GetTypeInst(context.TypeValuesByTypeExp[typeArg], context));
-                funcInst = evaluator.GetFuncInst(funcId, typeArgs, context);
+                funcInst = evaluator.GetFuncInst(funcValue, context);
             }
             else
             {
@@ -422,10 +421,9 @@ namespace QuickSC
 
             // 1. a.b(2, 3, 4)가 A.b(this a, 2, 3, 4); 인 경우            
             QsFuncInst funcInst;
-            if (context.FuncIdsByMemberCallExp.TryGetValue(exp, out var funcId))
+            if (context.FuncValuesByExp.TryGetValue(exp, out var funcValue))
             {
-                var typeArgs = ImmutableArray.CreateRange(exp.MemberTypeArgs, typeArg => evaluator.GetTypeInst(context.TypeValuesByTypeExp[typeArg], context));
-                funcInst = evaluator.GetFuncInst(thisValue, funcId, typeArgs, context);
+                funcInst = evaluator.GetFuncInst(thisValue, funcValue, context);
             }
             // 2. a.b(2, 3, 4)가 (a.b) (2, 3, 4)인 경우 (2, 3, 4)
             else

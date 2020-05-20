@@ -46,7 +46,7 @@ namespace QuickSC.StaticAnalyzer
         public Dictionary<string, QsTypeId> MemberTypeIds { get; }
         public Dictionary<string, QsFuncId> StaticMemberFuncIds { get; }
         public Dictionary<string, QsVarId> StaticMemberVarIds { get; }
-        public Dictionary<QsMemberFuncId, QsFuncId> MemberFuncIds { get; }
+        public Dictionary<QsFuncName, QsFuncId> MemberFuncIds { get; }
         public Dictionary<string, QsVarId> MemberVarIds { get; }
 
         public QsTypeBuilder(QsTypeValue thisTypeValue)
@@ -56,7 +56,7 @@ namespace QuickSC.StaticAnalyzer
             MemberTypeIds = new Dictionary<string, QsTypeId>();
             StaticMemberFuncIds = new Dictionary<string, QsFuncId>();
             StaticMemberVarIds = new Dictionary<string, QsVarId>();
-            MemberFuncIds = new Dictionary<QsMemberFuncId, QsFuncId>();
+            MemberFuncIds = new Dictionary<QsFuncName, QsFuncId>();
             MemberVarIds = new Dictionary<string, QsVarId>();
         }
     }
@@ -84,7 +84,7 @@ namespace QuickSC.StaticAnalyzer
                 ImmutableDictionary<string, QsTypeId>.Empty,
                 ImmutableDictionary<string, QsFuncId>.Empty,
                 ImmutableDictionary<string, QsVarId>.Empty,
-                ImmutableDictionary<QsMemberFuncId, QsFuncId>.Empty,
+                ImmutableDictionary<QsFuncName, QsFuncId>.Empty,
                 ImmutableDictionary<string, QsVarId>.Empty);
 
             context.TypeBuilder.MemberTypeIds.Add(elem.Name, elemType.TypeId);

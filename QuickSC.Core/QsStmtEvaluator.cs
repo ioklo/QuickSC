@@ -271,11 +271,11 @@ namespace QuickSC
             var info = context.ForeachInfosByForEachStmt[foreachStmt];
 
             var objValue = await expEvaluator.EvaluateExpAsync(foreachStmt.Obj, context);
-            var getEnumeratorInst = evaluator.GetFuncInst(objValue, info.GetEnumeratorId, ImmutableArray<QsTypeInst>.Empty, context);
+            var getEnumeratorInst = evaluator.GetFuncInst(objValue, info.GetEnumeratorValue, ImmutableArray<QsTypeInst>.Empty, context);
 
             var enumerator = await evaluator.EvaluateFuncInstAsync(objValue, getEnumeratorInst, ImmutableArray<QsValue>.Empty, context);
-            var moveNextInst = evaluator.GetFuncInst(enumerator, info.MoveNextId, ImmutableArray<QsTypeInst>.Empty, context);
-            var getCurrentInst = evaluator.GetFuncInst(enumerator, info.GetCurrentId, ImmutableArray<QsTypeInst>.Empty, context);
+            var moveNextInst = evaluator.GetFuncInst(enumerator, info.MoveNextValue, ImmutableArray<QsTypeInst>.Empty, context);
+            var getCurrentInst = evaluator.GetFuncInst(enumerator, info.GetCurrentValue, ImmutableArray<QsTypeInst>.Empty, context);
 
             while (true)
             {

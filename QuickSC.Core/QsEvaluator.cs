@@ -25,14 +25,26 @@ namespace QuickSC
             this.stmtEvaluator = new QsStmtEvaluator(this, expEvaluator, commandProvider, runtimeModule);
             this.runtimeModule = runtimeModule;
         }
-
-        // virtual이냐 아니냐만 해도 될것 같다
-        public QsFuncInst GetFuncInst(QsFuncId funcId, ImmutableArray<QsTypeInst> typeArgs, QsEvalContext context)
+        
+        public QsFuncInst GetFuncInst(QsFuncValue funcValue, QsEvalContext context)
         {
+            // 1. context에 캐시되어있는지 본다
+            // if (context.FuncInstsById.TryGetValue((funcId, typeArgs), out var cachedFuncInst))
+            //     return cachedFuncInst;
+            if (funcValue.FuncId.Metadata != null)
+            {
+                return ((IQsModule)funcValue.FuncId.Metadata).GetFuncInst(funcValue);
+            }
+            else
+            {
+                // 1. Script의 T 치환, or typeenv를 그냥 박기
+                return ;
+            }
+
             throw new NotImplementedException();
         }
-
-        public QsFuncInst GetFuncInst(QsValue thisValue, QsFuncId funcId, ImmutableArray<QsTypeInst> typeArgs, QsEvalContext context)
+        
+        public QsFuncInst GetFuncInst(QsValue thisValue, QsFuncValue funcValue, QsEvalContext context)
         {
             throw new NotImplementedException();
         }

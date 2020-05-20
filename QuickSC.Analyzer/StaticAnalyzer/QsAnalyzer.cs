@@ -111,7 +111,7 @@ namespace QuickSC.StaticAnalyzer
             stmtAnalyzer.AnalyzeStmt(stmt, context);
         }
 
-        public bool GetMemberFuncTypeValue(bool bStaticOnly, QsTypeValue typeValue, QsMemberFuncId memberFuncId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsFuncTypeValue? funcTypeValue)
+        public bool GetMemberFuncTypeValue(bool bStaticOnly, QsTypeValue typeValue, QsFuncName memberFuncId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsFuncTypeValue? funcTypeValue)
         {
             return typeValueService.GetMemberFuncTypeValue(bStaticOnly, typeValue, memberFuncId, ImmutableArray<QsTypeValue>.Empty, context.TypeValueServiceContext, out funcTypeValue);
         }        
@@ -177,7 +177,7 @@ namespace QuickSC.StaticAnalyzer
 
             var typeValuesByTypeExp = typeExpEvaluatorContext.TypeValuesByTypeExp.ToImmutableDictionary();
 
-            // 3. Type, Func만들기
+            // 3. Type, Func만들기, MetadataBuilder
             var builderContext = new QsTypeAndFuncBuilderContext(
                 skeletonCollectorContext.TypeIdsByLocation.ToImmutableDictionary(),
                 skeletonCollectorContext.FuncIdsByLocation.ToImmutableDictionary(),

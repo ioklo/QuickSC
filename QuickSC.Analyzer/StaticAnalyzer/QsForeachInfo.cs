@@ -6,8 +6,15 @@ namespace QuickSC.StaticAnalyzer
 {
     public class QsForeachInfo
     {
-        public QsFuncId GetEnumeratorId { get; }
-        public QsFuncId MoveNextId { get; }
-        public QsFuncId GetCurrentId { get; }
+        public QsFuncValue GetEnumeratorValue { get; }
+        public QsFuncValue MoveNextValue { get; }
+        public QsFuncValue GetCurrentValue { get; }
+
+        public QsForeachInfo(QsFuncValue getEnumeratorValue, QsFuncValue moveNextValue, QsFuncValue getCurrentValue)
+        {
+            GetEnumeratorValue = getEnumeratorValue;
+            MoveNextValue = moveNextValue;
+            GetCurrentValue = getCurrentValue;
+        }
     }
 }

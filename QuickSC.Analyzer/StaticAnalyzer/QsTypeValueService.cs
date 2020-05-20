@@ -130,7 +130,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public bool GetMemberFunc(QsTypeId typeId, QsMemberFuncId name, QsTypeValueServiceContext context, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFunc Func)? outValue)
+        public bool GetMemberFunc(QsTypeId typeId, QsFuncName name, QsTypeValueServiceContext context, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFunc Func)? outValue)
         {
             if (!GetTypeById(typeId, context, out var type))
             {
@@ -324,7 +324,7 @@ namespace QuickSC.StaticAnalyzer
         bool GetMemberFuncTypeValue_NormalTypeValue(
             bool bStaticOnly,
             QsNormalTypeValue typeValue,
-            QsMemberFuncId memberFuncId, 
+            QsFuncName memberFuncId, 
             ImmutableArray<QsTypeValue> typeArgs, 
             QsTypeValueServiceContext context,
             [NotNullWhen(returnValue: true)] out QsFuncTypeValue? funcTypeValue)
@@ -350,7 +350,7 @@ namespace QuickSC.StaticAnalyzer
         public bool GetMemberFuncTypeValue(
             bool bStaticOnly,
             QsTypeValue typeValue,
-            QsMemberFuncId memberFuncId, 
+            QsFuncName memberFuncId, 
             ImmutableArray<QsTypeValue> typeArgs,
             QsTypeValueServiceContext context, 
             [NotNullWhen(returnValue: true)] out QsFuncTypeValue? funcTypeValue)

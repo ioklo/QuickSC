@@ -12,20 +12,16 @@ namespace QuickSC
 
     public class QsNativeFuncInst : QsFuncInst
     {
-        public bool bThisCall { get; }
-
         Func<QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>> Invoker;
 
-        public QsNativeFuncInst(bool bThisCall, Func<QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>> Invoker)
+        public QsNativeFuncInst(Func<QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>> Invoker)
         {
-            this.bThisCall = bThisCall;
             this.Invoker = Invoker;
         }
 
         public ValueTask<QsValue> CallAsync(QsValue? thisValue, ImmutableArray<QsValue> args)
         {
-            if (!bThisCall)
-                thisValue = null;
+            // TODO: bStatic일때 확인 필요
 
             return Invoker(thisValue, args);
         }

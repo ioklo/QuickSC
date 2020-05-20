@@ -101,9 +101,7 @@ if (x is X.First)
 
                     Console.WriteLine("분석에 실패했습니다");
                     return;
-                }
-
-                var evalStaticContext = new QsEvalStaticContext(
+                }                
                     
                 var evalContext = QsEvalContext.Make(analyzerContext);
                 var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);

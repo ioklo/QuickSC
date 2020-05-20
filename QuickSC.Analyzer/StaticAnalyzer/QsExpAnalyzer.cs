@@ -454,7 +454,7 @@ namespace QuickSC.StaticAnalyzer
             if (!AnalyzeExpWithStatic(exp.Object, context, out var outValue))
                 return false;
 
-            if (!analyzer.GetMemberFuncTypeValue(outValue.Value.bStatic, outValue.Value.TypeValue, new QsMemberFuncId(exp.MemberFuncName), context, out var funcType))
+            if (!analyzer.GetMemberFuncTypeValue(outValue.Value.bStatic, outValue.Value.TypeValue, new QsFuncName(exp.MemberFuncName), context, out var funcType))
             {
                 context.Errors.Add((exp, $"{exp.Object}에 {exp.MemberFuncName} 함수가 없습니다"));
                 return false;
@@ -515,7 +515,7 @@ namespace QuickSC.StaticAnalyzer
                 candidates.Add((typeValue, storage, QsStorageKind.Var));
             }
 
-            if (typeValueService.GetMemberFunc(objNormalTypeValue.TypeId, new QsMemberFuncId(memberExp.MemberName), context.TypeValueServiceContext, out var memberFunc))
+            if (typeValueService.GetMemberFunc(objNormalTypeValue.TypeId, new QsFuncName(memberExp.MemberName), context.TypeValueServiceContext, out var memberFunc))
             {
                 if (objTypeValue.Value.bStatic && !memberFunc.Value.bStatic) // instance인데 static을 가져오는건 괜찮다
                     context.Errors.Add((memberExp, "정적 함수가 아닙니다"));

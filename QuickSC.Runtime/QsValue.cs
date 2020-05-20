@@ -25,71 +25,30 @@ namespace QuickSC
         public abstract QsValue MakeCopy();
 
         // 뭘 리턴해야 하는거냐
-        public abstract QsFuncInst GetMemberFuncInst(QsFuncId funcId);
-        public abstract QsValue GetMemberValue(string varName);
+        public abstract QsValue GetMemberValue(QsVarId varId);
 
         public abstract bool IsType(QsTypeInst typeInst);
     }
-
-    public class QsValue<T> : QsValue where T : struct
-    {
-        public T Value { get; set; }
-        public QsValue(T value)
-        {
-            Value = value;
-        }
-
-        public override void SetValue(QsValue v)
-        {
-            Value = ((QsValue<T>)v).Value;
-        }
-
-        public override QsValue MakeCopy()
-        {
-            return new QsValue<T>(Value);
-        }
-
-        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override QsValue GetMemberValue(string varName)
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override bool IsType(QsTypeInst typeInst)
-        {
-            // struct에서  is 류가 사용가능하게 해야할 수 도 있다.
-            return false;
-        }
-    }
-
+    
     public class QsEnumValue : QsValue
     {
         public QsTypeInst TypeInst { get; }
-        ImmutableDictionary<string, QsValue> values;
+        ImmutableDictionary<QsVarId, QsValue> values;
 
-        public QsEnumValue(QsTypeInst typeInst, ImmutableDictionary<string, QsValue> values)
+        public QsEnumValue(QsTypeInst typeInst, ImmutableDictionary<QsVarId, QsValue> values)
         {
             TypeInst = typeInst;
             this.values = values;
         }
-
-        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
+        
+        public override QsValue GetMemberValue(QsVarId varId)
         {
-            throw new InvalidOperationException();
-        }
-
-        public override QsValue GetMemberValue(string varName)
-        {
-            return values[varName];
+            return values[varId];
         }
 
         public override QsValue MakeCopy()
         {
-            var newValues = ImmutableDictionary.CreateBuilder<string, QsValue>();
+            var newValues = ImmutableDictionary.CreateBuilder<QsVarId, QsValue>();
 
             foreach (var v in values)
                 newValues.Add(v.Key, v.Value.MakeCopy());
@@ -134,13 +93,8 @@ namespace QuickSC
         {
             throw new NotImplementedException();
         }
-
-        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override QsValue GetMemberValue(string varName)
+        
+        public override QsValue GetMemberValue(QsVarId varId)
         {
             throw new NotImplementedException();
         }
@@ -166,13 +120,8 @@ namespace QuickSC
         {
             return Instance;
         }
-
-        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override QsValue GetMemberValue(string varName)
+        
+        public override QsValue GetMemberValue(QsVarId varId)
         {
             throw new InvalidOperationException();
         }
@@ -188,13 +137,8 @@ namespace QuickSC
     {
         public static QsVoidValue Instance { get; } = new QsVoidValue();
         private QsVoidValue() { }
-
-        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override QsValue GetMemberValue(string varName)
+        
+        public override QsValue GetMemberValue(QsVarId varId)
         {
             throw new InvalidOperationException();
         }
@@ -217,22 +161,14 @@ namespace QuickSC
 
     public abstract class QsObject
     {
-        public virtual QsFuncInst GetMemberFuncInst(QsFuncId funcId)
+        public virtual QsValue GetMemberValue(QsVarId varId)
         {
             throw new NotImplementedException();
         }
 
-        public virtual QsValue GetMemberValue(string varName) 
+        protected static TObject GetObject<TObject>(QsValue value) where TObject : QsObject
         {
-            throw new NotImplementedException();
-        }
-
-        protected static TObject? GetObject<TObject>(QsValue value) where TObject : QsObject
-        {
-            if (value is QsObjectValue objValue && objValue.Object is TObject obj)
-                return obj;
-
-            return null;
+            return (TObject)((QsObjectValue)value).Object;
         }
     }    
    
@@ -244,15 +180,10 @@ namespace QuickSC
         {
             Object = obj;
         }
-
-        public override QsFuncInst GetMemberFuncInst(QsFuncId funcId)
+        
+        public override QsValue GetMemberValue(QsVarId varId)
         {
-            return Object.GetMemberFuncInst(funcId);
-        }
-
-        public override QsValue GetMemberValue(string varName)
-        {
-            return Object.GetMemberValue(varName);
+            return Object.GetMemberValue(varId);
         }
 
         public override QsValue MakeCopy()
