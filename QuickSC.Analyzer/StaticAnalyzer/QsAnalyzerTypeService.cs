@@ -10,7 +10,7 @@ using System.Text;
 namespace QuickSC.StaticAnalyzer
 {
     // analyzer inner service
-    class QsTypeValueService
+    class QsAnalyzerTypeService
     {
         public bool GetTypeById(QsTypeId typeId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsType? outType)
         {
@@ -206,7 +206,7 @@ namespace QuickSC.StaticAnalyzer
             return false;
         }
 
-        public bool GetGlobalVar(string name, QsAnalyzerContext context, out QsVariable? outGlobalVar)
+        public bool GetGlobalVar(string name, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsVariable? outGlobalVar)
         {
             var nameElem = new QsNameElem(name, 0);
 
@@ -241,11 +241,16 @@ namespace QuickSC.StaticAnalyzer
             return false;
         }
 
+        public bool GetGlobalTypeValue(string name, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        {
+            return GetGlobalTypeValue(name, ImmutableArray<QsTypeValue>.Empty, context, out outTypeValue);
+        }
+
         public bool GetGlobalTypeValue(
             string name, 
             ImmutableArray<QsTypeValue> typeArgs, 
             QsAnalyzerContext context, 
-            [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+            [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             var nameElem = new QsNameElem(name, typeArgs.Length);
             var candidates = new List<QsTypeValue>();
@@ -262,18 +267,18 @@ namespace QuickSC.StaticAnalyzer
 
             if (candidates.Count == 1)
             {
-                typeValue = candidates[0];
+                outTypeValue = candidates[0];
                 return true;
             }
             else if (1 < candidates.Count)
             {
-                typeValue = null;
+                outTypeValue = null;
                 context.ErrorCollector.Add(name, $"이름이 같은 {name} 타입이 여러개 입니다");
                 return false;
             }
             else
             {
-                typeValue = null;
+                outTypeValue = null;
                 context.ErrorCollector.Add(name, $"{name} 타입을 찾지 못했습니다");
                 return false;
             }

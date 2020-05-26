@@ -14,12 +14,12 @@ namespace QuickSC.StaticAnalyzer
     class QsStmtAnalyzer
     {
         QsAnalyzer analyzer;
-        QsTypeValueService typeValueService;
+        QsAnalyzerTypeService typeService;
 
-        public QsStmtAnalyzer(QsAnalyzer analyzer, QsTypeValueService typeValueService)
+        public QsStmtAnalyzer(QsAnalyzer analyzer, QsAnalyzerTypeService typeService)
         {
             this.analyzer = analyzer;
-            this.typeValueService = typeValueService;
+            this.typeService = typeService;
         }
 
         // CommandStmt에 있는 expStringElement를 분석한다
@@ -43,7 +43,7 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeIfStmt(QsIfStmt ifStmt, QsAnalyzerContext context) 
         {
-            if (!analyzer.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+            if (!typeService.GetGlobalTypeValue("bool", context, out var boolTypeValue))
                 Debug.Fail("Runtime에 bool타입이 없습니다");
 
             if (!analyzer.AnalyzeExp(ifStmt.Cond, context, out var condTypeValue))            
@@ -54,7 +54,7 @@ namespace QuickSC.StaticAnalyzer
             {
                 if (!analyzer.IsAssignable(boolTypeValue, condTypeValue, context))
                 {
-                    context.Errors.Add((ifStmt, "if 조건 식은 항상 bool형식이어야 합니다"));
+                    context.ErrorCollector.Add(ifStmt, "if 조건 식은 항상 bool형식이어야 합니다");
                 }
             }
 
@@ -76,7 +76,7 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeForStmt(QsForStmt forStmt, QsAnalyzerContext context)
         {
-            if (!analyzer.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+            if (!typeService.GetGlobalTypeValue("bool", context, out var boolTypeValue))
                 Debug.Fail("Runtime에 bool타입이 없습니다");
 
             if (forStmt.Initializer != null)
@@ -90,7 +90,7 @@ namespace QuickSC.StaticAnalyzer
 
                 // 에러가 나면 에러를 추가하고 계속 진행
                 if (!analyzer.IsAssignable(boolTypeValue, condExpTypeValue, context))
-                    context.Errors.Add((forStmt.CondExp, $"{forStmt.CondExp}는 bool 형식이어야 합니다"));
+                    context.ErrorCollector.Add(forStmt.CondExp, $"{forStmt.CondExp}는 bool 형식이어야 합니다");
             }
 
             if (forStmt.ContinueExp != null)
@@ -115,7 +115,7 @@ namespace QuickSC.StaticAnalyzer
             {
                 if (context.CurFunc.bSequence)
                 {
-                    context.Errors.Add((returnStmt, $"seq 함수는 빈 return만 허용됩니다"));
+                    context.ErrorCollector.Add(returnStmt, $"seq 함수는 빈 return만 허용됩니다");
                     return;
                 }
 
@@ -126,7 +126,7 @@ namespace QuickSC.StaticAnalyzer
                 {
                     // 현재 함수 시그니처랑 맞춰서 같은지 확인한다
                     if (!analyzer.IsAssignable(context.CurFunc.RetTypeValue, returnValueTypeValue, context))
-                        context.Errors.Add((returnStmt.Value, $"반환값의 타입 {returnValueTypeValue}는 이 함수의 반환타입과 맞지 않습니다"));
+                        context.ErrorCollector.Add(returnStmt.Value, $"반환값의 타입 {returnValueTypeValue}는 이 함수의 반환타입과 맞지 않습니다");
                 }
                 else // 리턴타입이 정해지지 않았을 경우가 있다
                 {
@@ -136,7 +136,7 @@ namespace QuickSC.StaticAnalyzer
             else
             {
                 if (!context.CurFunc.bSequence && context.CurFunc.RetTypeValue != QsVoidTypeValue.Instance)
-                    context.Errors.Add((returnStmt.Value!, $"이 함수는 {context.CurFunc.RetTypeValue}을 반환해야 합니다"));
+                    context.ErrorCollector.Add(returnStmt.Value!, $"이 함수는 {context.CurFunc.RetTypeValue}을 반환해야 합니다");
             }
         }
 
@@ -165,7 +165,7 @@ namespace QuickSC.StaticAnalyzer
                 !(expStmt.Exp is QsCallExp) &&
                 !(expStmt.Exp is QsMemberCallExp))
             {
-                context.Errors.Add((expStmt, "대입, 함수 호출만 구문으로 사용할 수 있습니다"));
+                context.ErrorCollector.Add(expStmt, "대입, 함수 호출만 구문으로 사용할 수 있습니다");
             }
 
             analyzer.AnalyzeExp(expStmt.Exp, context, out var _);            
@@ -176,7 +176,7 @@ namespace QuickSC.StaticAnalyzer
             // TODO: Capture로 순회를 따로 할 필요 없이, Analyze에서 같이 할 수도 있을 것 같다
             if (!analyzer.CaptureStmt(taskStmt.Body, context, out var captureInfo))
             {
-                context.Errors.Add((taskStmt, "변수 캡쳐에 실패했습니다"));
+                context.ErrorCollector.Add(taskStmt, "변수 캡쳐에 실패했습니다");
                 return;
             }
 
@@ -197,7 +197,7 @@ namespace QuickSC.StaticAnalyzer
             // TODO: Capture로 순회를 따로 할 필요 없이, Analyze에서 같이 할 수도 있을 것 같다
             if (!analyzer.CaptureStmt(awaitStmt.Body, context, out var captureInfo))
             {
-                context.Errors.Add((awaitStmt, "변수 캡쳐에 실패했습니다"));
+                context.ErrorCollector.Add(awaitStmt, "변수 캡쳐에 실패했습니다");
                 return; 
             }
 
@@ -239,24 +239,27 @@ namespace QuickSC.StaticAnalyzer
             var elemTypeValue = context.TypeValuesByTypeExp[foreachStmt.Type];
 
             // 1. elemTypeValue가 VarTypeValue이면 GetEnumerator의 리턴값으로 판단한다
-            if (!analyzer.GetMemberFuncTypeValue(false, objTypeValue, new QsName("GetEnumerator"), context, out var getEnumeratorTypeValue))
+            if (!typeService.GetMemberFuncTypeValue(
+                false, objTypeValue, 
+                new QsName("GetEnumerator"), ImmutableArray<QsTypeValue>.Empty, 
+                context, out var getEnumeratorTypeValue))
             {
-                context.Errors.Add((foreachStmt.Obj, "foreach ... in 뒤 객체는 IEnumerator<T> GetEnumerator() 함수가 있어야 합니다."));
+                context.ErrorCollector.Add(foreachStmt.Obj, "foreach ... in 뒤 객체는 IEnumerator<T> GetEnumerator() 함수가 있어야 합니다.");
                 return;
             }
 
             // TODO: 일단 인터페이스가 없으므로, bool MoveNext()과 T GetCurrent()가 있는지 본다
             // TODO: thiscall인지도 확인해야 한다
-            if (!analyzer.GetMemberFuncTypeValue(false, getEnumeratorTypeValue.RetTypeValue, new QsName("MoveNext"), context, out var moveNextTypeValue) ||
+            if (!typeService.GetMemberFuncTypeValue(false, getEnumeratorTypeValue.RetTypeValue, new QsName("MoveNext"), ImmutableArray<QsTypeValue>.Empty, context, out var moveNextTypeValue) ||
                 !analyzer.IsAssignable(boolTypeValue, moveNextTypeValue.RetTypeValue, context))
             {
-                context.Errors.Add((foreachStmt.Obj, "enumerator doesn't have 'bool MoveNext()' function"));
+                context.ErrorCollector.Add(foreachStmt.Obj, "enumerator doesn't have 'bool MoveNext()' function");
                 return;
             }
 
-            if (!analyzer.GetMemberFuncTypeValue(false, getEnumeratorTypeValue.RetTypeValue, new QsName("GetCurrent"), context, out var getCurrentTypeValue))
+            if (!typeService.GetMemberFuncTypeValue(false, getEnumeratorTypeValue.RetTypeValue, new QsName("GetCurrent"), ImmutableArray<QsTypeValue>.Empty, context, out var getCurrentTypeValue))
             {
-                context.Errors.Add((foreachStmt.Obj, "enumerator doesn't have 'GetCurrent()' function"));
+                context.ErrorCollector.Add(foreachStmt.Obj, "enumerator doesn't have 'GetCurrent()' function");
                 return;
             }
 
@@ -269,14 +272,14 @@ namespace QuickSC.StaticAnalyzer
 
                 //if (1 < interfaces.Count)
                 //{
-                //    context.Errors.Add((foreachStmt.Obj, "변수 타입으로 var를 사용하였는데, IEnumerator<T>가 여러개라 어느 것을 사용할지 결정할 수 없습니다."));
+                //    context.ErrorCollector.Add(foreachStmt.Obj, "변수 타입으로 var를 사용하였는데, IEnumerator<T>가 여러개라 어느 것을 사용할지 결정할 수 없습니다.");
                 //    return;
                 //}
             }
             else
             {
                 if (!analyzer.IsAssignable(elemTypeValue, getCurrentTypeValue.RetTypeValue, context))
-                    context.Errors.Add((foreachStmt, $"foreach(T ... in obj) 에서 obj.GetEnumerator().GetCurrent()의 결과를 {elemTypeValue} 타입으로 캐스팅할 수 없습니다"));
+                    context.ErrorCollector.Add(foreachStmt, $"foreach(T ... in obj) 에서 obj.GetEnumerator().GetCurrent()의 결과를 {elemTypeValue} 타입으로 캐스팅할 수 없습니다");
             }
 
             var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
@@ -294,7 +297,7 @@ namespace QuickSC.StaticAnalyzer
         {
             if (!context.CurFunc.bSequence)
             {
-                context.Errors.Add((yieldStmt, "seq 함수 내부에서만 yield를 사용할 수 있습니다"));
+                context.ErrorCollector.Add(yieldStmt, "seq 함수 내부에서만 yield를 사용할 수 있습니다");
                 return;
             }
 
@@ -305,7 +308,7 @@ namespace QuickSC.StaticAnalyzer
             Debug.Assert(context.CurFunc.RetTypeValue != null);
 
             if (!analyzer.IsAssignable(context.CurFunc.RetTypeValue, yieldTypeValue, context))
-                context.Errors.Add((yieldStmt.Value, $"반환 값의 {yieldTypeValue} 타입은 이 함수의 반환 타입과 맞지 않습니다"));
+                context.ErrorCollector.Add(yieldStmt.Value, $"반환 값의 {yieldTypeValue} 타입은 이 함수의 반환 타입과 맞지 않습니다");
         }
 
         public void AnalyzeStmt(QsStmt stmt, QsAnalyzerContext context)

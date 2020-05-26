@@ -28,8 +28,7 @@ namespace QuickSC
             typeBuilder = new QsTypeAndFuncBuilder();
 
             var capturer = new QsCapturer();
-            var typeValueService = new QsTypeValueService();
-            analyzer = new QsAnalyzer(capturer, typeValueService);
+            analyzer = new QsAnalyzer(capturer);
 
             var domainService = new QsDomainService();
             evaluator = new QsEvaluator(domainService, commandProvider, runtimeModule);
@@ -57,20 +56,10 @@ namespace QuickSC
 
             // globalVariable이 빠진상태            
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
-            if (!analyzer.AnalyzeScript(script, buildInfo, errorCollector, out var analyzeInfo))
-                return false;           
-            
+            if (!analyzer.AnalyzeScript(script, metadatas, buildInfo, errorCollector, out var analyzeInfo))
+                return false;
 
-            return analyzerContext;
-
-            // 분석 QsScript, references -> 
-            var analyzerContext = new QsAnalyzerContext()
-            analyzer.AnalyzeScript(scriptResult.Elem, analyzerContext);
-
-            // 실행 QsScript, QsAnalyzeResult -> 실제 실행
-            // var evalContext = QsEvalContext.Make(analyzerContext);
-            // await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);
-            // var evaluator = new QsEvaluator(analyzerContext, )
+            await evaluator.EvaluateScriptAsync(script, analyzeInfo);
         }
     }
 

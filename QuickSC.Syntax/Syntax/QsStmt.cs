@@ -7,7 +7,7 @@ using System.Xml.XPath;
 
 namespace QuickSC.Syntax
 {
-    public abstract class QsStmt
+    public abstract class QsStmt : IQsSyntaxNode
     {
     }
     

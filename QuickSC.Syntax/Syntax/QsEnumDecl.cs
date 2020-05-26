@@ -6,7 +6,7 @@ using System.Text;
 
 namespace QuickSC.Syntax
 {
-    public class QsEnumDeclElement
+    public class QsEnumDeclElement : IQsSyntaxNode
     {
         public string Name { get; }
         public ImmutableArray<QsTypeAndName> Params { get; }        
@@ -46,7 +46,7 @@ namespace QuickSC.Syntax
         }
     }
 
-    public class QsEnumDecl
+    public class QsEnumDecl : IQsSyntaxNode
     {
         public string Name { get; }
         public ImmutableArray<string> TypeParams { get; }

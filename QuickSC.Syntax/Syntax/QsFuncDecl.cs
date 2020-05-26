@@ -11,7 +11,7 @@ namespace QuickSC.Syntax
     // <RBRACE>
     // a(b, params c, d);
     // a<T>(int b, params T x, int d);
-    public class QsFuncDecl
+    public class QsFuncDecl : IQsSyntaxNode
     {
         public QsFuncKind FuncKind { get; }
         public QsTypeExp RetType { get; }

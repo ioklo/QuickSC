@@ -66,8 +66,7 @@ namespace QuickSC.StaticAnalyzer
         ImmutableDictionary<string, QsTypeValue> globalVarTypeValues;
 
         // Exp가 무슨 타입을 갖고 있는지 저장
-        public Dictionary<QsExp, QsTypeValue> TypeValuesByExp { get; }
-        public Dictionary<QsExp, QsEvalExp> EvalExpsByExp { get; }
+        // public Dictionary<QsExp, QsTypeValue> TypeValuesByExp { get; }
         
         // 현재 실행되고 있는 함수
         public QsAnalyzerFuncContext CurFunc { get; set; }
@@ -78,6 +77,7 @@ namespace QuickSC.StaticAnalyzer
         public Dictionary<QsVarDecl, QsEvalVarDecl> EvalVarDeclsByVarDecl { get; }
         public Dictionary<QsExp, QsFuncValue> FuncValuesByExp { get; set; }
         public Dictionary<QsForeachStmt, QsForeachInfo> ForeachInfosByForEachStmt { get; set; }
+        public Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo> EvalInfosByNode { get; }
 
         public QsAnalyzerContext(
             ImmutableArray<IQsMetadata> metadatas,
@@ -89,9 +89,7 @@ namespace QuickSC.StaticAnalyzer
             ErrorCollector = errorCollector;
 
             globalVarTypeValues = ImmutableDictionary<string, QsTypeValue>.Empty;
-            TypeValuesByExp = new Dictionary<QsExp, QsTypeValue>(QsRefEqComparer<QsExp>.Instance);
-            EvalExpsByExp = new Dictionary<QsExp, QsEvalExp>(QsRefEqComparer<QsExp>.Instance);            
-            
+            TypeValuesByExp = new Dictionary<QsExp, QsTypeValue>(QsRefEqComparer<QsExp>.Instance);            
 
             CurFunc = new QsAnalyzerFuncContext(new QsFuncId(null), null, false);
             bGlobalScope = true;
@@ -99,6 +97,8 @@ namespace QuickSC.StaticAnalyzer
             EvalVarDeclsByVarDecl = new Dictionary<QsVarDecl, QsEvalVarDecl>(QsRefEqComparer<QsVarDecl>.Instance);
             FuncValuesByExp = new Dictionary<QsExp, QsFuncValue>(QsRefEqComparer<QsExp>.Instance);
             ForeachInfosByForEachStmt = new Dictionary<QsForeachStmt, QsForeachInfo>(QsRefEqComparer<QsForeachStmt>.Instance);
+
+            EvalInfosByNode = new Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo>(QsRefEqComparer<IQsSyntaxNode>.Instance);
         }       
 
         // 1. exp가 무슨 타입을 가지는지

@@ -42,59 +42,37 @@ namespace QuickSC
 
             throw new NotImplementedException();
         }
-
         
-        public QsValue EvaluateStorage(QsStorage storage, QsEvalContext context)
-        {
-            // 전역 변수는 
-            switch (storage)
-            {
-                // Instance는 this도 캡쳐해야 한다
-                //case QsFuncStorage funcStorage:
-                //    return new QsFuncInstValue(domainService.GetFuncInst(funcStorage.FuncId,);
-                
-                case QsLocalVarStorage localStorage:
-                    return context.LocalVars[localStorage.LocalIndex]!;
-
-                case QsGlobalVarStorage globalStorage:
-                    return context.GlobalVars[globalStorage.VarId]!;
-
-                case QsStaticVarStorage staticStorage:
-                    throw new NotImplementedException();
-                //    return context.GetStaticValue(staticStorage.TypeValue).GetMemberValue(staticStorage.VarId);
-
-                case QsInstanceVarStorage instStorage:
-                    return context.ThisValue!.GetMemberValue(instStorage.VarId);
-
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
         internal QsValue GetDefaultValue(QsTypeValue typeValue, QsEvalContext context)
         {
             throw new NotImplementedException();
         }
 
-        public ImmutableDictionary<string, QsValue?> MakeCaptures(QsCaptureInfo captureInfo, QsEvalContext context)
+        public ImmutableArray<QsValue> MakeCaptures(ImmutableArray<QsLambdaExpInfo.Elem> captureElems, QsEvalContext context)
         {
-            var captures = ImmutableDictionary.CreateBuilder<string, QsValue?>();
-            foreach (var capture in captureInfo.Captures)
+            var captures = ImmutableArray.CreateBuilder<QsValue>(captureElems.Length);
+            foreach (var captureElem in captureElems)
             {
-                var origValue = EvaluateStorage(capture.Storage, context);
+                QsValue origValue;
+                if (captureElem.Kind is QsLambdaExpInfo.Elem.ExpKind.GlobalVar globalVar)
+                    origValue = context.GlobalVars[globalVar.VarId];
+                else if (captureElem.Kind is QsLambdaExpInfo.Elem.ExpKind.LocalVar localVar)
+                    origValue = context.LocalVars[localVar.LocalIndex]!;
+                else
+                    throw new NotImplementedException();
                 
                 QsValue value;
-                if (capture.Kind == QsCaptureKind.Copy)
+                if (captureElem.CaptureKind == QsCaptureKind.Copy)
                 {
                     value = origValue!.MakeCopy();
                 }
                 else
                 {
-                    Debug.Assert(capture.Kind == QsCaptureKind.Ref);
+                    Debug.Assert(captureElem.CaptureKind == QsCaptureKind.Ref);
                     value = origValue!;
                 }
 
-                captures.Add(capture.Name, value);
+                captures.Add(value);
             }
 
             return captures.ToImmutable();
@@ -181,7 +159,7 @@ namespace QuickSC
             return stmtEvaluator.EvaluateStmtAsync(stmt, context);
         }
         
-        public async ValueTask<QsEvalContext?> EvaluateScriptAsync(QsScript script, QsEvalContext context)
+        async ValueTask EvaluateScriptAsync(QsScript script, QsEvalContext context)
         {
             // 모듈은 Script를 묶은 것이므로 여기가 아니다
             // 일단 여기서             
@@ -196,8 +174,12 @@ namespace QuickSC
                     }
                 }
             }
+        }
 
-            return context;
+        public async ValueTask<bool> EvaluateScriptAsync(QsScript script)
+        {
+            var context = new QsEvalContext();
+            await EvaluateScriptAsync(script, context);
         }
     }
 }

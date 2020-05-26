@@ -14,16 +14,14 @@ namespace QuickSC.StaticAnalyzer
     {
         QsExpAnalyzer expAnalyzer;
         QsStmtAnalyzer stmtAnalyzer;
-        QsCapturer capturer;
-        QsTypeValueService typeValueService; 
+        QsAnalyzerTypeService typeService;
 
-        public QsAnalyzer(QsCapturer capturer, QsTypeValueService typeValueService)
+        public QsAnalyzer(QsCapturer capturer)
         {
             // 내부 전용 클래스는 new를 써서 직접 만들어도 된다 (DI, 인자로 받을 필요 없이)
-            this.expAnalyzer = new QsExpAnalyzer(this, typeValueService);
-            this.stmtAnalyzer = new QsStmtAnalyzer(this, typeValueService);
-            this.capturer = capturer;
-            this.typeValueService = typeValueService;
+            this.typeService = new QsAnalyzerTypeService();
+            this.expAnalyzer = new QsExpAnalyzer(this, capturer, typeService);
+            this.stmtAnalyzer = new QsStmtAnalyzer(this, typeService);
         }
 
         internal bool AnalyzeExp(QsExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
@@ -41,7 +39,7 @@ namespace QuickSC.StaticAnalyzer
             }
 
             // TODO: this도 검색, This도 검색
-            if (GetGlobalVar(id, context, out var globalVar))
+            if (typeService.GetGlobalVar(id, context, out var globalVar))
             {
                 // GlobalVar
                 outStorage = new QsGlobalVarStorage(globalVar.VarId);
@@ -78,11 +76,11 @@ namespace QuickSC.StaticAnalyzer
         class QsGlobalVarDeclBuilder : QsEvalVarDeclBuilder
         {
             ImmutableArray<QsGlobalVarDecl.Elem>.Builder elemsBuilder;
-            QsTypeValueService typeValueService;
+            QsAnalyzerTypeService typeService;
 
-            public QsGlobalVarDeclBuilder(QsTypeValueService typeValueService, int capacity)
+            public QsGlobalVarDeclBuilder(QsAnalyzerTypeService typeService, int capacity)
             {
-                this.typeValueService = typeValueService;
+                this.typeService = typeService;
                 elemsBuilder = ImmutableArray.CreateBuilder<QsGlobalVarDecl.Elem>(capacity);
             }
 
@@ -90,7 +88,7 @@ namespace QuickSC.StaticAnalyzer
             {
                 var varId = new QsVarId(null, ImmutableArray.Create(new QsNameElem(name, 0)));
                 var variable = new QsVariable(varId, typeValue);
-                typeValueService.AddVar(variable, context.TypeValueServiceContext);
+                typeService.AddVar(variable, context);
 
                 elemsBuilder.Add(new QsGlobalVarDecl.Elem(typeValue, varId, initExp));
             }
@@ -125,7 +123,7 @@ namespace QuickSC.StaticAnalyzer
         {
             QsEvalVarDeclBuilder varDeclBuilder;
             if (context.bGlobalScope)
-                varDeclBuilder = new QsGlobalVarDeclBuilder(typeValueService, varDecl.Elements.Length);
+                varDeclBuilder = new QsGlobalVarDeclBuilder(typeService, varDecl.Elements.Length);
             else
                 varDeclBuilder = new QsLocalVarDeclBuilder(varDecl.Elements.Length);
 
@@ -135,7 +133,7 @@ namespace QuickSC.StaticAnalyzer
             // 4. var x = 1, y = "string"; // 각각 한다
 
             // TODO: 추후에는 매번 만들지 않고, QsAnalyzerContext안에서 직접 관리한다
-            var declTypeValue = context.TypeValuesByTypeExp[varDecl.Type];
+            var declTypeValue = context.TypeBuildInfo.TypeValuesByTypeExp[varDecl.Type];
 
             foreach (var elem in varDecl.Elements)
             {
@@ -143,7 +141,7 @@ namespace QuickSC.StaticAnalyzer
                 {
                     if (declTypeValue is QsVarTypeValue)
                     {
-                        context.Errors.Add((elem, $"{elem.VarName}의 타입을 추론할 수 없습니다"));
+                        context.ErrorCollector.Add(elem, $"{elem.VarName}의 타입을 추론할 수 없습니다");
                         return;
                     }
                     else
@@ -167,7 +165,7 @@ namespace QuickSC.StaticAnalyzer
                         typeValue = declTypeValue;
 
                         if (!IsAssignable(declTypeValue, initExpTypeValue, context))
-                            context.Errors.Add((elem, $"타입 {initExpTypeValue}의 값은 타입 {varDecl.Type}의 변수 {elem.VarName}에 대입할 수 없습니다."));
+                            context.ErrorCollector.Add(elem, $"타입 {initExpTypeValue}의 값은 타입 {varDecl.Type}의 변수 {elem.VarName}에 대입할 수 없습니다.");
                     }
 
                     varDeclBuilder.Add(elem.VarName, declTypeValue, elem.InitExp, context);                    
@@ -181,38 +179,13 @@ namespace QuickSC.StaticAnalyzer
         {
             stmtAnalyzer.AnalyzeStmt(stmt, context);
         }
-
-        public bool GetMemberFuncTypeValue(bool bStaticOnly, QsTypeValue typeValue, QsName memberFuncId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsFuncTypeValue? funcTypeValue)
-        {
-            return typeValueService.GetMemberFuncTypeValue(bStaticOnly, typeValue, memberFuncId, ImmutableArray<QsTypeValue>.Empty, context.TypeValueServiceContext, out funcTypeValue);
-        }        
-        
-        public bool GetGlobalTypeValue(string name, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
-        {
-            return GetGlobalTypeValue(name, ImmutableArray<QsTypeValue>.Empty, context, out typeValue);
-        }
-
-        public bool GetGlobalTypeValue(string name, ImmutableArray<QsTypeValue> typeArgs, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
-        {
-            return typeValueService.GetGlobalTypeValue(name, typeArgs, context.TypeValueServiceContext, out typeValue);
-        }
-
-        public bool GetGlobalFunc(string name, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsFunc? outFunc)
-        {
-            return typeValueService.GetGlobalFunc(name, context.TypeValueServiceContext, out outFunc);
-        }
-
-        public bool GetGlobalVar(string name, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsVariable? outVar)
-        {
-            return typeValueService.GetGlobalVar(name, context.TypeValueServiceContext, out outVar);
-        }
         
         public void AnalyzeFuncDecl(QsFuncDecl funcDecl, QsAnalyzerContext context)
         {
-
+            throw new NotImplementedException();
         }
 
-        public void AnalyzeScript(QsScript script, QsAnalyzerContext context)
+        public QsAnalyzeInfo AnalyzeScript(QsScript script, QsAnalyzerContext context)
         {   
             // 4. 최상위 script를 분석한다
             foreach (var elem in script.Elements)
@@ -235,7 +208,15 @@ namespace QuickSC.StaticAnalyzer
                         AnalyzeFuncDecl(funcElem.FuncDecl, context);
                         break;
                 }
-            }           
+            }
+
+            return new QsAnalyzeInfo(
+                context.TypeValuesByExp.ToImmutableDictionary(),
+                context.TypeBuildInfo.TypeValuesByTypeExp.ToImmutableDictionary(),
+                context.FuncValuesByExp.ToImmutableDictionary(),
+                context.ForeachInfosByForEachStmt.ToImmutableDictionary(),
+                context.EvalVarDeclsByVarDecl.ToImmutableDictionary(),
+                context.EvalInfosByNode.ToImmutableDictionary());
         }
 
         public bool AnalyzeScript(
@@ -255,15 +236,15 @@ namespace QuickSC.StaticAnalyzer
             if (errorCollector.HasError)
                 return false;
 
+
+
             throw new NotImplementedException();
-
-
         }
 
 
         public bool IsAssignable(QsTypeValue toTypeValue, QsTypeValue fromTypeValue, QsAnalyzerContext context)
         {
-            return typeValueService.IsAssignable(toTypeValue, fromTypeValue, context.TypeValueServiceContext);
+            return typeService.IsAssignable(toTypeValue, fromTypeValue, context);
         }
     }
 }
