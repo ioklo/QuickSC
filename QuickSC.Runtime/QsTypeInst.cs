@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text;
 
 namespace QuickSC
@@ -7,21 +8,31 @@ namespace QuickSC
     public abstract class QsTypeInst
     {
         public abstract QsTypeInst GetBaseTypeInst();
+        public abstract QsValue MakeDefaultValue();
     }
 
     // Instantiation이 필요없는 타입용
     public class QsRawTypeInst : QsTypeInst
     {
-        QsTypeValue typeValue;
+        QsType type;
+        QsValue defaultValue;
+        ImmutableArray<QsTypeInst> typeArgs;
 
-        public QsRawTypeInst(QsTypeValue typeValue)
+        public QsRawTypeInst(QsType type, QsValue defaultValue, ImmutableArray<QsTypeInst> typeArgs)
         {
-            this.typeValue = typeValue;
+            this.type = type;
+            this.defaultValue = defaultValue;
+            this.typeArgs = typeArgs;
         }
 
         public override QsTypeInst GetBaseTypeInst()
         {
             throw new NotImplementedException();
+        }
+
+        public override QsValue MakeDefaultValue()
+        {
+            return defaultValue.MakeCopy();
         }
     }
 

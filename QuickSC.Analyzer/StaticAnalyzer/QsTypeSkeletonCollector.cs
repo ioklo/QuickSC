@@ -1,6 +1,9 @@
 ﻿using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
 using System.Text;
 
@@ -8,7 +11,7 @@ namespace QuickSC.StaticAnalyzer
 {
     public class QsTypeSkeletonCollectorContext
     {
-        public Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton> GlobalTypeSkeletons { get; }
+        public Dictionary<QsNameElem, QsTypeSkeleton> GlobalTypeSkeletons { get; }
         public Dictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
         public Dictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
         public Dictionary<QsTypeId, QsTypeSkeleton> TypeSkeletonsByTypeId { get; }
@@ -17,7 +20,7 @@ namespace QuickSC.StaticAnalyzer
 
         public QsTypeSkeletonCollectorContext()
         {
-            GlobalTypeSkeletons = new Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton>();
+            GlobalTypeSkeletons = new Dictionary<QsNameElem, QsTypeSkeleton>();
             TypeIdsByLocation = new Dictionary<QsTypeIdLocation, QsTypeId>();
             FuncIdsByLocation = new Dictionary<QsFuncIdLocation, QsFuncId>();
             TypeSkeletonsByTypeId = new Dictionary<QsTypeId, QsTypeSkeleton>();
@@ -43,34 +46,53 @@ namespace QuickSC.StaticAnalyzer
 
         // 각종 Decl -> TypeId        
         // (QsTypeId parentTypeId, 
+    }
 
+    public class QsTypeSkeletonInfo
+    {
+        public ImmutableDictionary<QsNameElem, QsTypeSkeleton> GlobalTypeSkeletons { get; }
+        public ImmutableDictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
+        public ImmutableDictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
+        public ImmutableDictionary<QsTypeId, QsTypeSkeleton> TypeSkeletonsByTypeId { get; }
+
+        public QsTypeSkeletonInfo(
+            ImmutableDictionary<QsNameElem, QsTypeSkeleton> globalTypeSkeletons,
+            ImmutableDictionary<QsTypeIdLocation, QsTypeId> typeIdsByLocation,
+            ImmutableDictionary<QsFuncIdLocation, QsFuncId> funcIdsByLocation,
+            ImmutableDictionary<QsTypeId, QsTypeSkeleton> typeSkeletonsByTypeId)
+        {
+            GlobalTypeSkeletons = globalTypeSkeletons;
+            TypeIdsByLocation = typeIdsByLocation;
+            FuncIdsByLocation = funcIdsByLocation;
+            TypeSkeletonsByTypeId = typeSkeletonsByTypeId;
+        }
     }
 
     public class QsTypeSkeletonCollector
     {
-        // TypeId 발급기
-        QsTypeIdFactory typeIdFactory;
-        QsFuncIdFactory funcIdFactory;
-
-        public QsTypeSkeletonCollector(QsTypeIdFactory typeIdFactory, QsFuncIdFactory funcIdFactory)
+        public QsTypeSkeletonCollector()
         {
-            this.typeIdFactory = typeIdFactory;
-            this.funcIdFactory = funcIdFactory;
         }
         
         QsTypeSkeleton MakeSkeleton(QsTypeIdLocation loc, string name, int typeParamCount, QsTypeSkeletonCollectorContext context)
         {
-            var typeId = typeIdFactory.MakeTypeId();
+            var nameElem = new QsNameElem(name, typeParamCount);
+
+            QsTypeId typeId;
+            if (context.ScopeSkeleton != null)
+                typeId = new QsTypeId(null, context.ScopeSkeleton.TypeId.Elems.Add(nameElem));
+            else
+                typeId = new QsTypeId(null, nameElem);
 
             context.TypeIdsByLocation.Add(loc, typeId);
 
-            var skeleton = new QsTypeSkeleton(typeId, name, typeParamCount);
+            var skeleton = new QsTypeSkeleton(typeId);
             context.TypeSkeletonsByTypeId.Add(typeId, skeleton);
 
             if (context.ScopeSkeleton != null)
-                context.ScopeSkeleton.MemberSkeletons.Add((skeleton.Name, skeleton.TypeParamCount), skeleton);
+                context.ScopeSkeleton.MemberSkeletons.Add(nameElem, skeleton);
             else
-                context.GlobalTypeSkeletons.Add((skeleton.Name, skeleton.TypeParamCount), skeleton);
+                context.GlobalTypeSkeletons.Add(nameElem, skeleton);
 
             return skeleton;
         }
@@ -86,9 +108,10 @@ namespace QuickSC.StaticAnalyzer
             foreach (var elem in enumDecl.Elems)
             {
                 MakeSkeleton(QsTypeIdLocation.Make(elem), elem.Name, 0, context); // memberType은 타입파라미터가 없어야 한다
+
                 if (0 < elem.Params.Length)
                 {
-                    var funcId = funcIdFactory.MakeFuncId();
+                    var funcId = new QsFuncId(null, skeleton.TypeId.Elems.Add(new QsNameElem(elem.Name, 0)));
                     context.FuncIdsByLocation[QsFuncIdLocation.Make(elem)] = funcId;
                 }
             }
@@ -100,7 +123,10 @@ namespace QuickSC.StaticAnalyzer
 
         bool CollectFuncDecl(QsFuncDecl funcDecl, QsTypeSkeletonCollectorContext context)
         {
-            var funcId = funcIdFactory.MakeFuncId();
+            // TODO: 현재는 최상위만
+            Debug.Assert(context.ScopeSkeleton == null);
+
+            var funcId = new QsFuncId(null, new QsNameElem(funcDecl.Name, funcDecl.TypeParams.Length));
             context.FuncIdsByLocation[QsFuncIdLocation.Make(funcDecl)] = funcId;
             return true;
         }
@@ -123,6 +149,24 @@ namespace QuickSC.StaticAnalyzer
                 }
             }
 
+            return true;
+        }
+
+        public bool CollectScript(QsScript script, IQsErrorCollector errorCollector, [NotNullWhen(returnValue: true)] out QsTypeSkeletonInfo? outInfo)
+        {
+            var context = new QsTypeSkeletonCollectorContext();
+            if (!CollectScript(script, context))
+            {
+                errorCollector.Add(script, $"타입 정보 모으기에 실패했습니다");
+                outInfo = null;
+                return false;
+            }
+
+            outInfo = new QsTypeSkeletonInfo(
+                context.GlobalTypeSkeletons.ToImmutableDictionary(),
+                context.TypeIdsByLocation.ToImmutableDictionary(),
+                context.FuncIdsByLocation.ToImmutableDictionary(),
+                context.TypeSkeletonsByTypeId.ToImmutableDictionary());
             return true;
         }
     }

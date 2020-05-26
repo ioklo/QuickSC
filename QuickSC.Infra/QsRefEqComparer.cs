@@ -6,11 +6,11 @@ using System.Text;
 namespace QuickSC
 {
     // ReferenceEqualityComparer는 .net 5부터 지원
-    public class QsReferenceComparer<T> : IEqualityComparer<T> where T : class
+    public class QsRefEqComparer<T> : IEqualityComparer<T> where T : class
     {
-        public static QsReferenceComparer<T> Instance { get; } = new QsReferenceComparer<T>();
+        public static QsRefEqComparer<T> Instance { get; } = new QsRefEqComparer<T>();
 
-        private QsReferenceComparer() { }
+        private QsRefEqComparer() { }
 
         public bool Equals(T x, T y)
         {

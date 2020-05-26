@@ -1,4 +1,5 @@
-﻿using QuickSC.StaticAnalyzer;
+﻿using QuickSC.Runtime;
+using QuickSC.StaticAnalyzer;
 using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
@@ -9,67 +10,67 @@ namespace QuickSC
 {   
     public class QsEvalContext
     {
-        // 실행을 위한 기본 정보
+        // 실행을 위한 기본 정보,         
         public ImmutableDictionary<QsExp, QsTypeValue> TypeValuesByExp { get; }
         public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
-        public ImmutableDictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)> StoragesByExp { get; }
-        // public ImmutableDictionary<QsMemberExp, QsStaticStorage> StaticStoragesByMemberExp { get; } // (Namespace.C).x // staticStorage
-        public ImmutableDictionary<QsCaptureInfoLocation, QsCaptureInfo> CaptureInfosByLocation { get; }
+
+        // 위의 것들은 제거
+        public ImmutableDictionary<QsExp, QsEvalExp> EvalExpsByExp { get; }
         public ImmutableDictionary<QsExp, QsFuncValue> FuncValuesByExp { get; }
         public ImmutableDictionary<QsForeachStmt, QsForeachInfo> ForeachInfosByForEachStmt { get; internal set; }
+        public ImmutableDictionary<QsVarDecl, QsEvalVarDecl> EvalVarDeclsByVarDecl { get; }
+        public ImmutableDictionary<QsExp, QsEvalInfo> EvalInfosByExp { get; }
 
         // 모든 모듈의 전역 변수
-        public Dictionary<(IQsMetadata?, string), QsValue?> GlobalVars { get; } // TODO: IQsMetadata말고 다른 Id가 있어야 한다
-        public ImmutableDictionary<string, QsValue?> LocalVars { get; private set; }
+        public Dictionary<QsVarId, QsValue> GlobalVars { get; }
+        public QsValue?[] LocalVars { get; }
 
         public QsEvalFlowControl FlowControl { get; set; }
         public ImmutableArray<Task> Tasks { get; private set; }
         public QsValue? ThisValue { get; set; }
-        public bool bGlobalScope { get; set; }        
 
         public QsEvalContext(
             ImmutableDictionary<QsExp, QsTypeValue> typeValuesByExp,
             ImmutableDictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
-            ImmutableDictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)> storagesByExp,
-            ImmutableDictionary<QsCaptureInfoLocation, QsCaptureInfo> captureInfosByLocation,            
-            ImmutableDictionary<string, QsValue?> localVars, 
+            ImmutableDictionary<QsExp, QsEvalExp> evalExpsByExp,
+            ImmutableDictionary<QsExp, QsFuncValue> funcValuesByExp,
+            ImmutableDictionary<QsForeachStmt, QsForeachInfo> foreachInfosByForEachStmt,
+            ImmutableDictionary<QsVarDecl, QsEvalVarDecl> evalVarDeclsByVarDecl,
+            ImmutableDictionary<QsExp, QsEvalInfo> evalInfosByExp)
+        {
+            this.TypeValuesByExp = typeValuesByExp;
+            this.TypeValuesByTypeExp = typeValuesByTypeExp;
+            this.EvalExpsByExp = evalExpsByExp;
+            this.FuncValuesByExp = funcValuesByExp;
+            this.ForeachInfosByForEachStmt = foreachInfosByForEachStmt;
+            this.EvalVarDeclsByVarDecl = evalVarDeclsByVarDecl;
+            this.EvalInfosByExp = evalInfosByExp;
+            this.GlobalVars = new Dictionary<QsVarId, QsValue>();
+            this.LocalVars = new QsValue?[0];
+            this.FlowControl = QsNoneEvalFlowControl.Instance;
+            this.Tasks = ImmutableArray<Task>.Empty; ;
+            this.ThisValue = null;
+        }
+
+        public QsEvalContext(
+            QsEvalContext other,
+            QsValue?[] localVars,
             QsEvalFlowControl flowControl,
             ImmutableArray<Task> tasks,
-            QsValue? thisValue,
-            bool bGlobalScope)
+            QsValue? thisValue)
         {
-            TypeValuesByExp = typeValuesByExp;
-            TypeValuesByTypeExp = typeValuesByTypeExp;
-            StoragesByExp = storagesByExp;
-            CaptureInfosByLocation = captureInfosByLocation;
-            
-            GlobalVars = new Dictionary<(IQsMetadata?, string), QsValue?>();
-            LocalVars = localVars;
-            FlowControl = flowControl;
-            Tasks = tasks;
-            ThisValue = thisValue;
-            this.bGlobalScope = bGlobalScope;
-        }
-
-        public QsEvalContext SetLocalVars(ImmutableDictionary<string, QsValue?> newLocalVars)
-        {
-            LocalVars = newLocalVars;
-            return this;
-        }
-
-        public ImmutableDictionary<string, QsValue?> GetLocalVars()
-        {
-            return LocalVars;
-        }
-
-        public QsValue? GetLocalVar(string varName)
-        {
-            return LocalVars[varName];
-        }
-        
-        public void SetLocalVar(string varName, QsValue? value)
-        {
-            LocalVars = LocalVars.SetItem(varName, value);
+            this.TypeValuesByExp = other.TypeValuesByExp;
+            this.TypeValuesByTypeExp = other.TypeValuesByTypeExp;
+            this.EvalExpsByExp = other.EvalExpsByExp;
+            this.FuncValuesByExp = other.FuncValuesByExp;
+            this.ForeachInfosByForEachStmt = other.ForeachInfosByForEachStmt;
+            this.EvalVarDeclsByVarDecl = other.EvalVarDeclsByVarDecl;
+            this.EvalInfosByExp = other.EvalInfosByExp;
+            this.GlobalVars = other.GlobalVars;
+            this.LocalVars = localVars;
+            this.FlowControl = flowControl;
+            this.Tasks = tasks;
+            this.ThisValue = thisValue;
         }
 
         public QsEvalContext SetTasks(ImmutableArray<Task> newTasks)
@@ -83,29 +84,9 @@ namespace QuickSC
             return Tasks;
         }
 
-        public static QsEvalContext Make(QsAnalyzerContext analyzerContext)
-        {
-            new QsEvalContext(
-                analyzerContext.TypeValuesByExp.ToImmutableDictionary(),
-                analyzerContext.TypeValuesByTypeExp.ToImmutableDictionary(),
-                analyzerContext.StoragesByExp.ToImmutableDictionary(),
-                analyzerContext.CaptureInfosByLocation.ToImmutableDictionary(),
-                ImmutableDictionary<string, QsValue?>.Empty,
-                QsNoneEvalFlowControl.Instance,
-                ImmutableArray<Task>.Empty,
-                null,
-                true);
-
-        }
-
         public void AddTask(Task task)
         {
             Tasks = Tasks.Add(task);
-        }
-
-        public QsEvalContext MakeCopy()
-        {
-            return new QsEvalContext(TypeValuesByExp, TypeValuesByTypeExp, StoragesByExp, CaptureInfosByLocation, LocalVars, FlowControl, Tasks, ThisValue, bGlobalScope);
         }
     }
 }

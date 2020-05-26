@@ -13,43 +13,39 @@ namespace QuickSC
     {
         public QsTypeId TypeId { get; }
         public QsType(QsTypeId typeId) { TypeId = typeId; }
-
-        public abstract string GetName();
+        
         public abstract ImmutableArray<string> GetTypeParams();
         public abstract QsTypeValue? GetBaseTypeValue();
 
         // TODO: 셋은 같은 이름공간을 공유한다. 서로 이름이 같은 것이 나오면 안된다 (체크하자)
         public abstract bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsTypeId? outTypeId);
-        public abstract bool GetMemberFuncId(QsFuncName memberFuncId, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFuncId FuncId)? outValue);
+        public abstract bool GetMemberFuncId(QsName memberFuncId, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFuncId FuncId)? outValue);
         public abstract bool GetMemberVarId(string varName, [NotNullWhen(returnValue: true)] out (bool bStatic, QsVarId VarId)? outValue);
     }
 
     public class QsDefaultType : QsType
     {
         ImmutableArray<string> typeParams;
-        string name;
         QsTypeValue? baseTypeValue;
         ImmutableDictionary<string, QsTypeId> memberTypeIds;
         ImmutableDictionary<string, QsFuncId> staticMemberFuncIds;
         ImmutableDictionary<string, QsVarId> staticMemberVarIds;
 
-        ImmutableDictionary<QsFuncName, QsFuncId> memberFuncIds;
+        ImmutableDictionary<QsName, QsFuncId> memberFuncIds;
         ImmutableDictionary<string, QsVarId> memberVarIds;        
 
         // 거의 모든 TypeValue에서 thisTypeValue를 쓰기 때문에 lazy하게 선언해야 한다
-        public QsDefaultType(QsTypeId typeId,             
-            string name,
+        public QsDefaultType(QsTypeId typeId,            
             ImmutableArray<string> typeParams,
             QsTypeValue? baseTypeValue,
             ImmutableDictionary<string, QsTypeId> memberTypes,
             ImmutableDictionary<string, QsFuncId> staticMemberFuncIds,
             ImmutableDictionary<string, QsVarId> staticMemberVarIds,
-            ImmutableDictionary<QsFuncName, QsFuncId> memberFuncs,
+            ImmutableDictionary<QsName, QsFuncId> memberFuncs,
             ImmutableDictionary<string, QsVarId> memberVarIds)
             : base(typeId)
         {
             this.typeParams = typeParams;
-            this.name = name;
             this.baseTypeValue = baseTypeValue;
             this.memberTypeIds = memberTypes;
             this.staticMemberFuncIds = staticMemberFuncIds;
@@ -58,12 +54,7 @@ namespace QuickSC
             this.memberFuncIds = memberFuncs;
             this.memberVarIds = memberVarIds;
         }
-
-        public override string GetName()
-        {
-            return name;
-        }
-
+        
         public override ImmutableArray<string> GetTypeParams()
         {
             return typeParams;
@@ -88,16 +79,16 @@ namespace QuickSC
             }
         }
 
-        public override bool GetMemberFuncId(QsFuncName memberFuncId, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFuncId FuncId)? outValue)
+        public override bool GetMemberFuncId(QsName memberFuncName, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFuncId FuncId)? outValue)
         {   
             // TODO: 같은 이름 체크?
-            if (memberFuncIds.TryGetValue(memberFuncId, out var funcId))
+            if (memberFuncIds.TryGetValue(memberFuncName, out var funcId))
             {
                 outValue = (false, funcId);
                 return true;
             }
 
-            if (!string.IsNullOrEmpty(memberFuncId.Name) && staticMemberFuncIds.TryGetValue(memberFuncId.Name, out funcId))
+            if (!string.IsNullOrEmpty(memberFuncName.Name) && staticMemberFuncIds.TryGetValue(memberFuncName.Name, out funcId))
             {
                 outValue = (true, funcId);
                 return true;

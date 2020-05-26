@@ -3,6 +3,7 @@ using QuickSC.StaticAnalyzer;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.ComponentModel.Design;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -46,6 +47,19 @@ namespace QuickSC.Shell
             }
 
             public string GetOutput() => sb.ToString();
+        }
+
+        
+
+        static async Task Main2(string[] args)
+        {
+            // 어디서 부터 조립해야 하나
+
+            // Application - input -> output 
+
+            // code
+            var app = new QsApplication(input);
+            await app.RunAsync();
         }
 
         static async Task Main(string[] args)

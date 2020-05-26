@@ -7,51 +7,59 @@ using System.Text;
 
 namespace QuickSC.StaticAnalyzer
 {
+    using QsLocalVarInfoDict = ImmutableDictionary<string, (int Index, QsTypeValue TypeValue)>;
+
     // 현재 함수 정보
     public class QsAnalyzerFuncContext
     {
+        public QsFuncId FuncId { get; }
         public QsTypeValue? RetTypeValue { get; set; } // 리턴 타입이 미리 정해져 있다면 이걸 쓴다
         public bool bSequence { get; } // 시퀀스 여부
+        public int LambdaCount { get; set; }
+        
+        private int localVarCount;
 
         // 현재 변수의 타입
-        ImmutableDictionary<string, QsVariable> vars;
+        private QsLocalVarInfoDict localVarInfos;
 
-        public QsAnalyzerFuncContext(QsTypeValue? retTypeValue, bool bSequence)
+        public QsAnalyzerFuncContext(QsFuncId funcId, QsTypeValue? retTypeValue, bool bSequence)
         {
+            this.FuncId = funcId;
             RetTypeValue = retTypeValue;
             this.bSequence = bSequence;
-            vars = ImmutableDictionary<string, QsVariable>.Empty;
+            localVarInfos = QsLocalVarInfoDict.Empty;
+            this.LambdaCount = 0;
+            this.localVarCount = 0;
         }
 
-        public void AddVariable(QsVariable variable)
+        public int AddVarInfo(string name, QsTypeValue typeValue)
         {
-            vars = vars.SetItem(variable.Name, variable);
+            localVarInfos = localVarInfos.SetItem(name, (localVarCount, typeValue));
+            return localVarCount++;
         }
 
-        public bool GetVariable(string varName, out QsVariable outVar)
+        public bool GetVarInfo(string varName, out (int Index, QsTypeValue TypeValue) outValue)
         {
-            return vars.TryGetValue(varName, out outVar);
+            return localVarInfos.TryGetValue(varName, out outValue);
         }
 
-        public void SetVariables(ImmutableDictionary<string, QsVariable> newVars)
+        public void SetVariables(QsLocalVarInfoDict newLocalVars)
         {
-            vars = newVars;
+            localVarInfos = newLocalVars;
         }
 
-        public ImmutableDictionary<string, QsVariable> GetVariables()
+        public QsLocalVarInfoDict GetVariables()
         {
-            return vars;
+            return localVarInfos;
         }
     }
 
     // Analyzer는 backtracking이 없어서, MutableContext를 쓴다 
     public class QsAnalyzerContext
     {
-        // TypeExp가 무슨 타입을 갖고 있는지. VarTypeValue를 여기서 교체할 수 있다
-        public Dictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
-
-        // 에러
-        public List<(object Obj, string Message)> Errors { get; }
+        public ImmutableArray<IQsMetadata> Metadatas { get; }
+        public QsTypeBuildInfo TypeBuildInfo { get; }
+        public IQsErrorCollector ErrorCollector { get; }
 
         // 전역변수의 타입, 
         // TODO: 전역변수는 전역타입과 이름이 겹치면 안된다.
@@ -59,35 +67,39 @@ namespace QuickSC.StaticAnalyzer
 
         // Exp가 무슨 타입을 갖고 있는지 저장
         public Dictionary<QsExp, QsTypeValue> TypeValuesByExp { get; }
-        public Dictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)> StoragesByExp { get; }
-
-        public QsTypeValueServiceContext TypeValueServiceContext { get; }
-
+        public Dictionary<QsExp, QsEvalExp> EvalExpsByExp { get; }
+        
         // 현재 실행되고 있는 함수
         public QsAnalyzerFuncContext CurFunc { get; set; }
 
         // CurFunc와 bGlobalScope를 나누는 이유는, globalScope에서 BlockStmt 안으로 들어가면 global이 아니기 때문이다
         public bool bGlobalScope { get; set; }
+        
+        public Dictionary<QsVarDecl, QsEvalVarDecl> EvalVarDeclsByVarDecl { get; }
+        public Dictionary<QsExp, QsFuncValue> FuncValuesByExp { get; set; }
+        public Dictionary<QsForeachStmt, QsForeachInfo> ForeachInfosByForEachStmt { get; set; }
 
-        public Dictionary<QsCaptureInfoLocation, QsCaptureInfo> CaptureInfosByLocation { get; }
+        public QsAnalyzerContext(
+            ImmutableArray<IQsMetadata> metadatas,
+            QsTypeBuildInfo typeBuildInfo,
+            IQsErrorCollector errorCollector)
+        {
+            Metadatas = metadatas;
+            TypeBuildInfo = typeBuildInfo;
+            ErrorCollector = errorCollector;
 
-        public QsAnalyzerContext(        
-            Dictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
-            List<(object obj, string msg)> errors,
-            QsTypeValueServiceContext typeValueServiceContext)
-        {   
-            TypeValuesByTypeExp = typeValuesByTypeExp;
-
-            Errors = errors;
             globalVarTypeValues = ImmutableDictionary<string, QsTypeValue>.Empty;
-            TypeValuesByExp = new Dictionary<QsExp, QsTypeValue>(QsReferenceComparer<QsExp>.Instance);
-            StoragesByExp = new Dictionary<QsExp, (QsStorage Storage, QsStorageKind Kind)>(QsReferenceComparer<QsExp>.Instance);
-            TypeValueServiceContext = typeValueServiceContext;
+            TypeValuesByExp = new Dictionary<QsExp, QsTypeValue>(QsRefEqComparer<QsExp>.Instance);
+            EvalExpsByExp = new Dictionary<QsExp, QsEvalExp>(QsRefEqComparer<QsExp>.Instance);            
+            
 
-            CurFunc = new QsAnalyzerFuncContext(null, false);
+            CurFunc = new QsAnalyzerFuncContext(new QsFuncId(null), null, false);
             bGlobalScope = true;
-            CaptureInfosByLocation = new Dictionary<QsCaptureInfoLocation, QsCaptureInfo>();
-        }        
+            
+            EvalVarDeclsByVarDecl = new Dictionary<QsVarDecl, QsEvalVarDecl>(QsRefEqComparer<QsVarDecl>.Instance);
+            FuncValuesByExp = new Dictionary<QsExp, QsFuncValue>(QsRefEqComparer<QsExp>.Instance);
+            ForeachInfosByForEachStmt = new Dictionary<QsForeachStmt, QsForeachInfo>(QsRefEqComparer<QsForeachStmt>.Instance);
+        }       
 
         // 1. exp가 무슨 타입을 가지는지
         // 2. callExp가 staticFunc을 호출할 경우 무슨 함수를 호출하는지

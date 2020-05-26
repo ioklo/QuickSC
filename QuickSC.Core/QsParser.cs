@@ -1,6 +1,8 @@
 ﻿using QuickSC.Syntax;
 using QuickSC.Token;
+using System;
 using System.Collections.Immutable;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace QuickSC
@@ -58,6 +60,16 @@ namespace QuickSC
             this.lexer = lexer;
             expParser = new QsExpParser(this, lexer);
             stmtParser = new QsStmtParser(this, lexer);
+        }
+
+        public async ValueTask<QsScript?> ParseScriptAsync(string input)
+        {
+            var buffer = new QsBuffer(new StringReader(input));
+            var pos = await buffer.MakePosition().NextAsync();
+            var context = QsParserContext.Make(QsLexerContext.Make(pos));
+
+            var scriptResult = await ParseScriptAsync(context);
+            return scriptResult.HasValue ? scriptResult.Elem : null;
         }
 
         public ValueTask<QsParseResult<QsExp>> ParseExpAsync(QsParserContext context)

@@ -15,18 +15,15 @@ namespace QuickSC.StaticAnalyzer
         QsExpAnalyzer expAnalyzer;
         QsStmtAnalyzer stmtAnalyzer;
         QsCapturer capturer;
-        QsTypeValueService typeValueService;
-        QsVarIdFactory varIdFactory;
+        QsTypeValueService typeValueService; 
 
-        public QsAnalyzer(QsCapturer capturer, QsTypeValueService typeValueService, QsVarIdFactory varIdFactory)
+        public QsAnalyzer(QsCapturer capturer, QsTypeValueService typeValueService)
         {
             // 내부 전용 클래스는 new를 써서 직접 만들어도 된다 (DI, 인자로 받을 필요 없이)
-
-            this.expAnalyzer = new QsExpAnalyzer(this, typeValueService, varIdFactory);
+            this.expAnalyzer = new QsExpAnalyzer(this, typeValueService);
             this.stmtAnalyzer = new QsStmtAnalyzer(this, typeValueService);
-            this.capturer = new QsCapturer();
+            this.capturer = capturer;
             this.typeValueService = typeValueService;
-            this.varIdFactory = varIdFactory;
         }
 
         internal bool AnalyzeExp(QsExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
@@ -34,41 +31,108 @@ namespace QuickSC.StaticAnalyzer
             return expAnalyzer.AnalyzeExp(exp, context, out typeValue);
         }
 
-        internal bool CaptureStmt(QsStmt stmt, ref QsCaptureContext captureContext)
+        // TODO: func도 지원해야 한다
+        bool MakeVarStorage(string id, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsStorage? outStorage)
         {
-            var captureResult = capturer.CaptureStmt(stmt, captureContext);
-            if (captureResult.HasValue)
+            if (context.CurFunc.GetVarInfo(id, out var localVarInfo))
             {
-                captureContext = captureResult.Value;
+                outStorage = new QsLocalVarStorage(localVarInfo.Index);
                 return true;
             }
 
+            // TODO: this도 검색, This도 검색
+            if (GetGlobalVar(id, context, out var globalVar))
+            {
+                // GlobalVar
+                outStorage = new QsGlobalVarStorage(globalVar.VarId);
+                return true;
+            }
+
+            outStorage = null;
             return false;
         }
+        
+        // TODO: QsVariable, LocalIndex가 Storage가 다른 것은 무엇인가
+        //public QsStorage AddVariable(string name, QsTypeValue typeValue, QsAnalyzerContext context)
+        //{
+        //    if (context.bGlobalScope)
+        //    {
+        //        var varId = new QsVarId(null, ImmutableArray.Create(new QsNameElem(name, 0)));
+        //        var variable = new QsVariable(varId, typeValue);
+        //        typeValueService.AddVar(variable, context.TypeValueServiceContext);
+        //        return new QsGlobalVarStorage(varId);
+        //    }
+        //    else
+        //    {
+        //        int localVarIndex = context.CurFunc.AddVarInfo(name, typeValue);
+        //        return new QsLocalVarStorage(localVarIndex);
+        //    }
+        //}
 
-        public void AddVariable(string name, QsTypeValue typeValue, QsAnalyzerContext context)
+        abstract class QsEvalVarDeclBuilder
         {
-            // TODO: 정리 필요
-            var varId = varIdFactory.MakeVarId();
+            public abstract void Add(string name, QsTypeValue typeValue, QsExp? initExp, QsAnalyzerContext context);
+            public abstract QsEvalVarDecl Build();
+        }
 
-            if (!context.bGlobalScope)
+        class QsGlobalVarDeclBuilder : QsEvalVarDeclBuilder
+        {
+            ImmutableArray<QsGlobalVarDecl.Elem>.Builder elemsBuilder;
+            QsTypeValueService typeValueService;
+
+            public QsGlobalVarDeclBuilder(QsTypeValueService typeValueService, int capacity)
             {
-                var variable = new QsVariable(varId, typeValue, name);
-                context.CurFunc.AddVariable(variable);
-                typeValueService.AddVar(variable, context.TypeValueServiceContext);
+                this.typeValueService = typeValueService;
+                elemsBuilder = ImmutableArray.CreateBuilder<QsGlobalVarDecl.Elem>(capacity);
             }
-            else
+
+            public override void Add(string name, QsTypeValue typeValue, QsExp? initExp, QsAnalyzerContext context)
             {
-                var variable = new QsVariable(varId, typeValue, name);
-                typeValueService.AddGlobalVar(variable, context.TypeValueServiceContext);
+                var varId = new QsVarId(null, ImmutableArray.Create(new QsNameElem(name, 0)));
+                var variable = new QsVariable(varId, typeValue);
+                typeValueService.AddVar(variable, context.TypeValueServiceContext);
+
+                elemsBuilder.Add(new QsGlobalVarDecl.Elem(typeValue, varId, initExp));
+            }
+
+            public override QsEvalVarDecl Build()
+            {
+                return new QsGlobalVarDecl(elemsBuilder.MoveToImmutable());
+            }
+        }
+
+        class QsLocalVarDeclBuilder : QsEvalVarDeclBuilder
+        {
+            ImmutableArray<QsLocalVarDecl.Elem>.Builder elemsBuilder;
+            public QsLocalVarDeclBuilder(int capacity)
+            {
+                elemsBuilder = ImmutableArray.CreateBuilder<QsLocalVarDecl.Elem>(capacity);
+            }
+
+            public override void Add(string name, QsTypeValue typeValue, QsExp? initExp, QsAnalyzerContext context)
+            {
+                int localVarIndex = context.CurFunc.AddVarInfo(name, typeValue);
+                elemsBuilder.Add(new QsLocalVarDecl.Elem(typeValue, localVarIndex, initExp));
+            }
+
+            public override QsEvalVarDecl Build()
+            {
+                return new QsLocalVarDecl(elemsBuilder.MoveToImmutable());
             }
         }
         
         internal void AnalyzeVarDecl(QsVarDecl varDecl, QsAnalyzerContext context)
         {
+            QsEvalVarDeclBuilder varDeclBuilder;
+            if (context.bGlobalScope)
+                varDeclBuilder = new QsGlobalVarDeclBuilder(typeValueService, varDecl.Elements.Length);
+            else
+                varDeclBuilder = new QsLocalVarDeclBuilder(varDecl.Elements.Length);
+
             // 1. int x  // x를 추가
             // 2. int x = initExp // x 추가, initExp가 int인지 검사
             // 3. var x = initExp // initExp의 타입을 알아내고 x를 추가
+            // 4. var x = 1, y = "string"; // 각각 한다
 
             // TODO: 추후에는 매번 만들지 않고, QsAnalyzerContext안에서 직접 관리한다
             var declTypeValue = context.TypeValuesByTypeExp[varDecl.Type];
@@ -78,9 +142,14 @@ namespace QuickSC.StaticAnalyzer
                 if (elem.InitExp == null)
                 {
                     if (declTypeValue is QsVarTypeValue)
+                    {
                         context.Errors.Add((elem, $"{elem.VarName}의 타입을 추론할 수 없습니다"));
+                        return;
+                    }
                     else
-                        AddVariable(elem.VarName, declTypeValue, context);
+                    {
+                        varDeclBuilder.Add(elem.VarName, declTypeValue, elem.InitExp, context);
+                    }
                 }
                 else
                 {
@@ -101,9 +170,11 @@ namespace QuickSC.StaticAnalyzer
                             context.Errors.Add((elem, $"타입 {initExpTypeValue}의 값은 타입 {varDecl.Type}의 변수 {elem.VarName}에 대입할 수 없습니다."));
                     }
 
-                    AddVariable(elem.VarName, typeValue, context);
+                    varDeclBuilder.Add(elem.VarName, declTypeValue, elem.InitExp, context);                    
                 }
             }
+
+            context.EvalVarDeclsByVarDecl[varDecl] = varDeclBuilder.Build();
         }
         
         public void AnalyzeStmt(QsStmt stmt, QsAnalyzerContext context)
@@ -111,7 +182,7 @@ namespace QuickSC.StaticAnalyzer
             stmtAnalyzer.AnalyzeStmt(stmt, context);
         }
 
-        public bool GetMemberFuncTypeValue(bool bStaticOnly, QsTypeValue typeValue, QsFuncName memberFuncId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsFuncTypeValue? funcTypeValue)
+        public bool GetMemberFuncTypeValue(bool bStaticOnly, QsTypeValue typeValue, QsName memberFuncId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsFuncTypeValue? funcTypeValue)
         {
             return typeValueService.GetMemberFuncTypeValue(bStaticOnly, typeValue, memberFuncId, ImmutableArray<QsTypeValue>.Empty, context.TypeValueServiceContext, out funcTypeValue);
         }        
@@ -135,79 +206,15 @@ namespace QuickSC.StaticAnalyzer
         {
             return typeValueService.GetGlobalVar(name, context.TypeValueServiceContext, out outVar);
         }
-
-        public static QsAnalyzerContext? AnalyzeScript(QsScript script, List<(object obj, string msg)> errors, ImmutableArray<IQsMetadata> refMetadatas)
+        
+        public void AnalyzeFuncDecl(QsFuncDecl funcDecl, QsAnalyzerContext context)
         {
-            var typeIdFactory = new QsTypeIdFactory();
-            var funcIdFactory = new QsFuncIdFactory();
-            var varIdFactory = new QsVarIdFactory();
 
-            var typeSkeletonCollector = new QsTypeSkeletonCollector(typeIdFactory, funcIdFactory);
-
-            var typeExpEvaluator = new QsTypeExpEvaluator();            
-            
-            var typeBuilder = new QsTypeAndFuncBuilder(varIdFactory);
-
-            var capturer = new QsCapturer();
-            var typeValueService = new QsTypeValueService();
-            var analyzer = new QsAnalyzer(capturer, typeValueService, varIdFactory);
-            
-            // 1. type skeleton 모으기
-            var skeletonCollectorContext = new QsTypeSkeletonCollectorContext();
-            if (!typeSkeletonCollector.CollectScript(script, skeletonCollectorContext))
-            {
-                errors.Add((script, $"타입 정보 모으기에 실패했습니다"));
-                return null;
-            }
-
-            // 2. skeleton과 metadata로 트리의 모든 TypeExp들을 TypeValue로 변환하기
-            var typeExpEvaluatorContext = new QsTypeEvalContext(
-                refMetadatas,
-                skeletonCollectorContext.TypeIdsByLocation.ToImmutableDictionary(),
-                skeletonCollectorContext.FuncIdsByLocation.ToImmutableDictionary(),
-                skeletonCollectorContext.TypeSkeletonsByTypeId.ToImmutableDictionary(),
-                skeletonCollectorContext.GlobalTypeSkeletons.ToImmutableDictionary());
-            typeExpEvaluator.EvaluateScript(script, typeExpEvaluatorContext);
-
-            if (0 < typeExpEvaluatorContext.Errors.Count)
-            {
-                errors.AddRange(typeExpEvaluatorContext.Errors);
-                return null;
-            }
-
-            var typeValuesByTypeExp = typeExpEvaluatorContext.TypeValuesByTypeExp.ToImmutableDictionary();
-
-            // 3. Type, Func만들기, MetadataBuilder
-            var builderContext = new QsTypeAndFuncBuilderContext(
-                skeletonCollectorContext.TypeIdsByLocation.ToImmutableDictionary(),
-                skeletonCollectorContext.FuncIdsByLocation.ToImmutableDictionary(),
-                typeValuesByTypeExp);
-            typeBuilder.BuildScript(script, builderContext);
-
-            var globalTypes = builderContext.GlobalTypes.ToImmutableDictionary(type => type.GetName());
-            var globalFuncs = builderContext.GlobalFuncs.ToImmutableDictionary(func => func.Name);
-            var typesById = builderContext.Types.ToImmutableDictionary(type => type.TypeId);
-            var funcsById = builderContext.Funcs.ToImmutableDictionary(func=> func.FuncId);
-
-            // globalVariable이 빠진상태            
-
-            // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
-            var analyzerContext = new QsAnalyzerContext(
-                new Dictionary<QsTypeExp, QsTypeValue>(typeExpEvaluatorContext.TypeValuesByTypeExp, QsReferenceComparer<QsTypeExp>.Instance),
-                errors,
-                new QsTypeValueServiceContext(
-                    refMetadatas,
-                    globalTypes,
-                    globalFuncs,
-                    typesById, funcsById, builderContext.Vars.ToDictionary(var => var.VarId), errors));
-
-            analyzer.AnalyzeScript(script, analyzerContext);
-
-            return analyzerContext;
         }
 
         public void AnalyzeScript(QsScript script, QsAnalyzerContext context)
         {   
+            // 4. 최상위 script를 분석한다
             foreach (var elem in script.Elements)
             {
                 switch (elem)
@@ -224,10 +231,35 @@ namespace QuickSC.StaticAnalyzer
                 switch (elem)
                 {
                     // TODO: classDecl
-                    case QsFuncDeclScriptElement funcElem: break;
+                    case QsFuncDeclScriptElement funcElem: 
+                        AnalyzeFuncDecl(funcElem.FuncDecl, context);
+                        break;
                 }
-            }            
+            }           
         }
+
+        public bool AnalyzeScript(
+            QsScript script,
+            ImmutableArray<IQsMetadata> metadatas,
+            QsTypeBuildInfo typeBuildInfo,
+            IQsErrorCollector errorCollector)
+        {
+            var context = new QsAnalyzerContext(
+                metadatas,
+                typeBuildInfo,
+                errorCollector);
+
+
+            AnalyzeScript(script, context);
+
+            if (errorCollector.HasError)
+                return false;
+
+            throw new NotImplementedException();
+
+
+        }
+
 
         public bool IsAssignable(QsTypeValue toTypeValue, QsTypeValue fromTypeValue, QsAnalyzerContext context)
         {

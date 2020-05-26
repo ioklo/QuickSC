@@ -21,7 +21,7 @@ namespace QuickSC
     // runtime placeholder
     public abstract class QsValue
     {
-        public abstract void SetValue(QsValue v);
+        public abstract void SetValue(QsValue fromValue);
         public abstract QsValue MakeCopy();
 
         // 뭘 리턴해야 하는거냐
@@ -56,9 +56,9 @@ namespace QuickSC
             return new QsEnumValue(TypeInst, newValues.ToImmutable());
         }
 
-        public override void SetValue(QsValue v)
+        public override void SetValue(QsValue fromValue)
         {
-            this.values = ((QsEnumValue)v).values;
+            this.values = ((QsEnumValue)fromValue).values;
         }
 
         public override bool IsType(QsTypeInst typeInst)
@@ -84,9 +84,9 @@ namespace QuickSC
             FuncInst = funcInst;
         }
 
-        public override void SetValue(QsValue v)
+        public override void SetValue(QsValue fromValue)
         {
-            FuncInst = ((QsFuncInstValue)v).FuncInst;
+            FuncInst = ((QsFuncInstValue)fromValue).FuncInst;
         }
 
         public override QsValue MakeCopy()
@@ -110,9 +110,9 @@ namespace QuickSC
         public static QsNullValue Instance { get; } = new QsNullValue();
         private QsNullValue() { }
 
-        public override void SetValue(QsValue v)
+        public override void SetValue(QsValue fromValue)
         {
-            if (!(v is QsNullValue))
+            if (!(fromValue is QsNullValue))
                 throw new InvalidOperationException(); 
         }
 
@@ -153,7 +153,7 @@ namespace QuickSC
             throw new InvalidOperationException();
         }
 
-        public override void SetValue(QsValue v)
+        public override void SetValue(QsValue fromValue)
         {
             throw new InvalidOperationException();
         }
@@ -168,22 +168,22 @@ namespace QuickSC
 
         protected static TObject GetObject<TObject>(QsValue value) where TObject : QsObject
         {
-            return (TObject)((QsObjectValue)value).Object;
+            return (TObject)((QsObjectValue)value).Object!;
         }
     }    
    
     public class QsObjectValue : QsValue
     {
-        public QsObject Object { get; private set; }
+        public QsObject? Object { get; private set; }
 
-        public QsObjectValue(QsObject obj)
+        public QsObjectValue(QsObject? obj)
         {
             Object = obj;
         }
         
         public override QsValue GetMemberValue(QsVarId varId)
         {
-            return Object.GetMemberValue(varId);
+            return Object!.GetMemberValue(varId);
         }
 
         public override QsValue MakeCopy()
@@ -191,9 +191,9 @@ namespace QuickSC
             return new QsObjectValue(Object);
         }
 
-        public override void SetValue(QsValue value)
+        public override void SetValue(QsValue fromValue)
         {
-            Object = ((QsObjectValue)value).Object;
+            Object = ((QsObjectValue)fromValue).Object;
         }
 
         public override bool IsType(QsTypeInst type)

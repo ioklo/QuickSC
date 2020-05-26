@@ -138,12 +138,12 @@ namespace QuickSC
         public QsTypeValue? Outer { get; }
         public QsTypeId TypeId { get; }
         public ImmutableArray<QsTypeValue> TypeArgs { get; }
-        // ImmutableDictionary<string, QsTypeValue> typeEnv;
+        // public ImmutableDictionary<QsTypeVarTypeValue, QsTypeValue> TypeEnv { get; }
 
-        public QsNormalTypeValue(QsTypeValue? outer, QsTypeId TypeId, ImmutableArray<QsTypeValue> typeArgs)
+        public QsNormalTypeValue(QsTypeValue? outer, QsTypeId typeId, ImmutableArray<QsTypeValue> typeArgs)
         {
             this.Outer = outer;
-            this.TypeId = TypeId;
+            this.TypeId = typeId;
             this.TypeArgs = typeArgs;
             // this.typeEnv = MakeTypeEnv();
         }

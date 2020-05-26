@@ -8,13 +8,11 @@ namespace QuickSC
     {
         public QsVarId VarId { get; }
         public QsTypeValue TypeValue { get; }
-        public string Name { get; }
 
-        public QsVariable(QsVarId varId, QsTypeValue typeValue, string name)
+        public QsVariable(QsVarId varId, QsTypeValue typeValue)
         {
             VarId = varId;
             TypeValue = typeValue;
-            Name = name;
         }
     }
 }

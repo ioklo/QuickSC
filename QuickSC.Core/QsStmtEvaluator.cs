@@ -4,6 +4,7 @@ using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -44,27 +45,65 @@ namespace QuickSC
             return EvaluateVarDeclAsync(stmt.VarDecl, context);
         }
 
-        internal async ValueTask EvaluateVarDeclAsync(QsVarDecl varDecl, QsEvalContext context)
+        async ValueTask EvaluateGlobalVarDeclAsync(QsGlobalVarDecl varDecl, QsEvalContext context)
         {
-            foreach (var elem in varDecl.Elements)
+            foreach(var elem in varDecl.Elems)
             {
-                QsValue? value = null;
-
+                // InitExp가 있으면 그 Value의 MakeCopy,
                 if (elem.InitExp != null)
-                    value = await expEvaluator.EvaluateExpAsync(elem.InitExp, context);
+                {
+                    QsValue value = await expEvaluator.EvaluateExpAsync(elem.InitExp, context);
 
-                if (context.bGlobalScope)
-                    context.GlobalVars.Add((null, elem.VarName), value);
+                    Debug.Assert(!context.GlobalVars.ContainsKey(elem.VarId));
+                    context.GlobalVars[elem.VarId] = value.MakeCopy();
+                }
                 else
-                    context.SetLocalVar(elem.VarName, value);
+                {
+                    // 없으면 defaultValue
+                    var defaultValue = evaluator.GetDefaultValue(elem.TypeValue, context);
+                    context.GlobalVars[elem.VarId] = defaultValue;
+                }
             }
+        }
+
+        async ValueTask EvaluateLocalVarDeclAsync(QsLocalVarDecl varDecl, QsEvalContext context)
+        {
+            foreach (var elem in varDecl.Elems)
+            {
+                // InitExp가 있으면 그 Value의 MakeCopy,
+                if (elem.InitExp != null)
+                {
+                    QsValue value = await expEvaluator.EvaluateExpAsync(elem.InitExp, context);
+
+                    Debug.Assert(context.LocalVars[elem.LocalIndex] == null);
+                    context.LocalVars[elem.LocalIndex] = value.MakeCopy();
+                }
+                else
+                {
+                    // 없으면 defaultValue
+                    var defaultValue = evaluator.GetDefaultValue(elem.TypeValue, context);
+                    context.LocalVars[elem.LocalIndex] = defaultValue;
+                }
+            }
+        }
+
+        ValueTask EvaluateEvalVarDeclAsync(QsEvalVarDecl varDecl, QsEvalContext context)
+        {
+            return varDecl switch
+            {
+                QsGlobalVarDecl globalVarDecl => EvaluateGlobalVarDeclAsync(globalVarDecl, context),
+                QsLocalVarDecl localVarDecl => EvaluateLocalVarDeclAsync(localVarDecl, context),
+                _ => throw new NotImplementedException()
+            };
+        }
+
+        internal ValueTask EvaluateVarDeclAsync(QsVarDecl varDecl, QsEvalContext context)
+        {
+            return EvaluateEvalVarDeclAsync(context.EvalVarDeclsByVarDecl[varDecl], context);
         }
 
         internal async IAsyncEnumerable<QsValue> EvaluateIfStmtAsync(QsIfStmt stmt, QsEvalContext context)
         {
-            var bPrevGlobalScope = context.bGlobalScope;
-            context.bGlobalScope = false;
-
             var condValue = await expEvaluator.EvaluateExpAsync(stmt.Cond, context);            
 
             bool bTestPassed;
@@ -92,15 +131,10 @@ namespace QuickSC
                     await foreach (var value in EvaluateStmtAsync(stmt.ElseBody, context))
                         yield return value;
             }
-
-            context.bGlobalScope = bPrevGlobalScope;
         }
 
         internal async IAsyncEnumerable<QsValue> EvaluateForStmtAsync(QsForStmt forStmt, QsEvalContext context)
         {
-            var (prevVars, bPrevGlobalScope) = (context.LocalVars, context.bGlobalScope);
-            context.bGlobalScope = false;
-
             if (forStmt.Initializer != null)
             {
                 switch (forStmt.Initializer)
@@ -152,9 +186,6 @@ namespace QuickSC
                 if (forStmt.ContinueExp != null)
                     await expEvaluator.EvaluateExpAsync(forStmt.ContinueExp, context);
             }
-
-            context.SetLocalVars(prevVars);
-            context.bGlobalScope = bPrevGlobalScope;
         }
 
         internal void EvaluateContinueStmt(QsContinueStmt continueStmt, QsEvalContext context)
@@ -181,9 +212,6 @@ namespace QuickSC
 
         internal async IAsyncEnumerable<QsValue> EvaluateBlockStmtAsync(QsBlockStmt blockStmt, QsEvalContext context)
         {
-            var (prevVars, bPrevGlobalScope) = (context.LocalVars, context.bGlobalScope);
-            context.bGlobalScope = false;
-
             foreach (var stmt in blockStmt.Stmts)
             {
                 await foreach (var value in EvaluateStmtAsync(stmt, context))
@@ -196,10 +224,7 @@ namespace QuickSC
 
                 if (context.FlowControl != QsNoneEvalFlowControl.Instance)
                     break;
-            }
-
-            context.SetLocalVars(prevVars);
-            context.bGlobalScope = bPrevGlobalScope;
+            }            
         }
 
         internal async ValueTask EvaluateExpStmtAsync(QsExpStmt expStmt, QsEvalContext context)
@@ -207,40 +232,54 @@ namespace QuickSC
             await expEvaluator.EvaluateExpAsync(expStmt.Exp, context);
         }
 
+        void EvaluateTaskEvalStmt(QsTaskEvalStmt evalStmt, QsEvalContext context)
+        {
+
+
+            //var captureInfo = context.CaptureInfosByLocation[QsCaptureInfoLocation.Make(taskStmt)];
+            //var captures = evaluator.MakeCaptures(captureInfo, context);
+
+            //var newContext = context.MakeCopy();
+            //newContext.SetLocalVars(captures);
+
+            //var task = Task.Run(async () =>
+            //{
+            //    await foreach (var result in EvaluateStmtAsync(taskStmt.Body, newContext))
+            //    {
+            //    }
+            //});
+
+            //context.AddTask(task);
+        }
+
+        void EvaluateEvalStmt(QsEvalStmt stmt, QsEvalContext context)
+        {
+            switch(stmt)
+            {
+                case QsTaskEvalStmt taskEvalStmt: EvaluateTaskEvalStmt(taskEvalStmt, context); break;
+                default: throw new NotImplementedException();
+            }
+        }
+
         internal void EvaluateTaskStmt(QsTaskStmt taskStmt, QsEvalContext context)
         {
-            var captureInfo = context.CaptureInfosByLocation[QsCaptureInfoLocation.Make(taskStmt)];
-            var captures = evaluator.MakeCaptures(captureInfo, context);
+            EvaluateEvalStmt(context.EvalStmtsByStmt[taskStmt], context);
+            return;
 
-            var newContext = context.MakeCopy();
-            newContext.SetLocalVars(captures);
-            newContext.bGlobalScope = false;
-
-            var task = Task.Run(async () =>
-            {
-                await foreach (var result in EvaluateStmtAsync(taskStmt.Body, context))
-                {
-                }
-            });
-
-            context.AddTask(task);
+            
         }
         
         async IAsyncEnumerable<QsValue> EvaluateAwaitStmtAsync(QsAwaitStmt stmt, QsEvalContext context)
         {
-            var (prevTasks, prevVars, bPrevGlobalScope) = (context.Tasks, context.LocalVars, context.bGlobalScope);
-            context.SetTasks(ImmutableArray<Task>.Empty);
-            context.bGlobalScope = false;
+            var prevTasks = context.Tasks;
+            context.SetTasks(ImmutableArray<Task>.Empty);            
 
             await foreach (var value in EvaluateStmtAsync(stmt.Body, context))
                 yield return value;
 
             await Task.WhenAll(context.Tasks.ToArray());
 
-            context.SetTasks(prevTasks)
-                .SetLocalVars(prevVars);
-
-            context.bGlobalScope = bPrevGlobalScope;
+            context.SetTasks(prevTasks);
         }
 
         internal void EvaluateAsyncStmt(QsAsyncStmt asyncStmt, QsEvalContext context)
@@ -249,8 +288,7 @@ namespace QuickSC
             var captures = evaluator.MakeCaptures(captureInfo, context);
 
             var newContext = context.MakeCopy();
-            newContext.SetLocalVars(captures);
-            newContext.bGlobalScope = false;
+            newContext.SetLocalVars(captures);            
 
             Func<Task> asyncFunc = async () =>
             {
@@ -265,9 +303,6 @@ namespace QuickSC
 
         internal async IAsyncEnumerable<QsValue> EvaluateForeachStmtAsync(QsForeachStmt foreachStmt, QsEvalContext context)
         {
-            var (prevVars, bPrevGlobalScope) = (context.LocalVars, context.bGlobalScope);
-            context.bGlobalScope = false;
-
             var info = context.ForeachInfosByForEachStmt[foreachStmt];
 
             var objValue = await expEvaluator.EvaluateExpAsync(foreachStmt.Obj, context);
@@ -311,9 +346,6 @@ namespace QuickSC
                     Debug.Assert(context.FlowControl == QsNoneEvalFlowControl.Instance);
                 }
             }
-
-            context.SetLocalVars(prevVars);
-            context.bGlobalScope = bPrevGlobalScope;
         }
 
         async IAsyncEnumerable<QsValue> EvaluateYieldStmtAsync(QsYieldStmt yieldStmt, QsEvalContext context)

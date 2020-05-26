@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -16,14 +17,14 @@ namespace QuickSC.StaticAnalyzer
     class QsExpAnalyzer
     {
         QsAnalyzer analyzer;
-        QsTypeValueService typeValueService;
-        QsVarIdFactory varIdFactory;
+        QsCapturer capturer;
+        QsTypeValueService typeValueService;        
 
-        public QsExpAnalyzer(QsAnalyzer analyzer, QsTypeValueService typeValueService, QsVarIdFactory varIdFactory)
+        public QsExpAnalyzer(QsAnalyzer analyzer, QsCapturer capturer, QsTypeValueService typeValueService)
         {
             this.analyzer = analyzer;
+            this.capturer = capturer;
             this.typeValueService = typeValueService;
-            this.varIdFactory = varIdFactory;
         }
 
         internal bool AnalyzeIdExp(QsIdentifierExp idExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
@@ -42,12 +43,14 @@ namespace QuickSC.StaticAnalyzer
             return false;
         }
 
+        
+
         internal bool AnalyzeIdExpWithStatic(QsIdentifierExp idExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out (bool bStatic, QsTypeValue TypeValue)? outValue)
         {
             QsTypeValue? typeValue;
 
-            // 변수에서 검색            
-            if (context.CurFunc.GetVariable(idExp.Value, out var localVar))
+            // 변수에서 검색
+            if (context.CurFunc.GetVarInfo(idExp.Value, out var localVarInfo))
             {
                 if (idExp.TypeArgs.Length != 0)
                 {
@@ -57,9 +60,9 @@ namespace QuickSC.StaticAnalyzer
                 }
 
                 // Local
-                context.StoragesByExp.Add(idExp, (QsLocalStorage.Instance, QsStorageKind.Var));
-                context.TypeValuesByExp.Add(idExp, localVar.TypeValue);
-                outValue = (false, localVar.TypeValue);
+                context.EvalExpsByExp.Add(idExp, new QsLocalVarStorage(localVarInfo.Index));
+                context.TypeValuesByExp.Add(idExp, localVarInfo.TypeValue);
+                outValue = (false, localVarInfo.TypeValue);
                 return true;
             }
 
@@ -68,24 +71,25 @@ namespace QuickSC.StaticAnalyzer
             // TODO: this scope 변수, 함수 검색            
 
             // 전역 변수/함수, 레퍼런스에서 검색
-            var candidates = new List<(QsTypeValue TypeValue, QsStorage Storage, QsStorageKind Kind)>();
+            var candidates = new List<(QsTypeValue TypeValue, QsStorage Storage)>();
             if (idExp.TypeArgs.Length == 0 && analyzer.GetGlobalVar(idExp.Value, context, out var globalVar))
             {
                 // GlobalVar
-                candidates.Add((globalVar.TypeValue, new QsGlobalStorage(globalVar.VarId.Metadata), QsStorageKind.Var));
+                candidates.Add((globalVar.TypeValue, new QsGlobalVarStorage(globalVar.VarId)));
             }
 
-            if (analyzer.GetGlobalFunc(idExp.Value, context, out var func))
-            {
-                // GlobalFunc
-                var funcTypeValue = typeValueService.MakeFuncTypeValue(null, func, typeArgs, context.TypeValueServiceContext);
-                candidates.Add((funcTypeValue, new QsGlobalStorage(func.FuncId.Metadata), QsStorageKind.Func));
-            }
+            // TODO: GlobalFunc Lambda 지원 Test\Lambda\05_FuncAsLambda.qs
+            //if (analyzer.GetGlobalFunc(idExp.Value, context, out var func))
+            //{
+            //    // GlobalFunc
+            //    var funcTypeValue = typeValueService.MakeFuncTypeValue(null, func, typeArgs, context.TypeValueServiceContext);
+            //    candidates.Add((funcTypeValue, QsGlobalStorage.Instance, QsStorageKind.Func));
+            //}
 
             if (candidates.Count == 1)
             {   
                 context.TypeValuesByExp.Add(idExp, candidates[0].TypeValue);
-                context.StoragesByExp.Add(idExp, (candidates[0].Storage, candidates[0].Kind));
+                context.EvalExpsByExp.Add(idExp, candidates[0].Storage);
                 outValue = (false, candidates[0].TypeValue);
                 return true;
             }
@@ -387,53 +391,76 @@ namespace QuickSC.StaticAnalyzer
         }
 
         // TODO: typeSkeleton 단계에서 LambdaExp에 타입 부여하기, AnalyzePhase에서 타입 생성하기
-        internal bool AnalyzeLambdaExp(QsLambdaExp lambdaExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeLambdaExp(QsLambdaExp lambdaExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
-            var captureContext = QsCaptureContext.Make();
-
-            // TODO: Capture로 순회를 따로 할 필요 없이, Analyze에서 같이 할 수도 있을 것 같다
-            if (!analyzer.CaptureStmt(lambdaExp.Body, ref captureContext))
+            // capture에 필요한 정보를 가져옵니다
+            if (!capturer.Capture(lambdaExp.Body, out var captureResult))
+            {
                 context.Errors.Add((lambdaExp, "변수 캡쳐에 실패했습니다"));
+                outTypeValue = null;
+                return false;
+            }            
 
-            context.CaptureInfosByLocation.Add(QsCaptureInfoLocation.Make(lambdaExp), captureContext.NeedCaptures);
+            // 람다 함수 컨텍스트를 만든다
+            var lambdaFuncId = new QsFuncId(null, context.CurFunc.FuncId.Elems.Add(
+                    new QsNameElem(QsName.AnonymousLambda(context.CurFunc.LambdaCount.ToString()), 0)));
+            context.CurFunc.LambdaCount++;
 
-            var func = new QsAnalyzerFuncContext(null, false);
+            // 캡쳐된 variable은 새 VarId를 가져야 한다
+            var func = new QsAnalyzerFuncContext(lambdaFuncId, null, false);
 
-            func.SetVariables(context.CurFunc.GetVariables());
+            var (prevFunc, bPrevGlobalScope) = (context.CurFunc, context.bGlobalScope);
+            context.bGlobalScope = false;
+            context.CurFunc = func;
 
+            // 필요한 변수들을 찾는다
+            var elemsBuilder = ImmutableArray.CreateBuilder<QsLambdaEvalExp.Elem>(captureResult.NeedCaptures.Length);
+            foreach (var needCapture in captureResult.NeedCaptures)
+            {
+                if (context.CurFunc.GetVarInfo(needCapture.VarName, out var localVarInfo))
+                {
+                    elemsBuilder.Add(new QsLambdaEvalExp.Elem(needCapture.Kind, new QsLocalIdExp(localVarInfo.Index)));
+                    context.CurFunc.AddVarInfo(needCapture.VarName, localVarInfo.TypeValue);
+                }
+                else if (analyzer.GetGlobalVar(needCapture.VarName, context, out var globalVar))
+                {
+                    elemsBuilder.Add(new QsLambdaEvalExp.Elem(needCapture.Kind, new QsGlobalIdExp(globalVar.VarId)));
+                    context.CurFunc.AddVarInfo(needCapture.VarName, globalVar.TypeValue);
+                }
+                else
+                {
+                    context.Errors.Add((lambdaExp, "캡쳐실패"));
+                    outTypeValue = null;
+                    return false;
+                }
+            }
+            
             var paramTypeValuesBuilder = ImmutableArray.CreateBuilder<QsTypeValue>(lambdaExp.Params.Length);
-
             foreach (var param in lambdaExp.Params)
             {
                 if (param.Type == null)
                 {
                     context.Errors.Add((param, "람다 인자 타입추론은 아직 지원하지 않습니다"));
-                    typeValue = null;
+                    outTypeValue = null;
                     return false;
                 }
 
                 var paramTypeValue = context.TypeValuesByTypeExp[param.Type];
+
                 paramTypeValuesBuilder.Add(paramTypeValue);
-
-                var varId = varIdFactory.MakeVarId();
-
-                var variable = new QsVariable(varId, paramTypeValue, param.Name);
-                func.AddVariable(variable);
+                context.CurFunc.AddVarInfo(param.Name, paramTypeValue);
             }
-
-            var (prevFunc, bPrevGlobalScope) = (context.CurFunc, context.bGlobalScope);
-            context.bGlobalScope = false;
-            context.CurFunc = func;
 
             analyzer.AnalyzeStmt(lambdaExp.Body, context);
             
             context.bGlobalScope = bPrevGlobalScope;            
             context.CurFunc = prevFunc;
 
-            typeValue = new QsFuncTypeValue(
+            outTypeValue = new QsFuncTypeValue(
                 func.RetTypeValue ?? QsVoidTypeValue.Instance, 
                 paramTypeValuesBuilder.MoveToImmutable());
 
+            context.EvalExpsByExp[lambdaExp] = new QsLambdaEvalExp(elemsBuilder.MoveToImmutable(), lambdaExp);
             return true;
         }
 
@@ -454,7 +481,7 @@ namespace QuickSC.StaticAnalyzer
             if (!AnalyzeExpWithStatic(exp.Object, context, out var outValue))
                 return false;
 
-            if (!analyzer.GetMemberFuncTypeValue(outValue.Value.bStatic, outValue.Value.TypeValue, new QsFuncName(exp.MemberFuncName), context, out var funcType))
+            if (!analyzer.GetMemberFuncTypeValue(outValue.Value.bStatic, outValue.Value.TypeValue, new QsName(exp.MemberFuncName), context, out var funcType))
             {
                 context.Errors.Add((exp, $"{exp.Object}에 {exp.MemberFuncName} 함수가 없습니다"));
                 return false;
@@ -490,7 +517,7 @@ namespace QuickSC.StaticAnalyzer
             }
 
             // a.x, a.F
-            var candidates = new List<(QsTypeValue TypeValue, QsStorage Storage, QsStorageKind Kind)>();
+            var candidates = new List<(QsTypeValue TypeValue, QsStorage Storage)>();
 
             QsNormalTypeValue? objNormalTypeValue = objTypeValue.Value.TypeValue as QsNormalTypeValue;
             if (objNormalTypeValue == null)
@@ -510,12 +537,14 @@ namespace QuickSC.StaticAnalyzer
 
                 typeValue = typeValueService.MakeTypeValue(objNormalTypeValue, memberVar.Value.Var.TypeValue, context.TypeValueServiceContext);
 
-                var storage = memberVar.Value.bStatic ? (QsStorage)new QsStaticStorage(objNormalTypeValue) : (QsStorage)QsInstanceStorage.Instance;
+                var storage = memberVar.Value.bStatic 
+                    ? (QsStorage)new QsStaticVarStorage(objNormalTypeValue, memberVar.Value.Var.VarId) 
+                    : (QsStorage)new QsInstanceVarStorage(memberVar.Value.Var.VarId);
 
-                candidates.Add((typeValue, storage, QsStorageKind.Var));
+                candidates.Add((typeValue, storage));
             }
 
-            if (typeValueService.GetMemberFunc(objNormalTypeValue.TypeId, new QsFuncName(memberExp.MemberName), context.TypeValueServiceContext, out var memberFunc))
+            if (typeValueService.GetMemberFunc(objNormalTypeValue.TypeId, new QsName(memberExp.MemberName), context.TypeValueServiceContext, out var memberFunc))
             {
                 if (objTypeValue.Value.bStatic && !memberFunc.Value.bStatic) // instance인데 static을 가져오는건 괜찮다
                     context.Errors.Add((memberExp, "정적 함수가 아닙니다"));
@@ -523,15 +552,17 @@ namespace QuickSC.StaticAnalyzer
                 var typeArgs = ImmutableArray.CreateRange(memberExp.MemberTypeArgs, typeArg => context.TypeValuesByTypeExp[typeArg]);
 
                 typeValue = typeValueService.MakeFuncTypeValue(objNormalTypeValue, memberFunc.Value.Func, typeArgs, context.TypeValueServiceContext);
-                var storage = memberFunc.Value.bStatic ? (QsStorage)new QsStaticStorage(objNormalTypeValue) : (QsStorage)QsInstanceStorage.Instance;
+                var storage = memberFunc.Value.bStatic
+                    ? (QsStorage)new QsStaticFuncStorage(objNormalTypeValue, memberFunc.Value.Func.FuncId)
+                    : (QsStorage)new QsInstanceFuncStorage(memberFunc.Value.Func.FuncId);
 
-                candidates.Add((typeValue, storage, QsStorageKind.Func));
+                candidates.Add((typeValue, storage));
             }
             
             if (candidates.Count == 1 )
             {
                 context.TypeValuesByExp.Add(memberExp, candidates[0].TypeValue);
-                context.StoragesByExp.Add(memberExp, (candidates[0].Storage, candidates[0].Kind));
+                context.EvalExpsByExp.Add(memberExp, candidates[0].Storage);
                 typeValue = objTypeValue.Value.TypeValue;
                 
                 return true;

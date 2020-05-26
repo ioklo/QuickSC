@@ -13,26 +13,29 @@ namespace QuickSC.Runtime
 
         public static void AddType(QsTypeBuilder typeBuilder, QsTypeId ienumeratorId)
         {
-            typeBuilder.AddGlobalType(typeId =>
-            {
-                // T
-                var elemTypeValue = new QsTypeVarTypeValue(typeId, "T");
+            // T
+            var typeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("IEnumerable", 1));
 
-                // IEnumerable<T>
-                var ienumeratorTypeValue = new QsNormalTypeValue(null, ienumeratorId, elemTypeValue);
+            var elemTypeValue = new QsTypeVarTypeValue(typeId, "T");
 
-                var funcBuilder = ImmutableDictionary.CreateBuilder<QsFuncName, QsFuncId>();
-                var func = typeBuilder.AddFunc(NativeGetEnumerator, funcId => new QsFunc(funcId, true, new QsFuncName("GetEnumerator"), ImmutableArray<string>.Empty, ienumeratorTypeValue));
-                funcBuilder.Add(func.Name, func.FuncId);
+            // IEnumerable<T>
+            var ienumeratorTypeValue = new QsNormalTypeValue(null, ienumeratorId, elemTypeValue);
 
-                return new QsDefaultType(
-                    typeId, "IEnumerable", ImmutableArray.Create("T"), null,
-                    ImmutableDictionary<string, QsTypeId>.Empty,
-                    ImmutableDictionary<string, QsFuncId>.Empty,
-                    ImmutableDictionary<string, QsVarId>.Empty,
-                    funcBuilder.ToImmutable(),
-                    ImmutableDictionary<string, QsVarId>.Empty);
-            });
+            var funcBuilder = ImmutableDictionary.CreateBuilder<QsName, QsFuncId>();
+            var func = typeBuilder.AddFunc(NativeGetEnumerator, new QsFunc(
+                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("GetEnumerator", 0)),
+                true, ImmutableArray<string>.Empty, ienumeratorTypeValue));
+            funcBuilder.Add(new QsName("GetEnumerator"), func.FuncId);
+
+            var type = new QsDefaultType(
+                typeId, ImmutableArray.Create("T"), null,
+                ImmutableDictionary<string, QsTypeId>.Empty,
+                ImmutableDictionary<string, QsFuncId>.Empty,
+                ImmutableDictionary<string, QsVarId>.Empty,
+                funcBuilder.ToImmutable(),
+                ImmutableDictionary<string, QsVarId>.Empty);
+
+            typeBuilder.AddType(type, new QsObjectValue(null));
         }
 
         public QsAsyncEnumerableObject(IAsyncEnumerable<QsValue> enumerable)
@@ -40,7 +43,7 @@ namespace QuickSC.Runtime
             this.enumerable = enumerable;
         }
         
-        static ValueTask<QsValue> NativeGetEnumerator(QsTypeInstEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeGetEnumerator(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
 

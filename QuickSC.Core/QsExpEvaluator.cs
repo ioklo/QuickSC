@@ -16,43 +16,45 @@ namespace QuickSC
     {
         private QsEvaluator evaluator;
         private IQsRuntimeModule runtimeModule;
+        private QsDomainService domainService;
 
-        public QsExpEvaluator(QsEvaluator evaluator, IQsRuntimeModule runtimeModule)
+        public QsExpEvaluator(QsEvaluator evaluator, IQsRuntimeModule runtimeModule, QsDomainService domainService)
         {
             this.evaluator = evaluator;
             this.runtimeModule = runtimeModule;
+            this.domainService = domainService;
+        }
+
+        QsValue EvaluateGlobalIdExp(QsGlobalIdExp exp, QsEvalContext context)
+        {
+            return context.GlobalVars[exp.VarId]!;
+        }
+
+        QsValue EvaluateLocalIdExp(QsLocalIdExp exp, QsEvalContext context)
+        {
+            return context.LocalVars[exp.LocalIndex]!;
+        }
+
+        public QsValue EvaluateEvalExp(QsEvalExp exp, QsEvalContext context)
+        {
+            return exp switch
+            {
+                QsGlobalIdExp globalIdExp => EvaluateGlobalIdExp(globalIdExp, context),
+                QsLocalIdExp localIdExp => EvaluateLocalIdExp(localIdExp, context),
+                _ => throw new NotImplementedException()
+            };
         }
         
         QsValue EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
         {
-            // id를 어디서 가져와야 하는지,
-            var (storage, kind) = context.StoragesByExp[idExp];
+            var info = (QsIdentifierExpInfo)context.EvalInfosByExp[idExp];
+            
+            // id가            
+            
+            
 
-            // TODO: 일단 기본적인 storage부터 구현한다. 람다는 추후에
-            if (kind == QsStorageKind.Func)
-                throw new NotImplementedException();
 
-            Debug.Assert(kind == QsStorageKind.Var);
-
-            // 전역 변수는 
-            switch(storage)
-            {
-                case QsLocalStorage localStorage:
-                    return context.GetLocalVar(idExp.Value)!;
-
-                case QsGlobalStorage globalStorage:
-                    return context.GlobalVars[(globalStorage.Metadata, idExp.Value)]!;
-
-                case QsStaticStorage staticStorage:
-                    throw new NotImplementedException();
-                //    return context.GetStaticValue(staticStorage.TypeValue;
-
-                case QsInstanceStorage instStorage:
-                    return context.ThisValue!.GetMemberValue(idExp.Value);
-
-                default:
-                    throw new InvalidOperationException();
-            }
+            return EvaluateEvalExp(context.EvalExpsByExp[idExp], context);
         }
 
         QsValue EvaluateBoolLiteralExp(QsBoolLiteralExp boolLiteralExp, QsEvalContext context)
@@ -358,7 +360,16 @@ namespace QuickSC
 
         //    return QsEvalResult<QsCallable>.Invalid;            
         //}
-        
+
+        //ImmutableArray<QsTypeInst> MakeTypeInstArgs(QsNormalTypeValue typeValue)
+        //{
+
+        //}
+
+        //ImmutableArray<QsTypeInst> MakeTypeInstArgs(QsFuncValue funcValue)
+        //{
+
+        //}
         
         async ValueTask<QsValue> EvaluateCallExpAsync(QsCallExp exp, QsEvalContext context)
         {
@@ -369,7 +380,13 @@ namespace QuickSC
                 // TODO: 1. thisFunc, (TODO: 현재 class가 없으므로 virtual staticFunc 패스)            
 
                 // 2. globalFunc (localFunc는 없으므로 패스), or 
-                funcInst = evaluator.GetFuncInst(funcValue, context);
+
+                // var typeInstArgs = MakeTypeInstArgs(funcValue, context.TypeEnv);
+                // TODO: 일단 QsTypeInst를 Empty로 둔다 .. List때문에 문제지만 List는 내부에서 TypeInst를 안쓴다
+                if (!domainService.GetFuncInst(funcValue.FuncId, ImmutableArray<QsTypeInst>.Empty, out var globalFuncInst))
+                    Debug.Fail("도메인에서 함수를 찾을 수 없습니다");
+
+                funcInst = globalFuncInst!;
             }
             else
             {
@@ -390,20 +407,31 @@ namespace QuickSC
         }
 
         // 여기서 직접 만들어야 한다
-
-        QsValue EvaluateLambdaExp(QsLambdaExp exp, QsEvalContext context)
+        QsValue EvaluateLambdaEvalExp(QsLambdaEvalExp exp, QsEvalContext context)
         {
-            // TODO: global변수, static변수는 캡쳐하지 않는다. 오직 local만 캡쳐한다
-            var captureInfo = context.CaptureInfosByLocation[QsCaptureInfoLocation.Make(exp)];
-            var captures = evaluator.MakeCaptures(captureInfo, context);
-            
             return new QsFuncInstValue(new QsScriptFuncInst(
                 false,
-                false, 
-                captureInfo.bCaptureThis ? context.ThisValue : null,
+                false,
+                exp.bCaptureThis ? context.ThisValue : null,
                 captures,
                 ImmutableArray.CreateRange(exp.Params, param => param.Name),
                 exp.Body));
+        }
+
+        QsValue EvaluateLambdaExp(QsLambdaExp exp, QsEvalContext context)
+        {
+            EvaluateLambdaEvalExp((QsLambdaEvalExp)context.EvalExpsByExp[exp], context);
+
+            //var captureInfo = context.CaptureInfosByLocation[QsCaptureInfoLocation.Make(exp)];
+            //var captures = evaluator.MakeCaptures(captureInfo, context);
+            
+            //return new QsFuncInstValue(new QsScriptFuncInst(
+            //    false,
+            //    false, 
+            //    captureInfo.bCaptureThis ? context.ThisValue : null,
+            //    captures,
+            //    ImmutableArray.CreateRange(exp.Params, param => param.Name),
+            //    exp.Body));
         }
         
         async ValueTask<QsValue> EvaluateMemberCallExpAsync(QsMemberCallExp exp, QsEvalContext context)
@@ -423,7 +451,10 @@ namespace QuickSC
             QsFuncInst funcInst;
             if (context.FuncValuesByExp.TryGetValue(exp, out var funcValue))
             {
-                funcInst = evaluator.GetFuncInst(thisValue, funcValue, context);
+                if (!domainService.GetFuncInst(funcValue.FuncId, ImmutableArray<QsTypeInst>.Empty, out var domainFuncInst))
+                    Debug.Fail("도메인에서 함수를 찾을 수 없습니다");
+
+                funcInst = domainFuncInst;
             }
             // 2. a.b(2, 3, 4)가 (a.b) (2, 3, 4)인 경우 (2, 3, 4)
             else

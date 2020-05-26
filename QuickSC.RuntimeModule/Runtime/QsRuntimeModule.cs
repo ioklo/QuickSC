@@ -4,31 +4,35 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<QsTypeInstEnv, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
+    using Invoker = Func<ImmutableArray<QsTypeInst>, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
 
-    public class QsRuntimeModule : IQsRuntimeModule
-    {   
+    public class QsRuntimeModule : IQsRuntimeModule, IQsMetadata
+    {
+        public const string MODULE_NAME = "System.Runtime";
+        public string ModuleName => MODULE_NAME;
+
         // TODO: localId와 globalId를 나눠야 할 것 같다. 내부에서는 LocalId를 쓰고, Runtime은 GlobalId로 구분해야 할 것 같다
 
         // globalTypes
-        ImmutableDictionary<(string Name, int TypeParamCount), QsType> globalTypes;
-        ImmutableDictionary<QsTypeId, QsType> typesById;
+        ImmutableDictionary<QsTypeId, QsType> typesById;        
         ImmutableDictionary<QsFuncId, (QsFunc Func, Invoker Invoker)> funcsById;
 
-        QsType MakeEmptyGlobalType(string name, QsTypeId typeId)
+        Dictionary<QsTypeId, QsValue> defaultValuesByTypeId;
+
+        QsType MakeEmptyGlobalType(QsTypeId typeId)
         {
             return new QsDefaultType(
                 typeId,
-                name,
                 ImmutableArray<string>.Empty,
                 null,
                 ImmutableDictionary<string, QsTypeId>.Empty,
                 ImmutableDictionary<string, QsFuncId>.Empty,
                 ImmutableDictionary<string, QsVarId>.Empty,
-                ImmutableDictionary<QsFuncName, QsFuncId>.Empty,
+                ImmutableDictionary<QsName, QsFuncId>.Empty,
                 ImmutableDictionary<string, QsVarId>.Empty);
         }
 
@@ -36,33 +40,17 @@ namespace QuickSC.Runtime
         {
             var typeBuilder = new QsTypeBuilder(this);
 
-            var boolType = typeBuilder.AddGlobalType(typeId => MakeEmptyGlobalType("bool", typeId));
-            var intType = typeBuilder.AddGlobalType(typeId => MakeEmptyGlobalType("int", typeId));
-            typeBuilder.AddGlobalType(typeId => MakeEmptyGlobalType("string", typeId));
-            var enumeratorType = QsAsyncEnumeratorObject.AddType(typeBuilder, new QsNormalTypeValue(null, boolType.TypeId));
+            var boolType = typeBuilder.AddType(MakeEmptyGlobalType(new QsTypeId(MODULE_NAME, new QsNameElem("bool", 0))), new QsValue<bool>(false));
+            var intType = typeBuilder.AddType(MakeEmptyGlobalType(new QsTypeId(MODULE_NAME, new QsNameElem("int", 0))), new QsValue<int>(0));
+            typeBuilder.AddType(MakeEmptyGlobalType(new QsTypeId(MODULE_NAME, new QsNameElem("string", 0))), new QsObjectValue(null));
 
+            var enumeratorType = QsAsyncEnumeratorObject.AddType(typeBuilder, new QsNormalTypeValue(null, boolType.TypeId));
             QsListObject.AddType(enumeratorType.TypeId, new QsNormalTypeValue(null, intType.TypeId), typeBuilder);
 
-            globalTypes = typeBuilder.GetGlobalTypes();
             typesById = typeBuilder.GetAllTypes();
             funcsById = typeBuilder.GetAllFuncs();
-        }
 
-        public bool GetGlobalType(string name, int typeParamCount, [NotNullWhen(true)] out QsType? type)
-        {
-            return globalTypes.TryGetValue((name, typeParamCount), out type);
-        }
-
-        public bool GetGlobalFunc(string name, [NotNullWhen(true)] out QsFunc? func)
-        {
-            func = null;
-            return false;
-        }
-
-        public bool GetGlobalVar(string name, [NotNullWhen(true)] out QsVariable? outVar)
-        {
-            outVar = null;
-            return false;
+            defaultValuesByTypeId = new Dictionary<QsTypeId, QsValue>();
         }
         
         public string GetString(QsValue value)
@@ -142,17 +130,19 @@ namespace QuickSC.Runtime
             ((QsValue<bool>)value).Value = b;
         }
 
-        public QsFuncInst GetFuncInst(QsFuncValue funcValue)
+        public QsFuncInst GetFuncInst(QsFuncId funcId, ImmutableArray<QsTypeInst> typeArgs)
         {
             // X<T(X)>.Y<U(Y)>.Func<V(F)>()
             // X<int>.Y<short>.Func<bool>() 를 만들어 봅시다. typeEnv를 만들어서 그냥 던져 볼겁니다            
-            var Invoker = funcsById[funcValue.FuncId].Invoker;
+            var Invoker = funcsById[funcId].Invoker;
 
-            // [T(X) => int, U(Y) => short, V(F) => bool]
-            QsTypeInstEnv typeEnv = new QsTypeInstEnv();
-            typeEnv.
-
-            return new QsNativeFuncInst((thisValue, argValues) => Invoker(typeEnv, thisValue, argValues));
+            // typeEnv는 [T(X) => int, U(Y) => short, V(F) => bool]
+            return new QsNativeFuncInst((thisValue, argValues) => Invoker(typeArgs, thisValue, argValues));
         }
+
+        public QsTypeInst GetTypeInst(QsTypeId typeId, ImmutableArray<QsTypeInst> typeArgs)
+        {
+            return new QsRawTypeInst(typesById[typeId], defaultValuesByTypeId[typeId], typeArgs);
+        }        
     }
 }

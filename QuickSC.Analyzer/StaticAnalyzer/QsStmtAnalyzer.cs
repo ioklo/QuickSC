@@ -173,13 +173,14 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeTaskStmt(QsTaskStmt taskStmt, QsAnalyzerContext context)
         {
-            var captureContext = QsCaptureContext.Make();
-
             // TODO: Capture로 순회를 따로 할 필요 없이, Analyze에서 같이 할 수도 있을 것 같다
-            if (!analyzer.CaptureStmt(taskStmt.Body, ref captureContext))
+            if (!analyzer.CaptureStmt(taskStmt.Body, context, out var captureInfo))
+            {
                 context.Errors.Add((taskStmt, "변수 캡쳐에 실패했습니다"));
+                return;
+            }
 
-            context.CaptureInfosByLocation.Add(QsCaptureInfoLocation.Make(taskStmt), new QsCaptureInfo( captureContext.NeedCaptures));
+            context.CaptureInfosByLocation.Add(QsCaptureInfoLocation.Make(taskStmt), captureInfo);
 
             var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
             context.bGlobalScope = false;
@@ -193,13 +194,14 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeAwaitStmt(QsAwaitStmt awaitStmt, QsAnalyzerContext context)
         {
-            var captureContext = QsCaptureContext.Make();
-
             // TODO: Capture로 순회를 따로 할 필요 없이, Analyze에서 같이 할 수도 있을 것 같다
-            if (!analyzer.CaptureStmt(awaitStmt.Body, ref captureContext))
+            if (!analyzer.CaptureStmt(awaitStmt.Body, context, out var captureInfo))
+            {
                 context.Errors.Add((awaitStmt, "변수 캡쳐에 실패했습니다"));
+                return; 
+            }
 
-            context.CaptureInfosByLocation.Add(QsCaptureInfoLocation.Make(awaitStmt), captureContext.NeedCaptures);
+            context.CaptureInfosByLocation.Add(QsCaptureInfoLocation.Make(awaitStmt), captureInfo);
 
             // TODO: 스코프 내에 await 할 것들이 있는지 검사.. 
 
@@ -237,7 +239,7 @@ namespace QuickSC.StaticAnalyzer
             var elemTypeValue = context.TypeValuesByTypeExp[foreachStmt.Type];
 
             // 1. elemTypeValue가 VarTypeValue이면 GetEnumerator의 리턴값으로 판단한다
-            if (!analyzer.GetMemberFuncTypeValue(false, objTypeValue, new QsFuncName("GetEnumerator"), context, out var getEnumeratorTypeValue))
+            if (!analyzer.GetMemberFuncTypeValue(false, objTypeValue, new QsName("GetEnumerator"), context, out var getEnumeratorTypeValue))
             {
                 context.Errors.Add((foreachStmt.Obj, "foreach ... in 뒤 객체는 IEnumerator<T> GetEnumerator() 함수가 있어야 합니다."));
                 return;
@@ -245,14 +247,14 @@ namespace QuickSC.StaticAnalyzer
 
             // TODO: 일단 인터페이스가 없으므로, bool MoveNext()과 T GetCurrent()가 있는지 본다
             // TODO: thiscall인지도 확인해야 한다
-            if (!analyzer.GetMemberFuncTypeValue(false, getEnumeratorTypeValue.RetTypeValue, new QsFuncName("MoveNext"), context, out var moveNextTypeValue) ||
+            if (!analyzer.GetMemberFuncTypeValue(false, getEnumeratorTypeValue.RetTypeValue, new QsName("MoveNext"), context, out var moveNextTypeValue) ||
                 !analyzer.IsAssignable(boolTypeValue, moveNextTypeValue.RetTypeValue, context))
             {
                 context.Errors.Add((foreachStmt.Obj, "enumerator doesn't have 'bool MoveNext()' function"));
                 return;
             }
 
-            if (!analyzer.GetMemberFuncTypeValue(false, getEnumeratorTypeValue.RetTypeValue, new QsFuncName("GetCurrent"), context, out var getCurrentTypeValue))
+            if (!analyzer.GetMemberFuncTypeValue(false, getEnumeratorTypeValue.RetTypeValue, new QsName("GetCurrent"), context, out var getCurrentTypeValue))
             {
                 context.Errors.Add((foreachStmt.Obj, "enumerator doesn't have 'GetCurrent()' function"));
                 return;

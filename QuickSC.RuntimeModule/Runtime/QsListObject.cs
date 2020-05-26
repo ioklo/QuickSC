@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<QsTypeInstEnv, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
+    using Invoker = Func<ImmutableArray<QsTypeInst>, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
 
     // List
     public class QsListObject : QsObject
@@ -25,46 +25,49 @@ namespace QuickSC.Runtime
             QsTypeValue intTypeValue,
             QsTypeBuilder typeBuilder)
         {
-            typeBuilder.AddGlobalType(listId =>
-            {
-                QsTypeValue listElemTypeValue = new QsTypeVarTypeValue(listId, "T");
+            QsTypeId listId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1));
+            QsTypeValue listElemTypeValue = new QsTypeVarTypeValue(listId, "T");
 
-                var memberFuncsBuilder = ImmutableDictionary.CreateBuilder<QsFuncName, QsFuncId>();
+            var memberFuncsBuilder = ImmutableDictionary.CreateBuilder<QsName, QsFuncId>();
 
-                var listAdd = typeBuilder.AddFunc(NativeAdd, funcId => new QsFunc(
-                    funcId, true, new QsFuncName("Add"), ImmutableArray<string>.Empty,
-                    QsVoidTypeValue.Instance, listElemTypeValue));
-                memberFuncsBuilder.Add(listAdd.Name, listAdd.FuncId);
+            var listAdd = typeBuilder.AddFunc(NativeAdd, new QsFunc(
+                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("Add", 0)),
+                true, ImmutableArray<string>.Empty,
+                QsVoidTypeValue.Instance, listElemTypeValue));
+            memberFuncsBuilder.Add(new QsName("Add"), listAdd.FuncId);
 
-                var listRemoveAt = typeBuilder.AddFunc(NativeRemoveAt, funcId => new QsFunc(
-                    funcId, true, new QsFuncName("RemoveAt"), ImmutableArray<string>.Empty,
-                    QsVoidTypeValue.Instance, intTypeValue));
-                memberFuncsBuilder.Add(listRemoveAt.Name, listRemoveAt.FuncId);
+            var listRemoveAt = typeBuilder.AddFunc(NativeRemoveAt, new QsFunc(
+                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("RemoveAt", 0)),
+                true, ImmutableArray<string>.Empty,
+                QsVoidTypeValue.Instance, intTypeValue));
+            memberFuncsBuilder.Add(new QsName("RemoveAt"), listRemoveAt.FuncId);
 
-                var listGetEnumerator = typeBuilder.AddFunc(NativeGetEnumerator, funcId => new QsFunc(
-                    funcId, true, new QsFuncName("GetEnumerator"), ImmutableArray<string>.Empty,
-                    new QsNormalTypeValue(null, enumeratorId, listElemTypeValue)));
-                memberFuncsBuilder.Add(listGetEnumerator.Name, listGetEnumerator.FuncId);
+            var listGetEnumerator = typeBuilder.AddFunc(NativeGetEnumerator, new QsFunc(
+                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("GetEnumerator", 0)),
+                true, ImmutableArray<string>.Empty,
+                new QsNormalTypeValue(null, enumeratorId, listElemTypeValue)));
+            memberFuncsBuilder.Add(new QsName("GetEnumerator"), listGetEnumerator.FuncId);
 
-                var listIndexer = typeBuilder.AddFunc(NativeIndexer, funcId => new QsFunc(
-                    funcId, true, new QsFuncName(QsFuncNameKind.Indexer), ImmutableArray<string>.Empty,
-                    listElemTypeValue, intTypeValue));                
-                memberFuncsBuilder.Add(listIndexer.Name, listIndexer.FuncId);
+            var listIndexer = typeBuilder.AddFunc(NativeIndexer, new QsFunc(
+                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem(QsSpecialName.Indexer, 0)),
+                true, ImmutableArray<string>.Empty,
+                listElemTypeValue, intTypeValue));
+            memberFuncsBuilder.Add(new QsName(QsSpecialName.Indexer), listIndexer.FuncId);
 
-                return new QsDefaultType(
-                    listId,
-                    "List",
-                    ImmutableArray.Create("T"), // typeParams
-                    null,
-                    ImmutableDictionary<string, QsTypeId>.Empty,
-                    ImmutableDictionary<string, QsFuncId>.Empty,
-                    ImmutableDictionary<string, QsVarId>.Empty,
-                    memberFuncsBuilder.ToImmutable(),
-                    ImmutableDictionary<string, QsVarId>.Empty);
-            });
+            var type = new QsDefaultType(
+                listId, 
+                ImmutableArray.Create("T"), // typeParams
+                null,
+                ImmutableDictionary<string, QsTypeId>.Empty,
+                ImmutableDictionary<string, QsFuncId>.Empty,
+                ImmutableDictionary<string, QsVarId>.Empty,
+                memberFuncsBuilder.ToImmutable(),
+                ImmutableDictionary<string, QsVarId>.Empty);
+
+            typeBuilder.AddType(type, new QsObjectValue(null));
         }
         
-        static ValueTask<QsValue> NativeGetEnumerator(QsTypeInstEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeGetEnumerator(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
             var list = GetObject<QsListObject>(thisValue);
@@ -72,16 +75,18 @@ namespace QuickSC.Runtime
             // TODO: Runtime 메모리 관리자한테 new를 요청해야 합니다
             return new ValueTask<QsValue>(new QsObjectValue(new QsAsyncEnumeratorObject(ToAsyncEnum(list.Elems).GetAsyncEnumerator())));
 
+#pragma warning disable CS1998
             async IAsyncEnumerable<QsValue> ToAsyncEnum(IEnumerable<QsValue> enumerable)
             {
                 foreach(var elem in enumerable)
                     yield return elem;
             }
+#pragma warning restore CS1998
         }
 
-        static ValueTask<QsValue> NativeIndexer(QsTypeInstEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeIndexer(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
-            Debug.Assert(args.Length != 1);
+            Debug.Assert(args.Length == 1);
             Debug.Assert(thisValue != null);
 
             var list = GetObject<QsListObject>(thisValue);
@@ -90,9 +95,9 @@ namespace QuickSC.Runtime
         }
 
         // List<T>.Add
-        static ValueTask<QsValue> NativeAdd(QsTypeInstEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeAdd(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
-            Debug.Assert(args.Length != 1);
+            Debug.Assert(args.Length == 1);
             Debug.Assert(thisValue != null);
 
             var list = GetObject<QsListObject>(thisValue);
@@ -101,9 +106,9 @@ namespace QuickSC.Runtime
             return new ValueTask<QsValue>(QsVoidValue.Instance);
         }
 
-        static ValueTask<QsValue> NativeRemoveAt(QsTypeInstEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeRemoveAt(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
-            Debug.Assert(args.Length != 1);
+            Debug.Assert(args.Length == 1);
             Debug.Assert(thisValue != null);
 
             var list = GetObject<QsListObject>(thisValue);

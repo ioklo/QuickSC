@@ -3,63 +3,81 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 
 namespace QuickSC.StaticAnalyzer
 {
-    public enum QsCaptureContextCaptureKind
+    public enum QsCaptureKind
     {
         Copy,
         Ref
     }
 
-    public struct QsCaptureContext
+    public class QsCaptureResult
     {
-        public ImmutableHashSet<string> BoundVars { get; }
-        public ImmutableDictionary<string, QsCaptureContextCaptureKind> NeedCaptures { get; } // bool => ref or copy 
-
-        public static QsCaptureContext Make()
+        public ImmutableArray<(string VarName, QsCaptureKind Kind)> NeedCaptures { get; }
+        public QsCaptureResult(ImmutableArray<(string VarName, QsCaptureKind Kind)> needCaptures)
         {
-            return new QsCaptureContext(ImmutableHashSet<string>.Empty, ImmutableDictionary<string, QsCaptureContextCaptureKind>.Empty);
-        }
-
-        public QsCaptureContext(            
-            ImmutableHashSet<string> boundVars,
-            ImmutableDictionary<string, QsCaptureContextCaptureKind> needCaptures)
-        {
-            BoundVars = boundVars;
             NeedCaptures = needCaptures;
         }
+    }
 
-        public QsCaptureContext AddBinds(IEnumerable<string> names)
+    class QsCaptureContext
+    {
+        ImmutableHashSet<string> boundVars;
+        Dictionary<string, QsCaptureKind> needCaptures { get; } // bool => ref or copy 
+
+        public QsCaptureContext()
         {
-            return new QsCaptureContext(BoundVars.Union(names), NeedCaptures);
+            boundVars = ImmutableHashSet<string>.Empty;
+            needCaptures = new Dictionary<string, QsCaptureKind>();
+        }
+
+        public void AddBind(string varName)
+        {
+            boundVars = boundVars.Add(varName);
+        }
+
+        public void AddBinds(IEnumerable<string> names)
+        {
+            boundVars = boundVars.Union(names);
         }
 
         public bool IsBound(string name)
         {
-            return BoundVars.Contains(name);
+            return boundVars.Contains(name);
         }
 
-        public QsCaptureContext AddCapture(string name, QsCaptureContextCaptureKind kind)
+        public void AddCapture(string name, QsCaptureKind kind)
         {
-            if (NeedCaptures.TryGetValue(name, out var prevKind))
-                if (prevKind == QsCaptureContextCaptureKind.Ref || kind == prevKind)
-                    return this;
+            if (needCaptures.TryGetValue(name, out var prevKind))
+                if (prevKind == QsCaptureKind.Ref || kind == prevKind)
+                    return;
 
-            return new QsCaptureContext(BoundVars, NeedCaptures.SetItem(name, kind));
+            needCaptures[name] = kind;
         }
 
-        public QsCaptureContext UpdateBoundVars(ImmutableHashSet<string> boundVars)
+        public ImmutableHashSet<string> GetBoundVars()
         {
-            return new QsCaptureContext(boundVars, NeedCaptures);
+            return boundVars;
+        }
+
+        public void SetBoundVars(ImmutableHashSet<string> newBoundVars)
+        {
+            boundVars = newBoundVars;
         }        
+
+        public ImmutableDictionary<string, QsCaptureKind> GetNeedCaptures()
+        {
+            return needCaptures.ToImmutableDictionary();
+        }
     }
 
     public class QsCapturer
     {
-        QsCaptureContext? CaptureStringExpElements(ImmutableArray<QsStringExpElement> elems, QsCaptureContext context)
+        bool CaptureStringExpElements(ImmutableArray<QsStringExpElement> elems, QsCaptureContext context)
         {
             foreach (var elem in elems)
             {
@@ -69,10 +87,8 @@ namespace QuickSC.StaticAnalyzer
                 }
                 else if (elem is QsExpStringExpElement expElem)
                 {
-                    var expResult = CaptureExp(expElem.Exp, context);
-                    if (expResult == null) return null;
-
-                    context = expResult.Value;
+                    if (!CaptureExp(expElem.Exp, context))
+                        return false;
                     continue;
                 }
                 else
@@ -81,54 +97,51 @@ namespace QuickSC.StaticAnalyzer
                 }
             }
 
-            return context;
+            return true;
         }
 
-        QsCaptureContext? CaptureCommandStmt(QsCommandStmt cmdStmt, QsCaptureContext context)
+        bool CaptureCommandStmt(QsCommandStmt cmdStmt, QsCaptureContext context)
         {
             foreach (var command in cmdStmt.Commands)
             {
-                var elemsResult = CaptureStringExpElements(command.Elements, context);
-                if (!elemsResult.HasValue) return null;
-                context = elemsResult.Value;                
+                if (!CaptureStringExpElements(command.Elements, context))
+                    return false;
             }
 
-            return context;
+            return true;
         }
 
-        QsCaptureContext? CaptureVarDecl(QsVarDecl varDecl, QsCaptureContext context)
+        bool CaptureVarDecl(QsVarDecl varDecl, QsCaptureContext context)
         {
-            return context.AddBinds(varDecl.Elements.Select(elem => elem.VarName));
+            context.AddBinds(varDecl.Elements.Select(elem => elem.VarName));
+            return true;
         }
 
-        QsCaptureContext? CaptureVarDeclStmt(QsVarDeclStmt varDeclStmt, QsCaptureContext context)
+        bool CaptureVarDeclStmt(QsVarDeclStmt varDeclStmt, QsCaptureContext context)
         {
             return CaptureVarDecl(varDeclStmt.VarDecl, context);
         }
 
-        QsCaptureContext? CaptureIfStmt(QsIfStmt ifStmt, QsCaptureContext context) 
+        bool CaptureIfStmt(QsIfStmt ifStmt, QsCaptureContext context) 
         {
-            var condResult = CaptureExp(ifStmt.Cond, context);
-            if (!condResult.HasValue) return null;
-            context = condResult.Value;
+            if (!CaptureExp(ifStmt.Cond, context))
+                return false;
 
             // TestType은 capture할 것이 없다
 
-            var bodyResult = CaptureStmt(ifStmt.Body, context);
-            if (!bodyResult.HasValue) return null;
-            context = bodyResult.Value;
+            if (!CaptureStmt(ifStmt.Body, context))
+                return false;
 
             if (ifStmt.ElseBody != null)
             {
-                var elseBodyResult = CaptureStmt(ifStmt.ElseBody, context);
-                if (!elseBodyResult.HasValue) return null;
-                context = elseBodyResult.Value;
+                if (!CaptureStmt(ifStmt.ElseBody, context))
+                    return false;
             }
 
-            return context;
+            return true;
         }
 
-        QsCaptureContext? CaptureForStmtInitialize(QsForStmtInitializer forInitStmt, QsCaptureContext context)
+        bool CaptureForStmtInitialize(QsForStmtInitializer forInitStmt, QsCaptureContext context)
         {
             return forInitStmt switch
             {
@@ -138,124 +151,120 @@ namespace QuickSC.StaticAnalyzer
             };
         }
 
-        QsCaptureContext? CaptureForStmt(QsForStmt forStmt, QsCaptureContext context)         
+        bool CaptureForStmt(QsForStmt forStmt, QsCaptureContext context)         
         {
-            var prevBoundVars = context.BoundVars;
+            var prevBoundVars = context.GetBoundVars();
 
             if (forStmt.Initializer != null)
             {
-                var initResult = CaptureForStmtInitialize(forStmt.Initializer, context);
-                if (!initResult.HasValue) return null;
-                context = initResult.Value;
+                if (!CaptureForStmtInitialize(forStmt.Initializer, context))
+                    return false;
             }
 
             if (forStmt.CondExp != null)
             {
-                var condResult = CaptureExp(forStmt.CondExp, context);
-                if (!condResult.HasValue) return null;
-                context = condResult.Value;
+                if (!CaptureExp(forStmt.CondExp, context))
+                    return false;
             }
 
             if (forStmt.ContinueExp != null )
             {
-                var contResult = CaptureExp(forStmt.ContinueExp, context);
-                if (!contResult.HasValue) return null;
-                context = contResult.Value;
+                if (!CaptureExp(forStmt.ContinueExp, context))
+                    return false;
             }
 
-            var bodyResult = CaptureStmt(forStmt.Body, context);
-            if (!bodyResult.HasValue) return null;
-            context = bodyResult.Value;
+            if (!CaptureStmt(forStmt.Body, context))
+                return false;
 
-            return context.UpdateBoundVars(prevBoundVars);
+            context.SetBoundVars(prevBoundVars);
+            return true;
         }
 
-        QsCaptureContext? CaptureContinueStmt(QsContinueStmt continueStmt, QsCaptureContext context) { return context; }
-        QsCaptureContext? CaptureBreakStmt(QsBreakStmt breakStmt, QsCaptureContext context) { return context; }
+        bool CaptureContinueStmt(QsContinueStmt continueStmt, QsCaptureContext context) { return true; }
+        bool CaptureBreakStmt(QsBreakStmt breakStmt, QsCaptureContext context) { return true; }
 
-        QsCaptureContext? CaptureReturnStmt(QsReturnStmt returnStmt, QsCaptureContext context)
+        bool CaptureReturnStmt(QsReturnStmt returnStmt, QsCaptureContext context)
         {
             if (returnStmt.Value != null)
                 return CaptureExp(returnStmt.Value, context);
             else
-                return context;
+                return true;
         }
 
-        QsCaptureContext? CaptureBlockStmt(QsBlockStmt blockStmt, QsCaptureContext context) 
+        bool CaptureBlockStmt(QsBlockStmt blockStmt, QsCaptureContext context) 
         {
-            var prevBoundVars = context.BoundVars;
+            var prevBoundVars = context.GetBoundVars();
 
             foreach(var stmt in blockStmt.Stmts)
             {
-                var stmtResult = CaptureStmt(stmt, context);
-                if (!stmtResult.HasValue) return null;
-                context = stmtResult.Value;
+                if (!CaptureStmt(stmt, context))
+                    return false;
             }
 
-            return context.UpdateBoundVars(prevBoundVars);
+            context.SetBoundVars(prevBoundVars);
+            return true;
         }
 
-        QsCaptureContext? CaptureExpStmt(QsExpStmt expStmt, QsCaptureContext context)
+        bool CaptureExpStmt(QsExpStmt expStmt, QsCaptureContext context)
         {
             return CaptureExp(expStmt.Exp, context);
         }
 
-        public QsCaptureContext? CaptureTaskStmt(QsTaskStmt stmt, QsCaptureContext context)
+        bool CaptureTaskStmt(QsTaskStmt stmt, QsCaptureContext context)
         {
-            var prevBoundVars = context.BoundVars;
+            var prevBoundVars = context.GetBoundVars();
 
-            var stmtResult = CaptureStmt(stmt.Body, context);
-            if (!stmtResult.HasValue) return null;
-            context = stmtResult.Value;
+            if (!CaptureStmt(stmt.Body, context))
+                return false;
 
-            return context.UpdateBoundVars(prevBoundVars);
+            context.SetBoundVars(prevBoundVars);
+            return true;
         }
 
-        public QsCaptureContext? CaptureAwaitStmt(QsAwaitStmt stmt, QsCaptureContext context)
+        bool CaptureAwaitStmt(QsAwaitStmt stmt, QsCaptureContext context)
         {
-            var prevBoundVars = context.BoundVars;
+            var prevBoundVars = context.GetBoundVars();
 
-            var stmtResult = CaptureStmt(stmt.Body, context);
-            if (!stmtResult.HasValue) return null;
-            context = stmtResult.Value;
+            if (!CaptureStmt(stmt.Body, context))
+                return false;
 
-            return context.UpdateBoundVars(prevBoundVars);
+            context.SetBoundVars(prevBoundVars);
+            return true;
         }
 
-        public QsCaptureContext? CaptureAsyncStmt(QsAsyncStmt stmt, QsCaptureContext context)
+        bool CaptureAsyncStmt(QsAsyncStmt stmt, QsCaptureContext context)
         {
-            var prevBoundVars = context.BoundVars;
+            var prevBoundVars = context.GetBoundVars();
 
-            var stmtResult = CaptureStmt(stmt.Body, context);
-            if (!stmtResult.HasValue) return null;
-            context = stmtResult.Value;
+            if (!CaptureStmt(stmt.Body, context))
+                return false;
 
-            return context.UpdateBoundVars(prevBoundVars);
+            context.SetBoundVars(prevBoundVars);
+            return true;
         }
 
-        public QsCaptureContext? CaptureForeachStmt(QsForeachStmt foreachStmt, QsCaptureContext context)
+        bool CaptureForeachStmt(QsForeachStmt foreachStmt, QsCaptureContext context)
         {
-            var prevBoundVars = context.BoundVars;
+            var prevBoundVars = context.GetBoundVars();
 
-            var objResult = CaptureExp(foreachStmt.Obj, context);
-            if (!objResult.HasValue) return null;
-            context = objResult.Value;
+            if (!CaptureExp(foreachStmt.Obj, context))
+                return false;
 
-            context.BoundVars.Add(foreachStmt.VarName);
+            context.AddBind(foreachStmt.VarName);
 
-            var bodyResult = CaptureStmt(foreachStmt.Body, context);
-            if (!bodyResult.HasValue) return null;
-            context = bodyResult.Value;
+            if (!CaptureStmt(foreachStmt.Body, context))
+                return false;
 
-            return context.UpdateBoundVars(prevBoundVars);
+            context.SetBoundVars(prevBoundVars);
+            return true;
         }
 
-        public QsCaptureContext? CaptureYieldStmt(QsYieldStmt yieldStmt, QsCaptureContext context)
+        bool CaptureYieldStmt(QsYieldStmt yieldStmt, QsCaptureContext context)
         {
             return CaptureExp(yieldStmt.Value, context);
         }
 
-        public QsCaptureContext? CaptureStmt(QsStmt stmt, QsCaptureContext context)
+        bool CaptureStmt(QsStmt stmt, QsCaptureContext context)
         {
             return stmt switch
             {
@@ -278,7 +287,7 @@ namespace QuickSC.StaticAnalyzer
             };
         }
 
-        QsCaptureContext? RefCaptureIdExp(QsIdentifierExp idExp, QsCaptureContext context)
+        bool RefCaptureIdExp(QsIdentifierExp idExp, QsCaptureContext context)
         {
             var varName = idExp.Value;
 
@@ -286,13 +295,13 @@ namespace QuickSC.StaticAnalyzer
             if (!context.IsBound(varName))
             {
                 // 캡쳐에 추가
-                context = context.AddCapture(varName, QsCaptureContextCaptureKind.Ref);
+                context.AddCapture(varName, QsCaptureKind.Ref);
             }
 
-            return context;
+            return true;
         }
 
-        QsCaptureContext? RefCaptureExp(QsExp exp, QsCaptureContext context)
+        bool RefCaptureExp(QsExp exp, QsCaptureContext context)
         {
             return exp switch
             {
@@ -312,7 +321,7 @@ namespace QuickSC.StaticAnalyzer
             };
         }
 
-        QsCaptureContext? CaptureIdExp(QsIdentifierExp idExp, QsCaptureContext context) 
+        bool CaptureIdExp(QsIdentifierExp idExp, QsCaptureContext context) 
         {            
             var varName = idExp.Value;
 
@@ -320,22 +329,20 @@ namespace QuickSC.StaticAnalyzer
             if (!context.IsBound(varName))
             {
                 // 캡쳐에 추가
-                context = context.AddCapture(varName, QsCaptureContextCaptureKind.Copy);
+                context.AddCapture(varName, QsCaptureKind.Copy);
             }
 
-            return context;            
+            return true;
         }
 
-        QsCaptureContext? CaptureBoolLiteralExp(QsBoolLiteralExp boolExp, QsCaptureContext context) => context;
-        QsCaptureContext? CaptureIntLiteralExp(QsIntLiteralExp intExp, QsCaptureContext context) => context;
-        QsCaptureContext? CaptureStringExp(QsStringExp stringExp, QsCaptureContext context)
+        bool CaptureBoolLiteralExp(QsBoolLiteralExp boolExp, QsCaptureContext context) => true;
+        bool CaptureIntLiteralExp(QsIntLiteralExp intExp, QsCaptureContext context) => true;
+        bool CaptureStringExp(QsStringExp stringExp, QsCaptureContext context)
         {
-            var elemsResult = CaptureStringExpElements(stringExp.Elements, context);
-            if (!elemsResult.HasValue) return null;
-            return elemsResult.Value;
+            return CaptureStringExpElements(stringExp.Elements, context);
         }
 
-        QsCaptureContext? CaptureUnaryOpExp(QsUnaryOpExp unaryOpExp, QsCaptureContext context) 
+        bool CaptureUnaryOpExp(QsUnaryOpExp unaryOpExp, QsCaptureContext context) 
         {
             // ++i, i++은 ref를 유발한다
             if (unaryOpExp.Kind == QsUnaryOpKind.PostfixInc ||
@@ -347,82 +354,75 @@ namespace QuickSC.StaticAnalyzer
                 return CaptureExp(unaryOpExp.Operand, context);
         }
 
-        QsCaptureContext? CaptureBinaryOpExp(QsBinaryOpExp binaryOpExp, QsCaptureContext context) 
+        bool CaptureBinaryOpExp(QsBinaryOpExp binaryOpExp, QsCaptureContext context) 
         { 
             if (binaryOpExp.Kind == QsBinaryOpKind.Assign)
             {
-                var operandResult0 = RefCaptureExp(binaryOpExp.Operand0, context);
-                if (!operandResult0.HasValue) return null;
-                context = operandResult0.Value;
+                if (!RefCaptureExp(binaryOpExp.Operand0, context))
+                    return false;
             }
             else
             {
-                var operandResult0 = CaptureExp(binaryOpExp.Operand0, context);
-                if (!operandResult0.HasValue) return null;
-                context = operandResult0.Value;
+                if (!CaptureExp(binaryOpExp.Operand0, context))
+                    return false;
             }
 
-            var operandResult1 = CaptureExp(binaryOpExp.Operand1, context);
-            if (!operandResult1.HasValue) return null;
-            context = operandResult1.Value;
+            if (!CaptureExp(binaryOpExp.Operand1, context))
+                return false;
 
-            return context;
+            return true;
         }
 
-        QsCaptureContext? CaptureCallExp(QsCallExp callExp, QsCaptureContext context) 
+        bool CaptureCallExp(QsCallExp callExp, QsCaptureContext context) 
         {
-            var callableResult = CaptureExp(callExp.Callable, context);
-            if (!callableResult.HasValue) return null;
-            context = callableResult.Value;
+            if (!CaptureExp(callExp.Callable, context))
+                return false;
 
             foreach (var arg in callExp.Args)
             {
-                var argResult = CaptureExp(arg, context);
-                if (!argResult.HasValue) return null;
-                context = argResult.Value;
+                if (!CaptureExp(arg, context))
+                    return false;
             }
 
-            return context;
+            return true;
         }
 
-        public QsCaptureContext? CaptureLambdaExp(QsLambdaExp exp, QsCaptureContext context)
+        bool CaptureLambdaExp(QsLambdaExp exp, QsCaptureContext context)
         {
-            var prevBoundVars = context.BoundVars;
+            var prevBoundVars = context.GetBoundVars();
 
-            context = context.AddBinds(exp.Params.Select(param => param.Name));
+            context.AddBinds(exp.Params.Select(param => param.Name));
 
-            var stmtResult = CaptureStmt(exp.Body, context);
-            if (!stmtResult.HasValue) return null;
-            context = stmtResult.Value;
+            if (!CaptureStmt(exp.Body, context))
+                return false;            
 
-            return context.UpdateBoundVars(prevBoundVars);
+            context.SetBoundVars(prevBoundVars);
+            return true;
         }
 
-        public QsCaptureContext? CaptureMemberCallExp(QsMemberCallExp exp, QsCaptureContext context)
+        bool CaptureMemberCallExp(QsMemberCallExp exp, QsCaptureContext context)
         {
             // a.b.c(); 라면 a만 캡쳐하면 된다
             return CaptureExp(exp.Object, context);
         }
 
-        public QsCaptureContext? CaptureMemberExp(QsMemberExp exp, QsCaptureContext context)
+        bool CaptureMemberExp(QsMemberExp exp, QsCaptureContext context)
         {
             return CaptureExp(exp.Object, context);
         }
 
-        public QsCaptureContext? CaptureListExp(QsListExp exp, QsCaptureContext context)
+        bool CaptureListExp(QsListExp exp, QsCaptureContext context)
         {
             foreach(var elem in exp.Elems)
             {
-                var elemResult = CaptureExp(elem, context);
-                if (!elemResult.HasValue) return null;
-                context = elemResult.Value;
+                if (!CaptureExp(elem, context))
+                    return false;
             }
 
-            return context;
-                
+            return true;
         }
 
-        QsCaptureContext? CaptureExp(QsExp exp, QsCaptureContext context)
+        bool CaptureExp(QsExp exp, QsCaptureContext context)
         {
             return exp switch
             {
@@ -440,6 +440,22 @@ namespace QuickSC.StaticAnalyzer
 
                 _ => throw new NotImplementedException()
             };
+        }
+
+        // entry
+        public bool Capture(QsStmt stmt, [NotNullWhen(returnValue: true)] out QsCaptureResult? outCaptureResult)
+        {
+            var context = new QsCaptureContext();
+
+            if (!CaptureStmt(stmt, context))
+            {
+                outCaptureResult = null;
+                return false;
+            }
+
+            // TODO: 일단 Capture this는 false이다
+            outCaptureResult = new QsCaptureResult(context.GetNeedCaptures());
+            return true;
         }
     }
 }

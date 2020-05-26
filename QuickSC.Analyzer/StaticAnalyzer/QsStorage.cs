@@ -1,42 +1,65 @@
 ﻿namespace QuickSC.StaticAnalyzer
-{
-    public enum QsStorageKind
-    {
-        Func,
-        Var,
-    }
-
+{   
+    // Global, Static, Local, Instance
+    // GlobalFunc, GlobalVar, 
+    // LoadVariable.. 정도가 맞는것 같기도 하다
     public abstract class QsStorage
     {    
     }
 
-    public class QsGlobalStorage : QsStorage
+    public class QsGlobalVarStorage : QsStorage
     {
-        public IQsMetadata? Metadata { get; }        
-        public QsGlobalStorage(IQsMetadata? metadata)            
+        public QsVarId VarId { get; }
+
+        public QsGlobalVarStorage(QsVarId varId)
         {
-            Metadata = metadata;
+            VarId = varId;
         }
     }
 
-    public class QsLocalStorage : QsStorage
+    public class QsLocalVarStorage : QsStorage
     {
-        static public QsLocalStorage Instance { get; } = new QsLocalStorage();
-        private QsLocalStorage() { }
+        public int LocalIndex { get; }
+        public QsLocalVarStorage(int localIndex) { LocalIndex = localIndex; }
     }
 
-    public class QsInstanceStorage : QsStorage
+    public class QsInstanceVarStorage : QsStorage
     {
-        static public QsInstanceStorage Instance { get; } = new QsInstanceStorage();
-        private QsInstanceStorage() { }
+        public QsVarId VarId { get; }
+        public QsInstanceVarStorage(QsVarId varId) 
+        {
+            VarId = varId;
+        }
     }
 
-    public class QsStaticStorage : QsStorage
+    public class QsInstanceFuncStorage : QsStorage
+    {
+        public QsFuncId FuncId { get; }
+        public QsInstanceFuncStorage(QsFuncId funcId)
+        {
+            FuncId = funcId;
+        }
+    }
+
+    public class QsStaticVarStorage : QsStorage
     {
         public QsTypeValue TypeValue { get; }
-        public QsStaticStorage(QsTypeValue typeValue)
+        public QsVarId VarId { get; }
+        public QsStaticVarStorage(QsTypeValue typeValue, QsVarId varId)
         {
             TypeValue = typeValue;
+            VarId = varId;
+        }
+    }
+
+    public class QsStaticFuncStorage : QsStorage
+    {
+        public QsTypeValue TypeValue { get; }
+        public QsFuncId FuncId { get; }
+        public QsStaticFuncStorage(QsTypeValue typeValue, QsFuncId funcId)
+        {
+            TypeValue = typeValue;
+            FuncId = funcId;
         }
     }
 }

@@ -1,6 +1,8 @@
 using QuickSC;
 using QuickSC.Runtime;
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using Xunit;
 
 namespace QuickSC.RuntimeModule.Test
@@ -10,27 +12,51 @@ namespace QuickSC.RuntimeModule.Test
         [Fact]
         static void Temp()
         {
-            QsRuntimeModule runtimeModule = new QsRuntimeModule();
+            QsDomainService domainService = new QsDomainService();
 
-            // List<int>를 만들어 보자
-            if (!runtimeModule.GetGlobalType("int", 0, out var intType))
-                return;
+            var runtimeModule = new QsRuntimeModule();
+            domainService.AddModule(runtimeModule);
 
-            if (!runtimeModule.GetGlobalType("List", 1, out var listType))
-                return;
+            var intTypeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("int", 0));
+            var listTypeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1));
 
-            if (!listType.GetMemberFuncId(new QsFuncName("Add"), out var funcInfo))
-                return;
+            // int
+            var intTypeInst = domainService.GetTypeInst(intTypeId, ImmutableArray<QsTypeInst>.Empty);
 
-            // outer지정하는 부분이 손으로 만들기에는 실수할 부분이 많은 것 같다
-            var listIntTypeValue = new QsNormalTypeValue(null, listType.TypeId, new QsNormalTypeValue(null, intType.TypeId));
-            var listIntAddFuncValue = new QsFuncValue(listIntTypeValue, funcInfo.Value.FuncId);
+            // List<int>
+            var listTypeInst = domainService.GetTypeInst(listTypeId, ImmutableArray.Create(intTypeInst));
 
-            var funcInst = runtimeModule.GetFuncInst(listIntAddFuncValue) as QsNativeFuncInst;
-            funcInst.CallAsync(thisValue, args);
+            // List<int>.Add
+            var listAddFuncId = new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("Add", 0));
+            var funcInst = domainService.GetFuncInst(listAddFuncId, ImmutableArray.Create(intTypeInst));
+
+            // list = [1, 2]
+            var list = runtimeModule.MakeList(new List<QsValue> { runtimeModule.MakeInt(1), runtimeModule.MakeInt(2) });
+
+            // List<int>.Add(list, 3)
+            if( funcInst is QsNativeFuncInst nativeFuncInst )
+                nativeFuncInst.CallAsync(list, ImmutableArray.Create<QsValue>(runtimeModule.MakeInt(3)));
+
+            // [1, 2, 3]
+            Assert.True(list is QsObjectValue objValue && 
+                objValue.Object is QsListObject lstObj &&
+                runtimeModule.GetInt(lstObj.Elems[0]) == 1 &&
+                runtimeModule.GetInt(lstObj.Elems[1]) == 2 &&
+                runtimeModule.GetInt(lstObj.Elems[2]) == 3);
+
+            // List<int>
+            //var listIntTypeValue = new QsNormalTypeValue(null, listType.TypeId, new QsNormalTypeValue(null, intType.TypeId));
+            //var listIntAddFuncValue = new QsFuncValue(listIntTypeValue, funcInfo.Value.FuncId);
+
+            //// List<T>.Add
+            //// (List<>.Add), (T(List) => int)
+
+            //// 누가 TypeValue를 TypeInst로 만들어주나.. DomainService
+            //var typeInstEnv = domainService.MakeTypeInstEnv(listIntAddFuncValue);
+
+            //var funcInst = domainService.GetFuncInst(listIntAddFuncValue) as QsNativeFuncInst;
 
             // FuncValue를 만들어 보자 
-
         }
     }
 }

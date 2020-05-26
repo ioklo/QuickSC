@@ -6,16 +6,12 @@ namespace QuickSC.StaticAnalyzer
     public class QsTypeSkeleton
     {
         public QsTypeId TypeId { get; }
-        public string Name { get; }
-        public int TypeParamCount { get; }
-        public Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton> MemberSkeletons { get; }
+        public Dictionary<QsNameElem, QsTypeSkeleton> MemberSkeletons { get; }
 
-        public QsTypeSkeleton(QsTypeId typeId, string name, int typeParamCount)
+        public QsTypeSkeleton(QsTypeId typeId)
         {
             TypeId = typeId;
-            Name = name;
-            TypeParamCount = typeParamCount;
-            MemberSkeletons = new Dictionary<(string Name, int TypeParamCount), QsTypeSkeleton>();
+            MemberSkeletons = new Dictionary<QsNameElem, QsTypeSkeleton>();
         }
     }
 }

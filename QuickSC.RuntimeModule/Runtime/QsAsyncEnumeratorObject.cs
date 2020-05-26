@@ -13,30 +13,34 @@ namespace QuickSC.Runtime
 
         public static QsType AddType(QsTypeBuilder typeBuilder, QsTypeValue boolTypeValue)
         {
-            return typeBuilder.AddGlobalType(typeId =>
-            {
-                var funcIdsBuilder = ImmutableDictionary.CreateBuilder<QsFuncName, QsFuncId>();
-                var elemTypeValue = new QsTypeVarTypeValue(typeId, "T");
+            var typeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("IEnumerator", 1));
 
-                // bool MoveNext()
-                var moveNext = typeBuilder.AddFunc(NativeMoveNext, funcId => new QsFunc(funcId, true, new QsFuncName("MoveNext"), ImmutableArray<string>.Empty, boolTypeValue));
-                funcIdsBuilder.Add(moveNext.Name, moveNext.FuncId);
+            var funcIdsBuilder = ImmutableDictionary.CreateBuilder<QsName, QsFuncId>();
+            var elemTypeValue = new QsTypeVarTypeValue(typeId, "T");
 
-                // T GetCurrent()
-                var getCurrent = typeBuilder.AddFunc(NativeGetCurrent, funcId => new QsFunc(funcId, true, new QsFuncName("GetCurrent"), ImmutableArray<string>.Empty, elemTypeValue));
-                funcIdsBuilder.Add(getCurrent.Name, getCurrent.FuncId);
+            // bool MoveNext()
+            var moveNext = typeBuilder.AddFunc(NativeMoveNext, new QsFunc(
+                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("IEnumerator", 1), new QsNameElem("MoveNext", 0)),
+                true, ImmutableArray<string>.Empty, boolTypeValue));
+            funcIdsBuilder.Add(new QsName("MoveNext"), moveNext.FuncId);
 
-                return new QsDefaultType(
-                    typeId,
-                    "IEnumerator",
-                    ImmutableArray.Create("T"),
-                    null, // no base
-                    ImmutableDictionary<string, QsTypeId>.Empty,
-                    ImmutableDictionary<string, QsFuncId>.Empty,
-                    ImmutableDictionary<string, QsVarId>.Empty,
-                    funcIdsBuilder.ToImmutable(),
-                    ImmutableDictionary<string, QsVarId>.Empty);
-            });
+            // T GetCurrent()
+            var getCurrent = typeBuilder.AddFunc(NativeGetCurrent, new QsFunc(
+                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("IEnumerator", 1), new QsNameElem("GetCurrent", 0)),
+                true, ImmutableArray<string>.Empty, elemTypeValue));
+            funcIdsBuilder.Add(new QsName("GetCurrent"), getCurrent.FuncId);
+
+            var type = new QsDefaultType(
+                typeId,
+                ImmutableArray.Create("T"),
+                null, // no base
+                ImmutableDictionary<string, QsTypeId>.Empty,
+                ImmutableDictionary<string, QsFuncId>.Empty,
+                ImmutableDictionary<string, QsVarId>.Empty,
+                funcIdsBuilder.ToImmutable(),
+                ImmutableDictionary<string, QsVarId>.Empty);
+
+            return typeBuilder.AddType(type, new QsObjectValue(null));
         }
 
         public QsAsyncEnumeratorObject(IAsyncEnumerator<QsValue> enumerator)
@@ -44,7 +48,7 @@ namespace QuickSC.Runtime
             this.enumerator = enumerator;
         }
 
-        static async ValueTask<QsValue> NativeMoveNext(QsTypeInstEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static async ValueTask<QsValue> NativeMoveNext(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
 
@@ -54,7 +58,7 @@ namespace QuickSC.Runtime
             return new QsValue<bool>(bResult);
         }
 
-        static ValueTask<QsValue> NativeGetCurrent(QsTypeInstEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeGetCurrent(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
 
