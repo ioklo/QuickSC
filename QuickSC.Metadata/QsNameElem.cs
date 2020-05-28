@@ -11,15 +11,9 @@
             TypeParamCount = typeParamCount;
         }
 
-        public QsNameElem(QsSpecialName specialName, int typeParamCount)
-        {
-            Name = new QsName(specialName);
-            TypeParamCount = typeParamCount;
-        }
-
         public QsNameElem(string name, int typeParamCount)
         {
-            Name = new QsName(name);
+            Name = QsName.Text(name);
             TypeParamCount = typeParamCount;
         }
     }

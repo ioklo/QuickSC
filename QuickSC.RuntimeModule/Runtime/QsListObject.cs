@@ -34,25 +34,25 @@ namespace QuickSC.Runtime
                 new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("Add", 0)),
                 true, ImmutableArray<string>.Empty,
                 QsVoidTypeValue.Instance, listElemTypeValue));
-            memberFuncsBuilder.Add(new QsName("Add"), listAdd.FuncId);
+            memberFuncsBuilder.Add(QsName.Text("Add"), listAdd.FuncId);
 
             var listRemoveAt = typeBuilder.AddFunc(NativeRemoveAt, new QsFunc(
                 new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("RemoveAt", 0)),
                 true, ImmutableArray<string>.Empty,
                 QsVoidTypeValue.Instance, intTypeValue));
-            memberFuncsBuilder.Add(new QsName("RemoveAt"), listRemoveAt.FuncId);
+            memberFuncsBuilder.Add(QsName.Text("RemoveAt"), listRemoveAt.FuncId);
 
             var listGetEnumerator = typeBuilder.AddFunc(NativeGetEnumerator, new QsFunc(
                 new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("GetEnumerator", 0)),
                 true, ImmutableArray<string>.Empty,
                 new QsNormalTypeValue(null, enumeratorId, listElemTypeValue)));
-            memberFuncsBuilder.Add(new QsName("GetEnumerator"), listGetEnumerator.FuncId);
+            memberFuncsBuilder.Add(QsName.Text("GetEnumerator"), listGetEnumerator.FuncId);
 
             var listIndexer = typeBuilder.AddFunc(NativeIndexer, new QsFunc(
-                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem(QsSpecialName.Indexer, 0)),
+                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem(QsName.Special(QsSpecialName.Indexer), 0)),
                 true, ImmutableArray<string>.Empty,
                 listElemTypeValue, intTypeValue));
-            memberFuncsBuilder.Add(new QsName(QsSpecialName.Indexer), listIndexer.FuncId);
+            memberFuncsBuilder.Add(QsName.Special(QsSpecialName.Indexer), listIndexer.FuncId);
 
             var type = new QsDefaultType(
                 listId, 

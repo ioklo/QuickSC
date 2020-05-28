@@ -17,7 +17,7 @@ namespace QuickSC.StaticAnalyzer
         public bool bSequence { get; } // 시퀀스 여부
         public int LambdaCount { get; set; }
         
-        private int localVarCount;
+        public int LocalVarCount { get; private set; }
 
         // 현재 변수의 타입
         private QsLocalVarInfoDict localVarInfos;
@@ -29,13 +29,13 @@ namespace QuickSC.StaticAnalyzer
             this.bSequence = bSequence;
             localVarInfos = QsLocalVarInfoDict.Empty;
             this.LambdaCount = 0;
-            this.localVarCount = 0;
+            this.LocalVarCount = 0;
         }
 
         public int AddVarInfo(string name, QsTypeValue typeValue)
         {
-            localVarInfos = localVarInfos.SetItem(name, (localVarCount, typeValue));
-            return localVarCount++;
+            localVarInfos = localVarInfos.SetItem(name, (LocalVarCount, typeValue));
+            return LocalVarCount++;
         }
 
         public bool GetVarInfo(string varName, out (int Index, QsTypeValue TypeValue) outValue)
@@ -65,19 +65,15 @@ namespace QuickSC.StaticAnalyzer
         // TODO: 전역변수는 전역타입과 이름이 겹치면 안된다.
         ImmutableDictionary<string, QsTypeValue> globalVarTypeValues;
 
-        // Exp가 무슨 타입을 갖고 있는지 저장
-        // public Dictionary<QsExp, QsTypeValue> TypeValuesByExp { get; }
-        
         // 현재 실행되고 있는 함수
         public QsAnalyzerFuncContext CurFunc { get; set; }
 
         // CurFunc와 bGlobalScope를 나누는 이유는, globalScope에서 BlockStmt 안으로 들어가면 global이 아니기 때문이다
         public bool bGlobalScope { get; set; }
         
-        public Dictionary<QsVarDecl, QsEvalVarDecl> EvalVarDeclsByVarDecl { get; }
-        public Dictionary<QsExp, QsFuncValue> FuncValuesByExp { get; set; }
-        public Dictionary<QsForeachStmt, QsForeachInfo> ForeachInfosByForEachStmt { get; set; }
-        public Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo> EvalInfosByNode { get; }
+        public Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo> InfosByNode { get; }
+
+        
 
         public QsAnalyzerContext(
             ImmutableArray<IQsMetadata> metadatas,
@@ -89,16 +85,12 @@ namespace QuickSC.StaticAnalyzer
             ErrorCollector = errorCollector;
 
             globalVarTypeValues = ImmutableDictionary<string, QsTypeValue>.Empty;
-            TypeValuesByExp = new Dictionary<QsExp, QsTypeValue>(QsRefEqComparer<QsExp>.Instance);            
 
             CurFunc = new QsAnalyzerFuncContext(new QsFuncId(null), null, false);
             bGlobalScope = true;
             
-            EvalVarDeclsByVarDecl = new Dictionary<QsVarDecl, QsEvalVarDecl>(QsRefEqComparer<QsVarDecl>.Instance);
-            FuncValuesByExp = new Dictionary<QsExp, QsFuncValue>(QsRefEqComparer<QsExp>.Instance);
-            ForeachInfosByForEachStmt = new Dictionary<QsForeachStmt, QsForeachInfo>(QsRefEqComparer<QsForeachStmt>.Instance);
 
-            EvalInfosByNode = new Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo>(QsRefEqComparer<IQsSyntaxNode>.Instance);
+            InfosByNode = new Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo>(QsRefEqComparer<IQsSyntaxNode>.Instance);
         }       
 
         // 1. exp가 무슨 타입을 가지는지

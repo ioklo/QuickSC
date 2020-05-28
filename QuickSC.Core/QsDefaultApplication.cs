@@ -59,7 +59,10 @@ namespace QuickSC
             if (!analyzer.AnalyzeScript(script, metadatas, buildInfo, errorCollector, out var analyzeInfo))
                 return false;
 
-            await evaluator.EvaluateScriptAsync(script, analyzeInfo);
+            if (!await evaluator.EvaluateScriptAsync(script, analyzeInfo))
+                return false;
+
+            return true;
         }
     }
 

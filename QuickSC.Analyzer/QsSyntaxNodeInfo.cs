@@ -1,4 +1,5 @@
 ﻿using QuickSC.StaticAnalyzer;
+using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -13,72 +14,19 @@ namespace QuickSC
     
     public class QsIdentifierExpInfo : QsSyntaxNodeInfo
     {
-        public abstract class IdKind 
-        {
-            public class GlobalVar : IdKind
-            {
-                public QsVarId VarId { get; }
-                public GlobalVar(QsVarId varId) { VarId = varId; }
-            }
-
-            public class LocalVar : IdKind
-            {
-                public int LocalIndex { get; }
-                public LocalVar(int localIndex) { LocalIndex = localIndex; }
-            }
-        }
-
-        // public class QsThisStorage : QsStorage
-        // public class QsStaticThisStorage : QsStorage
-
-        static public QsIdentifierExpInfo MakeGlobal(QsVarId varId) => new QsIdentifierExpInfo(new IdKind.GlobalVar(varId));
-        static public QsIdentifierExpInfo MakeLocal(int localIndex) => new QsIdentifierExpInfo(new IdKind.LocalVar(localIndex));
-
-        public IdKind Kind { get; }
-        private QsIdentifierExpInfo(IdKind kind) { Kind = kind; }
+        public QsStorage Storage { get; }
+        public QsIdentifierExpInfo(QsStorage storage) { Storage = storage; }
     }
 
     public class QsLambdaExpInfo : QsSyntaxNodeInfo
-    {
-        public struct Elem
+    {   
+        public QsCaptureInfo CaptureInfo { get; }
+        public int LocalVarCount { get; }
+
+        public QsLambdaExpInfo(QsCaptureInfo captureInfo, int localVarCount)
         {
-            public abstract class ExpKind 
-            {
-                public class GlobalVar : ExpKind
-                {
-                    public QsVarId VarId { get; }
-                    public GlobalVar(QsVarId varId) { VarId = varId; }
-                }
-
-                public class LocalVar : ExpKind
-                {
-                    public int LocalIndex { get; }
-                    public LocalVar(int localIndex) { LocalIndex = localIndex; }
-                }
-            }
-
-            public QsCaptureKind CaptureKind { get; }
-            public ExpKind Kind { get; }
-
-            public static Elem MakeGlobal(QsCaptureKind kind, QsVarId varId) => new Elem(kind, new ExpKind.GlobalVar(varId));
-            public static Elem MakeLocal(QsCaptureKind kind, int localIndex ) => new Elem(kind, new ExpKind.LocalVar(localIndex));
-
-            private Elem(QsCaptureKind captureKind, ExpKind expKind)
-            {
-                CaptureKind = captureKind;
-                Kind = expKind;
-            }
-        }
-
-        public bool bCaptureThis { get; }
-
-        // 캡쳐 변수들
-        public ImmutableArray<Elem> CaptureElems { get; }
-
-        public QsLambdaExpInfo(bool bCaptureThis, ImmutableArray<Elem> captureElems)
-        {
-            this.bCaptureThis = bCaptureThis;
-            CaptureElems = captureElems;
+            CaptureInfo = captureInfo;
+            LocalVarCount = localVarCount;
         }        
     }
 
@@ -98,13 +46,11 @@ namespace QuickSC
             public class Static : ExpKind
             {   
                 public bool bEvaluateObject { get; }
-                public QsTypeValue TypeValue { get; }
-                public QsVarId VarId { get; }
-                public Static(bool bEvaluateObject, QsTypeValue typeValue, QsVarId varId)
+                public QsVarValue VarValue { get; }                
+                public Static(bool bEvaluateObject, QsVarValue varValue)
                 {
                     this.bEvaluateObject = bEvaluateObject;
-                    TypeValue = typeValue;
-                    VarId = varId;
+                    VarValue = varValue;
                 }
             }
         }
@@ -112,8 +58,8 @@ namespace QuickSC
         public ExpKind Kind { get; }
 
         public static QsMemberExpInfo MakeInstance(QsVarId varId) => new QsMemberExpInfo(new ExpKind.Instance(varId));
-        public static QsMemberExpInfo MakeStatic(bool bEvaluateObject, QsTypeValue typeValue, QsVarId varId) => 
-            new QsMemberExpInfo(new ExpKind.Static(bEvaluateObject, typeValue, varId));
+        public static QsMemberExpInfo MakeStatic(bool bEvaluateObject, QsVarValue varValue) => 
+            new QsMemberExpInfo(new ExpKind.Static(bEvaluateObject, varValue));
 
         private QsMemberExpInfo(ExpKind kind) { Kind = kind; }
     }
@@ -136,5 +82,151 @@ namespace QuickSC
     {
         public QsFuncValue? FuncValue { get; }
         public QsCallExpInfo(QsFuncValue? funcValue) { FuncValue = funcValue; }
+    }
+
+    public class QsMemberCallExpInfo : QsSyntaxNodeInfo
+    {
+        public abstract class CallKind
+        {
+            // C.F(), x.F() // F is static
+            public class StaticFuncCall : CallKind
+            {
+                public bool bEvaluateObject { get; }
+                public QsFuncValue FuncValue { get; }
+                public StaticFuncCall(bool bEvaluateObject, QsFuncValue funcValue)
+                {
+                    this.bEvaluateObject = bEvaluateObject;
+                    FuncValue = funcValue;
+                }
+            }
+
+            // x.F()
+            public class InstanceFuncCall : CallKind
+            {
+                public QsFuncValue FuncValue { get; }
+                public InstanceFuncCall(QsFuncValue funcValue)
+                {
+                    FuncValue = funcValue;
+
+                }
+            }
+
+            // x.f() C.f()
+            public class InstanceLambdaCall : CallKind
+            {
+                public QsVarId VarId { get; }
+                public InstanceLambdaCall(QsVarId varId)
+                {
+                    VarId = varId;
+                }
+            }
+
+            public class StaticLambdaCall : CallKind
+            {
+                public bool bEvaluateObject { get; }                
+                public QsVarValue VarValue { get; }
+                public StaticLambdaCall(bool bEvaluateObject, QsVarValue varValue)
+                {
+                    this.bEvaluateObject = bEvaluateObject;
+                    VarValue = varValue;
+                }
+            }
+        }
+
+        // 네개 씩이나 나눠야 하다니
+        public CallKind Kind { get; }
+
+        public static QsMemberCallExpInfo MakeStaticFunc(bool bEvaluateObject, QsFuncValue funcValue)
+            => new QsMemberCallExpInfo(new CallKind.StaticFuncCall(bEvaluateObject, funcValue));
+
+        public static QsMemberCallExpInfo MakeInstanceFunc(QsFuncValue funcValue)
+            => new QsMemberCallExpInfo(new CallKind.InstanceFuncCall(funcValue));
+
+        public static QsMemberCallExpInfo MakeStaticLambda(bool bEvaluateObject, QsVarValue varValue)
+            => new QsMemberCallExpInfo(new CallKind.StaticLambdaCall(bEvaluateObject, varValue));
+
+        public static QsMemberCallExpInfo MakeInstanceLambda(QsVarId varId)
+            => new QsMemberCallExpInfo(new CallKind.InstanceLambdaCall(varId));
+
+
+        private QsMemberCallExpInfo(CallKind kind)
+        {
+            Kind = kind;
+        }
+    }
+
+    public class QsVarDeclInfo : QsSyntaxNodeInfo
+    {
+        public class Element
+        {
+            public QsTypeValue TypeValue { get; }
+            public QsStorage Storage { get; }
+            
+            public Element(QsTypeValue typeValue, QsStorage storage)
+            {
+                TypeValue = typeValue;
+                Storage = storage;
+            }
+        }
+        
+        public ImmutableArray<Element> Elems;
+
+        public QsVarDeclInfo(ImmutableArray<Element> elems)
+        {
+            Elems = elems;
+        }
+    }
+
+    public class QsIfStmtInfo : QsSyntaxNodeInfo
+    {
+        public QsTypeValue TestTypeValue { get; }
+
+        public QsIfStmtInfo(QsTypeValue testTypeValue)
+        {
+            TestTypeValue = testTypeValue;
+        }
+    }
+
+    public class QsTaskStmtInfo : QsSyntaxNodeInfo
+    {
+        public QsCaptureInfo CaptureInfo { get; }
+        public int LocalVarCount { get; }
+
+        public QsTaskStmtInfo(QsCaptureInfo captureInfo, int localVarCount)
+        {
+            CaptureInfo = captureInfo;
+            LocalVarCount = localVarCount;
+        }
+
+    }
+
+    public class QsAsyncStmtInfo : QsSyntaxNodeInfo
+    {
+        public QsCaptureInfo CaptureInfo { get; }
+        public int LocalVarCount { get; }
+
+        public QsAsyncStmtInfo(QsCaptureInfo captureInfo, int localVarCount)
+        {
+            CaptureInfo = captureInfo;
+            LocalVarCount = localVarCount;
+        }
+    }
+
+    public class QsForeachStmtInfo : QsSyntaxNodeInfo
+    {
+        public QsTypeValue ElemTypeValue { get; }
+        public int ElemLocalIndex { get; }
+        public QsFuncValue GetEnumeratorValue { get; }
+        public QsFuncValue MoveNextValue { get; }
+        public QsFuncValue GetCurrentValue { get; }
+
+        public QsForeachStmtInfo(QsTypeValue elemTypeValue, int elemLocalIndex, QsFuncValue getEnumeratorValue, QsFuncValue moveNextValue, QsFuncValue getCurrentValue)
+        {
+            ElemTypeValue = elemTypeValue;
+            ElemLocalIndex = elemLocalIndex;
+            GetEnumeratorValue = getEnumeratorValue;
+            MoveNextValue = moveNextValue;
+            GetCurrentValue = getCurrentValue;
+        }
     }
 }

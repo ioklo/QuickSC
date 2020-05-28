@@ -25,7 +25,7 @@ namespace QuickSC.Runtime
             var func = typeBuilder.AddFunc(NativeGetEnumerator, new QsFunc(
                 new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("GetEnumerator", 0)),
                 true, ImmutableArray<string>.Empty, ienumeratorTypeValue));
-            funcBuilder.Add(new QsName("GetEnumerator"), func.FuncId);
+            funcBuilder.Add(QsName.Text("GetEnumerator"), func.FuncId);
 
             var type = new QsDefaultType(
                 typeId, ImmutableArray.Create("T"), null,

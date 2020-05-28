@@ -9,7 +9,6 @@ namespace QuickSC
     {
         public abstract QsTypeInst GetBaseTypeInst();
         public abstract QsValue MakeDefaultValue();
-        public abstract QsValue GetStaticValue();
     }
 
     // Instantiation이 필요없는 타입용

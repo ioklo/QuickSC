@@ -14,7 +14,7 @@ namespace QuickSC
 
         // 모든 모듈의 전역 변수
         public Dictionary<QsVarId, QsValue> GlobalVars { get; }
-        public QsValue?[] LocalVars { get; }
+        public QsValue?[] LocalVars { get; private set; }
 
         public QsEvalFlowControl FlowControl { get; set; }
         public ImmutableArray<Task> Tasks { get; private set; }
@@ -59,6 +59,19 @@ namespace QuickSC
         public void AddTask(Task task)
         {
             Tasks = Tasks.Add(task);
+        }
+
+        public (QsValue?[] prevLocalVars, QsEvalFlowControl prevFlowControl, ImmutableArray<Task> prevTasks, QsValue? prevThisValue) 
+            Update(QsValue?[] localVars, QsEvalFlowControl flowControl, ImmutableArray<Task> tasks, QsValue? thisValue)
+        {
+            var prevValue = (LocalVars, FlowControl, Tasks, ThisValue);
+
+            LocalVars = localVars;
+            FlowControl = flowControl;
+            Tasks = tasks;
+            ThisValue = thisValue;
+
+            return prevValue;
         }
     }
 }

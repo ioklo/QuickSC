@@ -57,6 +57,11 @@ namespace QuickSC.StaticAnalyzer
                     context.ErrorCollector.Add(ifStmt, "if 조건 식은 항상 bool형식이어야 합니다");
                 }
             }
+            else
+            {
+                // TestType이 있을때만 넣는다
+                context.InfosByNode[ifStmt] = new QsIfStmtInfo(context.TypeBuildInfo.TypeValuesByTypeExp[ifStmt.TestType]);
+            }
 
             AnalyzeStmt(ifStmt.Body, context);
 
@@ -101,12 +106,12 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeContinueStmt(QsContinueStmt continueStmt, QsAnalyzerContext context)
         {
-            // 아무것도 하지 않는다            
+            // loop안에 있는지 확인한다
         }
 
         void AnalyzeBreakStmt(QsBreakStmt breakStmt, QsAnalyzerContext context)
         {
-            // 아무것도 하지 않는다
+            // loop안에 있는지 확인해야 한다
         }
         
         void AnalyzeReturnStmt(QsReturnStmt returnStmt, QsAnalyzerContext context)
@@ -173,38 +178,14 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeTaskStmt(QsTaskStmt taskStmt, QsAnalyzerContext context)
         {
-            // TODO: Capture로 순회를 따로 할 필요 없이, Analyze에서 같이 할 수도 있을 것 같다
-            if (!analyzer.CaptureStmt(taskStmt.Body, context, out var captureInfo))
-            {
-                context.ErrorCollector.Add(taskStmt, "변수 캡쳐에 실패했습니다");
+            if (!analyzer.AnalyzeLambda(taskStmt.Body, ImmutableArray<QsLambdaExpParam>.Empty, context, out var captureInfo, out var funcTypeValue, out int localVarCount))
                 return;
-            }
 
-            context.CaptureInfosByLocation.Add(QsCaptureInfoLocation.Make(taskStmt), captureInfo);
-
-            var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
-            context.bGlobalScope = false;
-
-            AnalyzeStmt(taskStmt.Body, context);
-
-            Debug.Assert(prevFunc == context.CurFunc);
-            context.bGlobalScope = bPrevGlobalScope;
-            context.CurFunc.SetVariables(prevVarTypeValues);
+            context.InfosByNode[taskStmt] = new QsTaskStmtInfo(captureInfo, localVarCount);
         }
 
         void AnalyzeAwaitStmt(QsAwaitStmt awaitStmt, QsAnalyzerContext context)
         {
-            // TODO: Capture로 순회를 따로 할 필요 없이, Analyze에서 같이 할 수도 있을 것 같다
-            if (!analyzer.CaptureStmt(awaitStmt.Body, context, out var captureInfo))
-            {
-                context.ErrorCollector.Add(awaitStmt, "변수 캡쳐에 실패했습니다");
-                return; 
-            }
-
-            context.CaptureInfosByLocation.Add(QsCaptureInfoLocation.Make(awaitStmt), captureInfo);
-
-            // TODO: 스코프 내에 await 할 것들이 있는지 검사.. 
-
             var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
             context.bGlobalScope = false;
 
@@ -217,56 +198,71 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeAsyncStmt(QsAsyncStmt asyncStmt, QsAnalyzerContext context)
         {
-            // TODO: 스코프 내에 await 할 것들이 있는지 검사.. 
-            var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
-            context.bGlobalScope = false;
+            if (!analyzer.AnalyzeLambda(asyncStmt.Body, ImmutableArray<QsLambdaExpParam>.Empty, context, out var captureInfo, out var funcTypeValue, out int localVarCount))
+                return;
 
-            AnalyzeStmt(asyncStmt.Body, context);
-
-            Debug.Assert(prevFunc == context.CurFunc);
-            context.bGlobalScope = bPrevGlobalScope;
-            context.CurFunc.SetVariables(prevVarTypeValues);
+            context.InfosByNode[asyncStmt] = new QsAsyncStmtInfo(captureInfo, localVarCount);
         }
         
         void AnalyzeForeachStmt(QsForeachStmt foreachStmt, QsAnalyzerContext context)
         {
-            if (!analyzer.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+            if (!typeService.GetGlobalTypeValue("bool", context, out var boolTypeValue))
                 Debug.Fail("Runtime에 bool타입이 없습니다");
 
             if (!analyzer.AnalyzeExp(foreachStmt.Obj, context, out var objTypeValue))
                 return;
 
-            var elemTypeValue = context.TypeValuesByTypeExp[foreachStmt.Type];
+            var elemTypeValue = context.TypeBuildInfo.TypeValuesByTypeExp[foreachStmt.Type];
 
-            // 1. elemTypeValue가 VarTypeValue이면 GetEnumerator의 리턴값으로 판단한다
-            if (!typeService.GetMemberFuncTypeValue(
-                false, objTypeValue, 
-                new QsName("GetEnumerator"), ImmutableArray<QsTypeValue>.Empty, 
-                context, out var getEnumeratorTypeValue))
+            if (!typeService.GetMemberFuncValue(
+                false, objTypeValue,
+                QsName.Text("GetEnumerator"), ImmutableArray<QsTypeValue>.Empty,
+                context, out var getEnumeratorValue))
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "foreach ... in 뒤 객체는 IEnumerator<T> GetEnumerator() 함수가 있어야 합니다.");
                 return;
             }
 
             // TODO: 일단 인터페이스가 없으므로, bool MoveNext()과 T GetCurrent()가 있는지 본다
-            // TODO: thiscall인지도 확인해야 한다
-            if (!typeService.GetMemberFuncTypeValue(false, getEnumeratorTypeValue.RetTypeValue, new QsName("MoveNext"), ImmutableArray<QsTypeValue>.Empty, context, out var moveNextTypeValue) ||
-                !analyzer.IsAssignable(boolTypeValue, moveNextTypeValue.RetTypeValue, context))
+            // TODO: 각 함수들이 thiscall인지도 확인해야 한다
+
+            // 1. elemTypeValue가 VarTypeValue이면 GetEnumerator의 리턴값으로 판단한다
+            var getEnumeratorTypeValue = typeService.GetFuncTypeValue(getEnumeratorValue, context);
+
+            if (!typeService.GetMemberFuncValue(
+                false, getEnumeratorTypeValue.Return,
+                QsName.Text("MoveNext"), ImmutableArray<QsTypeValue>.Empty, context, out var moveNextValue))
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "enumerator doesn't have 'bool MoveNext()' function");
                 return;
             }
 
-            if (!typeService.GetMemberFuncTypeValue(false, getEnumeratorTypeValue.RetTypeValue, new QsName("GetCurrent"), ImmutableArray<QsTypeValue>.Empty, context, out var getCurrentTypeValue))
+            var moveNextTypeValue = typeService.GetFuncTypeValue(moveNextValue, context);
+
+            if (!analyzer.IsAssignable(boolTypeValue, moveNextTypeValue.Return, context))
+            {
+                context.ErrorCollector.Add(foreachStmt.Obj, "enumerator doesn't have 'bool MoveNext()' function");
+                return;
+            }
+
+            if (!typeService.GetMemberFuncValue(
+                false, getEnumeratorTypeValue.Return, 
+                QsName.Text("GetCurrent"), ImmutableArray<QsTypeValue>.Empty, context, out var getCurrentValue))
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "enumerator doesn't have 'GetCurrent()' function");
                 return;
             }
 
+            var getCurrentTypeValue = typeService.GetFuncTypeValue(getCurrentValue, context);
+            if (getCurrentTypeValue.Return == QsVoidTypeValue.Instance)
+            {
+                context.ErrorCollector.Add(foreachStmt.Obj, "'GetCurrent()' function cannot return void");
+                return;
+            }
+
             if (elemTypeValue == QsVarTypeValue.Instance)
             {   
-                elemTypeValue = getCurrentTypeValue.RetTypeValue;
-                context.TypeValuesByTypeExp[foreachStmt.Type] = elemTypeValue;
+                elemTypeValue = getCurrentTypeValue.Return;
 
                 //var interfaces = typeValueService.GetInterfaces("IEnumerator", 1, funcTypeValue.RetTypeValue);
 
@@ -278,19 +274,21 @@ namespace QuickSC.StaticAnalyzer
             }
             else
             {
-                if (!analyzer.IsAssignable(elemTypeValue, getCurrentTypeValue.RetTypeValue, context))
+                if (!analyzer.IsAssignable(elemTypeValue, getCurrentTypeValue.Return, context))
                     context.ErrorCollector.Add(foreachStmt, $"foreach(T ... in obj) 에서 obj.GetEnumerator().GetCurrent()의 결과를 {elemTypeValue} 타입으로 캐스팅할 수 없습니다");
             }
 
             var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
             context.bGlobalScope = false;
-            analyzer.AddVariable(foreachStmt.VarName, elemTypeValue, context);
+            int elemLocalIndex = context.CurFunc.AddVarInfo(foreachStmt.VarName, elemTypeValue);
             
             AnalyzeStmt(foreachStmt.Body, context);
 
             Debug.Assert(prevFunc == context.CurFunc);
             context.bGlobalScope = bPrevGlobalScope;
             context.CurFunc.SetVariables(prevVarTypeValues);
+
+            context.InfosByNode[foreachStmt] = new QsForeachStmtInfo(elemTypeValue, elemLocalIndex, getEnumeratorValue, moveNextValue, getCurrentValue);
         }
 
         void AnalyzeYieldStmt(QsYieldStmt yieldStmt, QsAnalyzerContext context)

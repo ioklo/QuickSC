@@ -89,33 +89,33 @@ namespace QuickSC.Syntax
         }
     }
 
-    public class QsVarDecl
+    public class QsVarDecl : IQsSyntaxNode
     {
         public QsTypeExp Type { get; }
-        public ImmutableArray<QsVarDeclElement> Elements { get; }
+        public ImmutableArray<QsVarDeclElement> Elems { get; }
 
         public QsVarDecl(QsTypeExp type, ImmutableArray<QsVarDeclElement> elems)
         {
             Type = type;
-            Elements = elems;
+            Elems = elems;
         }
 
         public QsVarDecl(QsTypeExp type, params QsVarDeclElement[] elems)
         {
             Type = type;
-            Elements = ImmutableArray.Create(elems);
+            Elems = ImmutableArray.Create(elems);
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsVarDecl decl &&
                    EqualityComparer<QsTypeExp>.Default.Equals(Type, decl.Type) &&
-                   Enumerable.SequenceEqual(Elements, decl.Elements);
+                   Enumerable.SequenceEqual(Elems, decl.Elems);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Type, Elements);
+            return HashCode.Combine(Type, Elems);
         }
 
         public static bool operator ==(QsVarDecl? left, QsVarDecl? right)

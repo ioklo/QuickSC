@@ -125,6 +125,7 @@ namespace QuickSC.StaticAnalyzer
                 // NOTICE : E.First 타입이 아니라 E 타입이다 var x = E.First; 에서 x는 E여야 하기 떄문
                 var variable = MakeVar(
                     new QsVarId(null, new QsNameElem(elem.Name, 0)),
+                    bStatic: true,
                     thisTypeValue,
                     context);
 
@@ -149,10 +150,11 @@ namespace QuickSC.StaticAnalyzer
 
         private QsVariable MakeVar(
             QsVarId varId,
+            bool bStatic,
             QsTypeValue typeValue,
             QsTypeAndFuncBuilderContext context)
         {
-            var variable = new QsVariable(varId, typeValue);
+            var variable = new QsVariable(bStatic, varId, typeValue);
             context.Vars.Add(variable);
 
             return variable;

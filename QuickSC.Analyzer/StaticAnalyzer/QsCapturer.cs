@@ -113,7 +113,7 @@ namespace QuickSC.StaticAnalyzer
 
         bool CaptureVarDecl(QsVarDecl varDecl, QsCaptureContext context)
         {
-            context.AddBinds(varDecl.Elements.Select(elem => elem.VarName));
+            context.AddBinds(varDecl.Elems.Select(elem => elem.VarName));
             return true;
         }
 
@@ -454,7 +454,8 @@ namespace QuickSC.StaticAnalyzer
             }
 
             // TODO: 일단 Capture this는 false이다
-            outCaptureResult = new QsCaptureResult(context.GetNeedCaptures());
+            var needCaptures = context.GetNeedCaptures().Select(kv => (kv.Key, kv.Value)).ToImmutableArray();
+            outCaptureResult = new QsCaptureResult(needCaptures);
             return true;
         }
     }

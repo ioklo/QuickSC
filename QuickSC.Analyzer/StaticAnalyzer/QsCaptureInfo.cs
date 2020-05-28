@@ -4,27 +4,25 @@ using System.Collections.Immutable;
 using System.Text;
 
 namespace QuickSC.StaticAnalyzer
-{
-    public struct QsCaptureElem
-    {
-        public QsStorage Storage { get;} 
-        public QsCaptureKind Kind { get; }
-        public string Name { get; }
-
-        public QsCaptureElem(QsStorage storage, QsCaptureKind kind, string name)
-        {
-            Storage = storage;
-            Kind = kind;
-            Name = name;
-        }
-    }
-
+{   
     public class QsCaptureInfo
     {
-        public bool bCaptureThis { get; }
-        public ImmutableArray<QsCaptureElem> Captures { get; }
+        public struct Element
+        {   
+            public QsCaptureKind CaptureKind { get; }
+            public QsStorage Storage { get; }
 
-        public QsCaptureInfo(bool bCaptureThis, ImmutableArray<QsCaptureElem> captures)
+            public Element(QsCaptureKind captureKind, QsStorage storage)
+            {
+                CaptureKind = captureKind;
+                Storage = storage;
+            }
+        }
+
+        public bool bCaptureThis { get; }
+        public ImmutableArray<Element> Captures { get; }
+
+        public QsCaptureInfo(bool bCaptureThis, ImmutableArray<Element> captures)
         {
             this.bCaptureThis = bCaptureThis;
             this.Captures = captures;

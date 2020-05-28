@@ -28,12 +28,12 @@ namespace QuickSC
         
         QsValue EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
         {
-            var info = (QsIdentifierExpInfo)context.AnalyzeInfo.EvalInfosByNode[idExp];
+            var info = (QsIdentifierExpInfo)context.AnalyzeInfo.InfosByNode[idExp];
 
-            return info.Kind switch
+            return info.Storage switch
             {
-                QsIdentifierExpInfo.IdKind.GlobalVar globalVar => context.GlobalVars[globalVar.VarId],
-                QsIdentifierExpInfo.IdKind.LocalVar localVar => context.LocalVars[localVar.LocalIndex]!,
+                QsGlobalStorage globalStorage => context.GlobalVars[globalStorage.VarId],
+                QsLocalStorage localStorage => context.LocalVars[localStorage.LocalIndex]!,
                 _ => throw new NotImplementedException()
             };
         }
@@ -160,7 +160,7 @@ namespace QuickSC
 
                 case QsBinaryOpKind.Add:
                     {
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.EvalInfosByNode[exp];
+                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
 
                         // TODO: 이쪽은 operator+로 교체될 것이므로 임시로 하드코딩
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
@@ -194,7 +194,7 @@ namespace QuickSC
                 case QsBinaryOpKind.LessThan:
                     {
                         // TODO: 이쪽은 operator<로 교체될 것이므로 임시로 하드코딩
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.EvalInfosByNode[exp];
+                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
@@ -219,7 +219,7 @@ namespace QuickSC
                 case QsBinaryOpKind.GreaterThan:
                     {
                         // TODO: 이쪽은 operator> 로 교체될 것이므로 임시로 하드코딩
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.EvalInfosByNode[exp];
+                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
@@ -244,7 +244,7 @@ namespace QuickSC
                 case QsBinaryOpKind.LessThanOrEqual:
                     {
                         // TODO: 이쪽은 operator<=로 교체될 것이므로 임시로 하드코딩
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.EvalInfosByNode[exp];
+                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
@@ -269,7 +269,7 @@ namespace QuickSC
                 case QsBinaryOpKind.GreaterThanOrEqual:
                     {
                         // TODO: 이쪽은 operator>=로 교체될 것이므로 임시로 하드코딩
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.EvalInfosByNode[exp];
+                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
@@ -307,46 +307,9 @@ namespace QuickSC
             throw new NotImplementedException();
         }
 
-        // TODO: QsFuncDecl을 직접 사용하지 않고, QsModule에서 정의한 Func을 사용해야 한다
-        //private async ValueTask<QsCallable> EvaluateCallExpCallableAsync(QsExp exp, QsEvalContext context)
-        //{
-        //    if (exp is QsIdentifierExp idExp)
-        //    {
-        //        // 일단 idExp가 variable로 존재하는지 봐야 한다
-        //        if (!context.HasLocalVar(idExp.Value))
-        //        {
-        //            var func = context.GetFunc(idExp.Value);
-
-        //            if (func == null)
-        //                return QsEvalResult<QsCallable>.Invalid;
-
-        //            return new QsEvalResult<QsCallable>(new QsFuncCallable(func), context);
-        //        }
-        //    }
-
-        //    if (!Eval(await EvaluateExpAsync(exp, context), ref context, out var expCallable))
-        //        return QsEvalResult<QsCallable>.Invalid;
-
-        //    // TODO: Lambda 지원 다시
-        //    //if (expCallable! is QsObjectValue objValue && objValue.Object is QsLambdaObject lambdaObj)
-        //    //    return new QsEvalResult<QsCallable>(lambdaObj.Callable, context);
-
-        //    return QsEvalResult<QsCallable>.Invalid;            
-        //}
-
-        //ImmutableArray<QsTypeInst> MakeTypeInstArgs(QsNormalTypeValue typeValue)
-        //{
-
-        //}
-
-        //ImmutableArray<QsTypeInst> MakeTypeInstArgs(QsFuncValue funcValue)
-        //{
-
-        //}
-        
         async ValueTask<QsValue> EvaluateCallExpAsync(QsCallExp exp, QsEvalContext context)
         {
-            var callExpInfo = (QsCallExpInfo)context.AnalyzeInfo.EvalInfosByNode[exp];
+            var callExpInfo = (QsCallExpInfo)context.AnalyzeInfo.InfosByNode[exp];
 
             QsFuncInst funcInst;
             if (callExpInfo.FuncValue != null)
@@ -378,59 +341,83 @@ namespace QuickSC
         
         QsValue EvaluateLambdaExp(QsLambdaExp exp, QsEvalContext context)
         {
-            var info = (QsLambdaExpInfo)context.AnalyzeInfo.EvalInfosByNode[exp];
+            var info = (QsLambdaExpInfo)context.AnalyzeInfo.InfosByNode[exp];
 
-            var captures = evaluator.MakeCaptures(info.CaptureElems, context);
+            var captures = evaluator.MakeCaptures(info.CaptureInfo.Captures, context);
 
             return new QsFuncInstValue(new QsScriptFuncInst(
                 false,
                 false,
-                info.bCaptureThis ? context.ThisValue : null,
+                info.CaptureInfo.bCaptureThis ? context.ThisValue : null,
                 captures,
+                info.LocalVarCount,
                 exp.Body));
         }
         
         async ValueTask<QsValue> EvaluateMemberCallExpAsync(QsMemberCallExp exp, QsEvalContext context)
         {
-            // a.b (2, 3, 4), 
-            var thisValue = await EvaluateExpAsync(exp.Object, context);
+            var info = (QsMemberCallExpInfo)context.AnalyzeInfo.InfosByNode[exp];
 
-            var argsBuilder = ImmutableArray.CreateBuilder<QsValue>(exp.Args.Length);
-            foreach (var argExp in exp.Args)
+            switch (info.Kind)
             {
-                var arg = await EvaluateExpAsync(argExp, context);
-                argsBuilder.Add(arg);
-            }
-            var args = argsBuilder.MoveToImmutable();
+                case QsMemberCallExpInfo.CallKind.InstanceFuncCall instanceFuncCall:
+                    {
+                        QsValue thisValue = await EvaluateExpAsync(exp.Object, context);
+                        var args = await EvaluateArgsAsync(exp.Args);
+                        var funcInst = evaluator.GetFuncInst(instanceFuncCall.FuncValue, context);
+                        return await evaluator.EvaluateFuncInstAsync(thisValue, funcInst, args, context);
+                    }
 
-            // 1. a.b(2, 3, 4)가 A.b(this a, 2, 3, 4); 인 경우            
-            QsFuncInst funcInst;
-            if (context.FuncValuesByExp.TryGetValue(exp, out var funcValue))
+                case QsMemberCallExpInfo.CallKind.StaticFuncCall staticFuncCall:
+                    {   
+                        if (staticFuncCall.bEvaluateObject)
+                            await EvaluateExpAsync(exp.Object, context);
+                        var args = await EvaluateArgsAsync(exp.Args);
+                        var funcInst = evaluator.GetFuncInst(staticFuncCall.FuncValue, context);
+                        return await evaluator.EvaluateFuncInstAsync(null, funcInst, args, context);
+                    }
+
+                case QsMemberCallExpInfo.CallKind.InstanceLambdaCall instanceLambdaCall:
+                    {
+                        QsValue thisValue = await EvaluateExpAsync(exp.Object, context);
+                        var args = await EvaluateArgsAsync(exp.Args);
+                        var memberValue = thisValue.GetMemberValue(instanceLambdaCall.VarId);
+                        var funcInst = ((QsFuncInstValue)memberValue).FuncInst;
+                        return await evaluator.EvaluateFuncInstAsync(thisValue, funcInst, args, context);
+                    }
+
+                case QsMemberCallExpInfo.CallKind.StaticLambdaCall staticLambdaCall:
+                    {
+                        if (staticLambdaCall.bEvaluateObject)
+                            await EvaluateExpAsync(exp.Object, context);
+                        var args = await EvaluateArgsAsync(exp.Args);                        
+                        var memberValue = evaluator.GetStaticValue(staticLambdaCall.VarValue, context);
+                        var funcInst = ((QsFuncInstValue)memberValue).FuncInst;
+                        return await evaluator.EvaluateFuncInstAsync(null, funcInst, args, context);
+                    }
+
+                default:
+                    throw new NotImplementedException();
+            }
+
+            async ValueTask<ImmutableArray<QsValue>> EvaluateArgsAsync(ImmutableArray<QsExp> exps)
             {
-                if (!domainService.GetFuncInst(funcValue.FuncId, ImmutableArray<QsTypeInst>.Empty, out var domainFuncInst))
-                    Debug.Fail("도메인에서 함수를 찾을 수 없습니다");
+                var argsBuilder = ImmutableArray.CreateBuilder<QsValue>(exp.Args.Length);
+                foreach (var argExp in exp.Args)
+                {
+                    var arg = await EvaluateExpAsync(argExp, context);
+                    argsBuilder.Add(arg);
+                }
 
-                funcInst = domainFuncInst;
+                return argsBuilder.MoveToImmutable();
             }
-            // 2. a.b(2, 3, 4)가 (a.b) (2, 3, 4)인 경우 (2, 3, 4)
-            else
-            {
-                funcInst = ((QsFuncInstValue)thisValue).FuncInst;
-            }
-
-            return await evaluator.EvaluateFuncInstAsync(thisValue, funcInst, args, context);
-
-            
-            //var callable = thisValue.GetMemberFuncs(new QsMemberFuncId(exp.MemberFuncName));
-            //if (callable == null) return QsEvalResult<QsValue>.Invalid;
-            // return await evaluator.EvaluateCallableAsync(callable, thisValue!, args.ToImmutable(), context);
         }
 
         async ValueTask<QsValue> EvaluateMemberExpAsync(QsMemberExp exp, QsEvalContext context)
         {
             // TODO: namespace가 있으면 Global(N.x의 경우) 이 될수 있다.  
             // 지금은 Instance(obj.id) / Static(Type.id)으로 나눠진다
-            var info = (QsMemberExpInfo)context.AnalyzeInfo.EvalInfosByNode[exp];
+            var info = (QsMemberExpInfo)context.AnalyzeInfo.InfosByNode[exp];
 
             if (info.Kind is QsMemberExpInfo.ExpKind.Instance instanceKind)
             {
@@ -443,11 +430,12 @@ namespace QuickSC
                     await EvaluateExpAsync(exp.Object, context);
 
                 // object와는 별개로 static value를 가져온다
-                var typeInst = evaluator.GetTypeInst(staticKind.TypeValue, context);
-                var staticValue = typeInst.GetStaticValue();
-                return staticValue.GetMemberValue(staticKind.VarId);
+                return evaluator.GetStaticValue(staticKind.VarValue, context);                
             }
-            else throw new NotImplementedException();
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
 
         async ValueTask<QsValue> EvaluateListExpAsync(QsListExp listExp, QsEvalContext context)

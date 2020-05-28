@@ -22,13 +22,13 @@ namespace QuickSC.Runtime
             var moveNext = typeBuilder.AddFunc(NativeMoveNext, new QsFunc(
                 new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("IEnumerator", 1), new QsNameElem("MoveNext", 0)),
                 true, ImmutableArray<string>.Empty, boolTypeValue));
-            funcIdsBuilder.Add(new QsName("MoveNext"), moveNext.FuncId);
+            funcIdsBuilder.Add(QsName.Text("MoveNext"), moveNext.FuncId);
 
             // T GetCurrent()
             var getCurrent = typeBuilder.AddFunc(NativeGetCurrent, new QsFunc(
                 new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("IEnumerator", 1), new QsNameElem("GetCurrent", 0)),
                 true, ImmutableArray<string>.Empty, elemTypeValue));
-            funcIdsBuilder.Add(new QsName("GetCurrent"), getCurrent.FuncId);
+            funcIdsBuilder.Add(QsName.Text("GetCurrent"), getCurrent.FuncId);
 
             var type = new QsDefaultType(
                 typeId,

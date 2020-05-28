@@ -365,22 +365,22 @@ namespace QuickSC.Syntax
     public class QsMemberCallExp : QsExp
     {
         public QsExp Object { get; }
-        public string MemberFuncName { get; }
+        public string MemberName { get; }
         public ImmutableArray<QsTypeExp> MemberTypeArgs { get; }
         public ImmutableArray<QsExp> Args { get; }
 
-        public QsMemberCallExp(QsExp obj, string memberFuncName, ImmutableArray<QsTypeExp> typeArgs, ImmutableArray<QsExp> args)
+        public QsMemberCallExp(QsExp obj, string memberName, ImmutableArray<QsTypeExp> typeArgs, ImmutableArray<QsExp> args)
         {
             Object = obj;
-            MemberFuncName = memberFuncName;
+            MemberName = memberName;
             MemberTypeArgs = typeArgs;
             Args = args;
         }
 
-        public QsMemberCallExp(QsExp obj, string memberFuncName, ImmutableArray<QsTypeExp> typeArgs, params QsExp[] args)
+        public QsMemberCallExp(QsExp obj, string memberName, ImmutableArray<QsTypeExp> typeArgs, params QsExp[] args)
         {
             Object = obj;
-            MemberFuncName = memberFuncName;
+            MemberName = memberName;
             MemberTypeArgs = typeArgs;
             Args = ImmutableArray.Create(args);
         }
@@ -389,14 +389,14 @@ namespace QuickSC.Syntax
         {
             return obj is QsMemberCallExp exp &&
                    EqualityComparer<QsExp>.Default.Equals(Object, exp.Object) &&
-                   MemberFuncName == exp.MemberFuncName &&
+                   MemberName == exp.MemberName &&
                    Enumerable.SequenceEqual(MemberTypeArgs, exp.MemberTypeArgs) &&
                    Enumerable.SequenceEqual(Args, exp.Args);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Object, MemberFuncName, Args);
+            return HashCode.Combine(Object, MemberName, Args);
         }
 
         public static bool operator ==(QsMemberCallExp? left, QsMemberCallExp? right)

@@ -13,31 +13,26 @@ namespace QuickSC
     public struct QsName
     {
         public QsSpecialName Kind { get;  }
-        public string Name { get; }
+        public string? Name { get; }
 
         static public QsName AnonymousLambda(string name)
         {
             return new QsName(QsSpecialName.AnonymousLambda, name);
         }
 
-        public QsName(QsSpecialName kind, string name)
+        static public QsName Special(QsSpecialName specialName)
         {
-            Debug.Assert(kind == QsSpecialName.AnonymousLambda);
-            Kind = kind;
-            Name = name;
+            return new QsName(specialName, null);
         }
 
-        public QsName(QsSpecialName kind)
+        static public QsName Text(string name)
         {
-            Debug.Assert(kind != QsSpecialName.Normal);
-
-            Kind = kind;
-            Name = string.Empty;
+            return new QsName(QsSpecialName.Normal, name);
         }
 
-        public QsName(string name)
+        private QsName(QsSpecialName kind, string? name)
         {
-            Kind = QsSpecialName.Normal;
+            Kind = kind;
             Name = name;
         }
 

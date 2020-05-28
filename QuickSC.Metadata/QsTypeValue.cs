@@ -276,13 +276,13 @@ namespace QuickSC
     // ArgTypeValues => RetValueTypes
     public class QsFuncTypeValue : QsTypeValue
     {
-        public QsTypeValue RetTypeValue { get; }
-        public ImmutableArray<QsTypeValue> ParamTypeValues { get; }
+        public QsTypeValue Return { get; }
+        public ImmutableArray<QsTypeValue> Params { get; }
 
-        public QsFuncTypeValue(QsTypeValue retTypeValue, ImmutableArray<QsTypeValue> paramTypeValues)
+        public QsFuncTypeValue(QsTypeValue ret, ImmutableArray<QsTypeValue> parameters)
         {
-            RetTypeValue = retTypeValue;
-            ParamTypeValues = paramTypeValues;
+            Return = ret;
+            Params = parameters;
         }
     }
 }

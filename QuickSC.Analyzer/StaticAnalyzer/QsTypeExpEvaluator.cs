@@ -237,7 +237,7 @@ namespace QuickSC.StaticAnalyzer
         {
             EvaluateTypeExp(varDecl.Type, context, out var _);
 
-            foreach (var elem in varDecl.Elements)
+            foreach (var elem in varDecl.Elems)
                 if (elem.InitExp != null)
                     EvaluateExp(elem.InitExp, context);
         }

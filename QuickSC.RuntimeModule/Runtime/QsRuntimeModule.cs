@@ -133,11 +133,12 @@ namespace QuickSC.Runtime
         public QsFuncInst GetFuncInst(QsFuncId funcId, ImmutableArray<QsTypeInst> typeArgs)
         {
             // X<T(X)>.Y<U(Y)>.Func<V(F)>()
-            // X<int>.Y<short>.Func<bool>() 를 만들어 봅시다. typeEnv를 만들어서 그냥 던져 볼겁니다            
-            var Invoker = funcsById[funcId].Invoker;
+            // X<int>.Y<short>.Func<bool>() 를 만들어 봅시다. typeEnv를 만들어서 그냥 던져 볼겁니다
+            var func = funcsById[funcId];            // TODO: funcsById 이름 변경할 것
+            var Invoker = func.Invoker;
 
             // typeEnv는 [T(X) => int, U(Y) => short, V(F) => bool]
-            return new QsNativeFuncInst((thisValue, argValues) => Invoker(typeArgs, thisValue, argValues));
+            return new QsNativeFuncInst(func.Func.bThisCall, (thisValue, argValues) => Invoker(typeArgs, thisValue, argValues));
         }
 
         public QsTypeInst GetTypeInst(QsTypeId typeId, ImmutableArray<QsTypeInst> typeArgs)
