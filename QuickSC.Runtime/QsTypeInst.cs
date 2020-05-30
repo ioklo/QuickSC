@@ -7,35 +7,9 @@ namespace QuickSC
 {
     public abstract class QsTypeInst
     {
-        public abstract QsTypeInst GetBaseTypeInst();
         public abstract QsValue MakeDefaultValue();
     }
-
-    // Instantiation이 필요없는 타입용
-    public class QsRawTypeInst : QsTypeInst
-    {
-        QsType type;
-        QsValue defaultValue;
-        ImmutableArray<QsTypeInst> typeArgs;
-
-        public QsRawTypeInst(QsType type, QsValue defaultValue, ImmutableArray<QsTypeInst> typeArgs)
-        {
-            this.type = type;
-            this.defaultValue = defaultValue;
-            this.typeArgs = typeArgs;
-        }
-
-        public override QsTypeInst GetBaseTypeInst()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override QsValue MakeDefaultValue()
-        {
-            return defaultValue.MakeCopy();
-        }
-    }
-
+    
     // enum E { F, S(int i); } 
     // => type E
     // => type E.F : E (baseType E)

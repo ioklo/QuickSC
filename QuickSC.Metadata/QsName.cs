@@ -57,5 +57,16 @@ namespace QuickSC
         {
             return !(left == right);
         }
+
+        public override string ToString()
+        {
+            switch(Kind)
+            {
+                case QsSpecialName.Normal: return Name!;
+                case QsSpecialName.Indexer: return "$Indexer";
+                case QsSpecialName.AnonymousLambda: return $"$Labmda{Name!}";
+                default: return string.Empty;
+            }
+        }
     }
 }

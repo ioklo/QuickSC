@@ -177,7 +177,7 @@ namespace QuickSC.StaticAnalyzer
             var funcs = new List<QsFunc>();
             var nameElem = new QsNameElem(name, typeParamCount);
 
-            if (context.TypeBuildInfo.FuncsById.TryGetValue(new QsFuncId(null, nameElem), out var outFunc))
+            if (context.TypeBuildInfo.FuncsById.TryGetValue(new QsFuncId(context.ModuleName, nameElem), out var outFunc))
                 funcs.Add(outFunc);
 
             foreach (var refMetadata in context.Metadatas)
@@ -211,7 +211,7 @@ namespace QuickSC.StaticAnalyzer
             var nameElem = new QsNameElem(name, 0);
 
             // 내 스크립트에 있는 전역 변수가 우선한다
-            if (context.TypeBuildInfo.VarsById.TryGetValue(new QsVarId(null, nameElem), out var outVar))
+            if (context.TypeBuildInfo.VarsById.TryGetValue(new QsVarId(context.ModuleName, nameElem), out var outVar))
             {
                 outGlobalVar = outVar;
                 return true;
@@ -256,7 +256,7 @@ namespace QuickSC.StaticAnalyzer
             var candidates = new List<QsTypeValue>();
 
             // TODO: 추후 namespace 검색도 해야 한다
-            if (context.TypeBuildInfo.TypesById.TryGetValue(new QsTypeId(null, nameElem), out var globalType))
+            if (context.TypeBuildInfo.TypesById.TryGetValue(new QsTypeId(context.ModuleName, nameElem), out var globalType))
                 candidates.Add(new QsNormalTypeValue(null, globalType.TypeId, typeArgs));
 
             foreach (var refMetadata in context.Metadatas)
@@ -422,6 +422,7 @@ namespace QuickSC.StaticAnalyzer
                 QsNormalTypeValue normalTypeValue => ApplyTypeEnv_NormalTypeValue(normalTypeValue, typeEnv),
                 QsFuncTypeValue funcTypeValue => ApplyTypeEnv_FuncTypeValue(funcTypeValue, typeEnv),
                 QsTypeVarTypeValue typeVarTypeValue => ApplyTypeEnv_TypeVarTypeValue(typeVarTypeValue, typeEnv),
+                QsVoidTypeValue vtv => vtv,
                 _ => throw new NotImplementedException()
             };
         }

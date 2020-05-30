@@ -7,16 +7,16 @@ namespace QuickSC
 {
     public struct QsFuncId
     {
-        public string? ModuleName { get; }
+        public string ModuleName { get; }
         public ImmutableArray<QsNameElem> Elems { get; }
 
-        public QsFuncId(string? moduleName, ImmutableArray<QsNameElem> elems)
+        public QsFuncId(string moduleName, ImmutableArray<QsNameElem> elems)
         {
             ModuleName = moduleName;
             Elems = elems;
         }
 
-        public QsFuncId(string? moduleName, params QsNameElem[] elems)
+        public QsFuncId(string moduleName, params QsNameElem[] elems)
         {
             ModuleName = moduleName;
             Elems = ImmutableArray.Create(elems);
@@ -45,6 +45,17 @@ namespace QuickSC
         public static bool operator !=(QsFuncId left, QsFuncId right)
         {
             return !(left == right);
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+
+            sb.Append($"[{ModuleName}]");
+
+            sb.AppendJoin('.', Elems);
+            
+            return sb.ToString();
         }
     }
 }

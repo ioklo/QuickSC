@@ -15,13 +15,16 @@ namespace QuickSC.Runtime
         public const string MODULE_NAME = "System.Runtime";
         public string ModuleName => MODULE_NAME;
 
+        private QsType enumerableType;
+        private QsType enumeratorType;
+        private QsType listType;
+        private QsType stringType;
+
         // TODO: localId와 globalId를 나눠야 할 것 같다. 내부에서는 LocalId를 쓰고, Runtime은 GlobalId로 구분해야 할 것 같다
 
         // globalTypes
-        ImmutableDictionary<QsTypeId, QsType> typesById;        
+        ImmutableDictionary<QsTypeId, QsNativeType> nativeTypesById;
         ImmutableDictionary<QsFuncId, (QsFunc Func, Invoker Invoker)> funcsById;
-
-        Dictionary<QsTypeId, QsValue> defaultValuesByTypeId;
 
         QsType MakeEmptyGlobalType(QsTypeId typeId)
         {
@@ -42,15 +45,15 @@ namespace QuickSC.Runtime
 
             var boolType = typeBuilder.AddType(MakeEmptyGlobalType(new QsTypeId(MODULE_NAME, new QsNameElem("bool", 0))), new QsValue<bool>(false));
             var intType = typeBuilder.AddType(MakeEmptyGlobalType(new QsTypeId(MODULE_NAME, new QsNameElem("int", 0))), new QsValue<int>(0));
-            typeBuilder.AddType(MakeEmptyGlobalType(new QsTypeId(MODULE_NAME, new QsNameElem("string", 0))), new QsObjectValue(null));
 
-            var enumeratorType = QsAsyncEnumeratorObject.AddType(typeBuilder, new QsNormalTypeValue(null, boolType.TypeId));
-            QsListObject.AddType(enumeratorType.TypeId, new QsNormalTypeValue(null, intType.TypeId), typeBuilder);
+            stringType = typeBuilder.AddType(MakeEmptyGlobalType(new QsTypeId(MODULE_NAME, new QsNameElem("string", 0))), new QsObjectValue(null));
+            enumeratorType = QsEnumeratorObject.AddType(typeBuilder, new QsNormalTypeValue(null, boolType.TypeId));
+            listType = QsListObject.AddType(typeBuilder, this, enumeratorType.TypeId, new QsNormalTypeValue(null, intType.TypeId));
 
-            typesById = typeBuilder.GetAllTypes();
+            enumerableType = QsEnumerableObject.AddType(typeBuilder, this, enumeratorType.TypeId);
+
+            nativeTypesById = typeBuilder.GetAllTypes();
             funcsById = typeBuilder.GetAllFuncs();
-
-            defaultValuesByTypeId = new Dictionary<QsTypeId, QsValue>();
         }
         
         public string GetString(QsValue value)
@@ -63,19 +66,23 @@ namespace QuickSC.Runtime
             throw new InvalidOperationException();
         }
 
-        public QsValue MakeAsyncEnumerable(IAsyncEnumerable<QsValue> asyncEnumerable)
+        public QsValue MakeEnumerable(QsTypeInst elemTypeInst, IAsyncEnumerable<QsValue> asyncEnumerable)
         {
-            return new QsObjectValue(new QsAsyncEnumerableObject(asyncEnumerable));
-        }
+            var enumerableInst = GetTypeInst(enumerableType.TypeId, ImmutableArray.Create(elemTypeInst));
 
-        public QsValue MakeListObject(List<QsValue> elems)
-        {
-            return new QsObjectValue(new QsListObject(elems));
+            return new QsObjectValue(new QsEnumerableObject(enumerableInst, asyncEnumerable));
         }
-
+        
         public bool GetTypeById(QsTypeId typeId, [NotNullWhen(true)] out QsType? outType)
         {
-            return typesById.TryGetValue(typeId, out outType);
+            if (!nativeTypesById.TryGetValue(typeId, out var outNativeType))
+            {
+                outType = null;
+                return false;
+            }
+
+            outType = outNativeType.Type;
+            return true;
         }
 
         public bool GetFuncById(QsFuncId funcId, [NotNullWhen(true)] out QsFunc? outFunc)
@@ -102,12 +109,15 @@ namespace QuickSC.Runtime
 
         public QsValue MakeString(string str)
         {
-            return new QsObjectValue(new QsStringObject(str));
+            var stringInst = GetTypeInst(stringType.TypeId, ImmutableArray<QsTypeInst>.Empty);
+            return new QsObjectValue(new QsStringObject(stringInst, str));
         }
 
-        public QsValue MakeList(List<QsValue> elems)
+        public QsValue MakeList(QsTypeInst elemTypeInst, List<QsValue> elems)
         {
-            return new QsObjectValue(new QsListObject(elems));
+            var listInst = GetTypeInst(listType.TypeId, ImmutableArray.Create(elemTypeInst));
+
+            return new QsObjectValue(new QsListObject(listInst, elems));
         }
 
         public int GetInt(QsValue value)
@@ -143,7 +153,7 @@ namespace QuickSC.Runtime
 
         public QsTypeInst GetTypeInst(QsTypeId typeId, ImmutableArray<QsTypeInst> typeArgs)
         {
-            return new QsRawTypeInst(typesById[typeId], defaultValuesByTypeId[typeId], typeArgs);
+            return new QsNativeTypeInst(typeId, nativeTypesById[typeId].DefaultValue, typeArgs);
         }        
     }
 }

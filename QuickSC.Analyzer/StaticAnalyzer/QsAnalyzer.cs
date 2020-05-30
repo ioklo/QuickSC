@@ -81,7 +81,7 @@ namespace QuickSC.StaticAnalyzer
             {
                 if (context.bGlobalScope)
                 {
-                    var varId = new QsVarId(null, ImmutableArray.Create(new QsNameElem(name, 0)));
+                    var varId = new QsVarId(context.ModuleName, ImmutableArray.Create(new QsNameElem(name, 0)));
                     var variable = new QsVariable(true, varId, typeValue);
                     typeService.AddVar(variable, context);
 
@@ -115,7 +115,7 @@ namespace QuickSC.StaticAnalyzer
             }
 
             // 람다 함수 컨텍스트를 만든다
-            var lambdaFuncId = new QsFuncId(null, context.CurFunc.FuncId.Elems.Add(
+            var lambdaFuncId = new QsFuncId(context.ModuleName, context.CurFunc.FuncId.Elems.Add(
                     new QsNameElem(QsName.AnonymousLambda(context.CurFunc.LambdaCount.ToString()), 0)));
             context.CurFunc.LambdaCount++;
 
@@ -189,7 +189,21 @@ namespace QuickSC.StaticAnalyzer
         
         public void AnalyzeFuncDecl(QsFuncDecl funcDecl, QsAnalyzerContext context)
         {
-            throw new NotImplementedException();
+            var func = context.TypeBuildInfo.FuncsByFuncDecl[funcDecl];
+
+            var funcContext = new QsAnalyzerFuncContext(func.FuncId, func.RetTypeValue, funcDecl.FuncKind == QsFuncKind.Sequence);
+            var prevFunc = context.CurFunc;
+            context.CurFunc = funcContext;
+
+            try
+            {
+                
+
+            }
+            finally
+            {
+                context.CurFunc = prevFunc;
+            }
         }
 
         QsAnalyzeInfo AnalyzeScript(QsScript script, QsAnalyzerContext context)
@@ -217,17 +231,21 @@ namespace QuickSC.StaticAnalyzer
                 }
             }
 
-            return new QsAnalyzeInfo(context.InfosByNode.ToImmutableDictionary());
+            context.InfosByNode[script] = new QsScriptInfo(context.CurFunc.LocalVarCount);
+
+            return new QsAnalyzeInfo(context.InfosByNode.ToImmutableWithComparer());
         }
 
         public bool AnalyzeScript(
+            string moduleName,
             QsScript script,
             ImmutableArray<IQsMetadata> metadatas,
             QsTypeBuildInfo typeBuildInfo,
             IQsErrorCollector errorCollector,
-            [NotNullWhen(returnValue: true)] out QsAnalyzeInfo? outAnalyzeInfo)
+            [NotNullWhen(returnValue: true)] out QsAnalyzeInfo? outInfo)
         {
             var context = new QsAnalyzerContext(
+                moduleName,
                 metadatas,
                 typeBuildInfo,
                 errorCollector);
@@ -236,14 +254,13 @@ namespace QuickSC.StaticAnalyzer
 
             if (errorCollector.HasError)
             {
-                outAnalyzeInfo = null;
+                outInfo = null;
                 return false;
             }
 
-            outAnalyzeInfo = new QsAnalyzeInfo(context.InfosByNode.ToImmutableDictionary());
+            outInfo = new QsAnalyzeInfo(context.InfosByNode.ToImmutableWithComparer());
             return true;
         }
-
 
         public bool IsAssignable(QsTypeValue toTypeValue, QsTypeValue fromTypeValue, QsAnalyzerContext context)
         {

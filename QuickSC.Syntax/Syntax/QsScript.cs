@@ -7,7 +7,7 @@ namespace QuickSC.Syntax
 {   
 
     // 가장 외곽
-    public class QsScript
+    public class QsScript : IQsSyntaxNode
     {
         public ImmutableArray<QsScriptElement> Elements { get; }
         public QsScript(ImmutableArray<QsScriptElement> elements)

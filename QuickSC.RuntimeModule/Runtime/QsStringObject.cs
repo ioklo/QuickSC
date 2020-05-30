@@ -7,10 +7,12 @@ namespace QuickSC.Runtime
     // String 
     public class QsStringObject : QsObject
     {
+        QsTypeInst typeInst;
         public string Data { get; } // 내부 구조는 string
 
-        public QsStringObject(string data)
+        public QsStringObject(QsTypeInst typeInst, string data)
         {
+            this.typeInst = typeInst;
             Data = data;
         }
     }

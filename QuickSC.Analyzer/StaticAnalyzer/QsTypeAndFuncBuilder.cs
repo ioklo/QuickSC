@@ -12,26 +12,26 @@ namespace QuickSC.StaticAnalyzer
 {
     class QsTypeAndFuncBuilderContext
     {
+        public string ModuleName { get; }
         public QsTypeEvalInfo TypeEvalInfo { get; }
 
         public QsTypeBuilder? TypeBuilder { get; set; }
         public List<QsType> Types { get;} // All Types
         public List<QsFunc> Funcs { get; } // All Funcs
         public List<QsVariable> Vars { get; } // Type의 Variable
+        public Dictionary<QsFuncDecl, QsFunc> FuncsByFuncDecl { get; }
+        
 
-        public List<QsFunc> GlobalFuncs { get; } // GlobalFuncs
-        public List<QsType> GlobalTypes { get; }
-
-        public QsTypeAndFuncBuilderContext(QsTypeEvalInfo typeEvalInfo)
+        public QsTypeAndFuncBuilderContext(string moduleName, QsTypeEvalInfo typeEvalInfo)
         {
+            ModuleName = moduleName;
             TypeEvalInfo = typeEvalInfo;
             
             TypeBuilder = null;
             Types = new List<QsType>();
             Funcs = new List<QsFunc>();
             Vars = new List<QsVariable>();
-            GlobalFuncs = new List<QsFunc>();
-            GlobalTypes = new List<QsType>();
+            FuncsByFuncDecl = new Dictionary<QsFuncDecl, QsFunc>(QsRefEqComparer<QsFuncDecl>.Instance);
         }
     }
 
@@ -39,17 +39,20 @@ namespace QuickSC.StaticAnalyzer
     {
         public ImmutableDictionary<QsTypeId, QsType> TypesById { get; }
         public ImmutableDictionary<QsFuncId, QsFunc> FuncsById { get; }
-        public Dictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
+        public ImmutableDictionary<QsFuncDecl, QsFunc> FuncsByFuncDecl { get; }
+        public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }        
         public Dictionary<QsVarId, QsVariable> VarsById { get; }
 
         public QsTypeBuildInfo(
             ImmutableDictionary<QsTypeId, QsType> typesById, 
             ImmutableDictionary<QsFuncId, QsFunc> funcsById,
-            Dictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
+            ImmutableDictionary<QsFuncDecl, QsFunc> funcsByFuncDecl,
+            ImmutableDictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp,
             Dictionary<QsVarId, QsVariable> varsById)
         {
             TypesById = typesById;
             FuncsById = funcsById;
+            FuncsByFuncDecl = funcsByFuncDecl;
             TypeValuesByTypeExp = typeValuesByTypeExp;
             VarsById = varsById;
         }
@@ -111,6 +114,7 @@ namespace QuickSC.StaticAnalyzer
 
                 // Func를 만들까 FuncSkeleton을 만들까
                 var func = MakeFunc(
+                    null,
                     context.TypeEvalInfo.FuncIdsByLocation[QsFuncIdLocation.Make(elem)], 
                     false, 
                     ImmutableArray<string>.Empty, 
@@ -124,7 +128,7 @@ namespace QuickSC.StaticAnalyzer
             {
                 // NOTICE : E.First 타입이 아니라 E 타입이다 var x = E.First; 에서 x는 E여야 하기 떄문
                 var variable = MakeVar(
-                    new QsVarId(null, new QsNameElem(elem.Name, 0)),
+                    new QsVarId(context.ModuleName, new QsNameElem(elem.Name, 0)),
                     bStatic: true,
                     thisTypeValue,
                     context);
@@ -134,16 +138,19 @@ namespace QuickSC.StaticAnalyzer
         }
 
         private QsFunc MakeFunc(
+            QsFuncDecl? funcDecl,
             QsFuncId funcId,
             bool bThisCall,            
             ImmutableArray<string> typeParams,
             QsTypeValue retTypeValue,
             ImmutableArray<QsTypeValue> argTypeValues,
             QsTypeAndFuncBuilderContext context)
-        {
-            
+        {   
             var func = new QsFunc(funcId, bThisCall, typeParams, retTypeValue, argTypeValues);
             context.Funcs.Add(func);
+
+            if (funcDecl != null)
+                context.FuncsByFuncDecl[funcDecl] = func;
 
             return func;
         }
@@ -187,9 +194,6 @@ namespace QuickSC.StaticAnalyzer
 
             context.TypeBuilder = prevTypeBuilder;
 
-            if (context.TypeBuilder == null)
-                context.GlobalTypes.Add(enumType);
-
             context.Types.Add(enumType);
         }
 
@@ -198,15 +202,13 @@ namespace QuickSC.StaticAnalyzer
             bool bThisCall = (context.TypeBuilder != null); // TODO: static 키워드가 추가되면 그때 다시 고쳐야 한다
 
             var func = MakeFunc(
+                funcDecl,
                 context.TypeEvalInfo.FuncIdsByLocation[QsFuncIdLocation.Make(funcDecl)],
                 bThisCall,
                 funcDecl.TypeParams,
                 context.TypeEvalInfo.TypeValuesByTypeExp[funcDecl.RetType],
                 funcDecl.Params.Select(typeAndName => context.TypeEvalInfo.TypeValuesByTypeExp[typeAndName.Type]).ToImmutableArray(),
                 context);
-
-            if (context.TypeBuilder == null)
-                context.GlobalFuncs.Add(func);
         }
         
         void BuildScript(QsScript script, QsTypeAndFuncBuilderContext context)
@@ -227,16 +229,17 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        public QsTypeBuildInfo BuildScript(QsScript script, QsTypeEvalInfo typeEvalInfo)
+        public QsTypeBuildInfo BuildScript(string moduleName, QsScript script, QsTypeEvalInfo typeEvalInfo)
         {   
-            var context = new QsTypeAndFuncBuilderContext(typeEvalInfo);
+            var context = new QsTypeAndFuncBuilderContext(moduleName, typeEvalInfo);
 
             BuildScript(script, context);
 
             return new QsTypeBuildInfo(
                 context.Types.ToImmutableDictionary(type => type.TypeId),
                 context.Funcs.ToImmutableDictionary(func => func.FuncId),
-                new Dictionary<QsTypeExp, QsTypeValue>(typeEvalInfo.TypeValuesByTypeExp),
+                context.FuncsByFuncDecl.ToImmutableWithComparer(),
+                typeEvalInfo.TypeValuesByTypeExp,
                 context.Vars.ToDictionary(var => var.VarId));
         }
     }

@@ -30,6 +30,12 @@ namespace QuickSC
         }        
     }
 
+    public class QsListExpInfo : QsSyntaxNodeInfo
+    {
+        public QsTypeValue ElemTypeValue { get; }
+        public QsListExpInfo(QsTypeValue elemTypeValue) { ElemTypeValue = elemTypeValue; }
+    }
+
     public class QsMemberExpInfo : QsSyntaxNodeInfo
     {
         public abstract class ExpKind
@@ -227,6 +233,15 @@ namespace QuickSC
             GetEnumeratorValue = getEnumeratorValue;
             MoveNextValue = moveNextValue;
             GetCurrentValue = getCurrentValue;
+        }
+    }
+
+    public class QsScriptInfo : QsSyntaxNodeInfo
+    {
+        public int LocalVarCount { get; }
+        public QsScriptInfo(int localVarCount)
+        {
+            LocalVarCount = localVarCount;
         }
     }
 }

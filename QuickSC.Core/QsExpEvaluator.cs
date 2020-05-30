@@ -16,14 +16,10 @@ namespace QuickSC
     class QsExpEvaluator
     {
         private QsEvaluator evaluator;
-        private IQsRuntimeModule runtimeModule;
-        private QsDomainService domainService;
 
-        public QsExpEvaluator(QsEvaluator evaluator, IQsRuntimeModule runtimeModule, QsDomainService domainService)
+        public QsExpEvaluator(QsEvaluator evaluator)
         {
             this.evaluator = evaluator;
-            this.runtimeModule = runtimeModule;
-            this.domainService = domainService;
         }
         
         QsValue EvaluateIdExp(QsIdentifierExp idExp, QsEvalContext context)
@@ -40,12 +36,12 @@ namespace QuickSC
 
         QsValue EvaluateBoolLiteralExp(QsBoolLiteralExp boolLiteralExp, QsEvalContext context)
         {
-            return runtimeModule.MakeBool(boolLiteralExp.Value);
+            return context.RuntimeModule.MakeBool(boolLiteralExp.Value);
         }
 
         QsValue EvaluateIntLiteralExp(QsIntLiteralExp intLiteralExp, QsEvalContext context)
         {
-            return runtimeModule.MakeInt(intLiteralExp.Value);
+            return context.RuntimeModule.MakeInt(intLiteralExp.Value);
         }
 
         internal async ValueTask<QsValue> EvaluateStringExpAsync(QsStringExp stringExp, QsEvalContext context)
@@ -63,7 +59,7 @@ namespace QuickSC
                     case QsExpStringExpElement expElem:
                         var result = await EvaluateExpAsync(expElem.Exp, context);
 
-                        var strValue = runtimeModule.GetString(result);
+                        var strValue = context.RuntimeModule.GetString(result);
                         sb.Append(strValue);
                         break;
 
@@ -72,7 +68,7 @@ namespace QuickSC
                 }
             }
 
-            return runtimeModule.MakeString(sb.ToString());
+            return context.RuntimeModule.MakeString(sb.ToString());
         }
 
         async ValueTask<QsValue> EvaluateUnaryOpExpAsync(QsUnaryOpExp exp, QsEvalContext context)
@@ -83,9 +79,9 @@ namespace QuickSC
                     {
                         var operandValue = await EvaluateExpAsync(exp.Operand, context);
 
-                        var intValue = runtimeModule.GetInt(operandValue);
-                        var retValue = runtimeModule.MakeInt(intValue);
-                        runtimeModule.SetInt(operandValue, intValue + 1);
+                        var intValue = context.RuntimeModule.GetInt(operandValue);
+                        var retValue = context.RuntimeModule.MakeInt(intValue);
+                        context.RuntimeModule.SetInt(operandValue, intValue + 1);
 
                         return retValue;
                     }
@@ -94,32 +90,32 @@ namespace QuickSC
                     {
                         var operandValue = await EvaluateExpAsync(exp.Operand, context);
 
-                        var intValue = runtimeModule.GetInt(operandValue);
-                        var retValue = runtimeModule.MakeInt(intValue);
-                        runtimeModule.SetInt(operandValue, intValue - 1);
+                        var intValue = context.RuntimeModule.GetInt(operandValue);
+                        var retValue = context.RuntimeModule.MakeInt(intValue);
+                        context.RuntimeModule.SetInt(operandValue, intValue - 1);
                         return retValue;
                     }
 
                 case QsUnaryOpKind.LogicalNot:
                     {
                         var operandValue = await EvaluateExpAsync(exp.Operand, context);
-                        var boolValue = runtimeModule.GetBool(operandValue);
-                        return runtimeModule.MakeBool(!boolValue);
+                        var boolValue = context.RuntimeModule.GetBool(operandValue);
+                        return context.RuntimeModule.MakeBool(!boolValue);
                     }
 
                 case QsUnaryOpKind.PrefixInc:
                     {
                         var operandValue = await EvaluateExpAsync(exp.Operand, context);
-                        var intValue = runtimeModule.GetInt(operandValue);
-                        runtimeModule.SetInt(operandValue, intValue + 1);
+                        var intValue = context.RuntimeModule.GetInt(operandValue);
+                        context.RuntimeModule.SetInt(operandValue, intValue + 1);
                         return operandValue;
                     }
 
                 case QsUnaryOpKind.PrefixDec:
                     {
                         var operandValue = await EvaluateExpAsync(exp.Operand, context);
-                        var intValue = runtimeModule.GetInt(operandValue);
-                        runtimeModule.SetInt(operandValue, intValue - 1);
+                        var intValue = context.RuntimeModule.GetInt(operandValue);
+                        context.RuntimeModule.SetInt(operandValue, intValue - 1);
                         return operandValue;
                     }
             }
@@ -136,26 +132,26 @@ namespace QuickSC
             {
                 case QsBinaryOpKind.Multiply:
                     {
-                        var intValue0 = runtimeModule.GetInt(operandValue0);
-                        var intValue1 = runtimeModule.GetInt(operandValue1);
+                        var intValue0 = context.RuntimeModule.GetInt(operandValue0);
+                        var intValue1 = context.RuntimeModule.GetInt(operandValue1);
 
-                        return runtimeModule.MakeInt(intValue0 * intValue1);
+                        return context.RuntimeModule.MakeInt(intValue0 * intValue1);
                     }
 
                 case QsBinaryOpKind.Divide:
                     {
-                        var intValue0 = runtimeModule.GetInt(operandValue0);
-                        var intValue1 = runtimeModule.GetInt(operandValue1);
+                        var intValue0 = context.RuntimeModule.GetInt(operandValue0);
+                        var intValue1 = context.RuntimeModule.GetInt(operandValue1);
 
-                        return runtimeModule.MakeInt(intValue0 / intValue1);
+                        return context.RuntimeModule.MakeInt(intValue0 / intValue1);
                     }
 
                 case QsBinaryOpKind.Modulo:
                     {
-                        var intValue0 = runtimeModule.GetInt(operandValue0);
-                        var intValue1 = runtimeModule.GetInt(operandValue1);
+                        var intValue0 = context.RuntimeModule.GetInt(operandValue0);
+                        var intValue1 = context.RuntimeModule.GetInt(operandValue1);
 
-                        return runtimeModule.MakeInt(intValue0 % intValue1);
+                        return context.RuntimeModule.MakeInt(intValue0 % intValue1);
                     }
 
                 case QsBinaryOpKind.Add:
@@ -165,17 +161,17 @@ namespace QuickSC
                         // TODO: 이쪽은 operator+로 교체될 것이므로 임시로 하드코딩
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
-                            var intValue0 = runtimeModule.GetInt(operandValue0);
-                            var intValue1 = runtimeModule.GetInt(operandValue1);
+                            var intValue0 = context.RuntimeModule.GetInt(operandValue0);
+                            var intValue1 = context.RuntimeModule.GetInt(operandValue1);
 
-                            return runtimeModule.MakeInt(intValue0 + intValue1);
+                            return context.RuntimeModule.MakeInt(intValue0 + intValue1);
                         }
                         else if (info.Type == QsBinaryOpExpInfo.OpType.String)
                         {
-                            var strValue0 = runtimeModule.GetString(operandValue0);
-                            var strValue1 = runtimeModule.GetString(operandValue1);
+                            var strValue0 = context.RuntimeModule.GetString(operandValue0);
+                            var strValue1 = context.RuntimeModule.GetString(operandValue1);
 
-                            return runtimeModule.MakeString(strValue0 + strValue1);
+                            return context.RuntimeModule.MakeString(strValue0 + strValue1);
                         }
                         else
                         {
@@ -185,10 +181,10 @@ namespace QuickSC
 
                 case QsBinaryOpKind.Subtract:
                     {
-                        var intValue0 = runtimeModule.GetInt(operandValue0);
-                        var intValue1 = runtimeModule.GetInt(operandValue1);
+                        var intValue0 = context.RuntimeModule.GetInt(operandValue0);
+                        var intValue1 = context.RuntimeModule.GetInt(operandValue1);
 
-                        return runtimeModule.MakeInt(intValue0 - intValue1);
+                        return context.RuntimeModule.MakeInt(intValue0 - intValue1);
                     }
 
                 case QsBinaryOpKind.LessThan:
@@ -198,17 +194,17 @@ namespace QuickSC
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
-                            var intValue0 = runtimeModule.GetInt(operandValue0);
-                            var intValue1 = runtimeModule.GetInt(operandValue1);
+                            var intValue0 = context.RuntimeModule.GetInt(operandValue0);
+                            var intValue1 = context.RuntimeModule.GetInt(operandValue1);
 
-                            return runtimeModule.MakeBool(intValue0 < intValue1);
+                            return context.RuntimeModule.MakeBool(intValue0 < intValue1);
                         }
                         else if (info.Type == QsBinaryOpExpInfo.OpType.String)
                         {
-                            var strValue0 = runtimeModule.GetString(operandValue0);
-                            var strValue1 = runtimeModule.GetString(operandValue1);
+                            var strValue0 = context.RuntimeModule.GetString(operandValue0);
+                            var strValue1 = context.RuntimeModule.GetString(operandValue1);
 
-                            return runtimeModule.MakeBool(strValue0.CompareTo(strValue1) < 0);
+                            return context.RuntimeModule.MakeBool(strValue0.CompareTo(strValue1) < 0);
                         }
                         else
                         {
@@ -223,17 +219,17 @@ namespace QuickSC
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
-                            var intValue0 = runtimeModule.GetInt(operandValue0);
-                            var intValue1 = runtimeModule.GetInt(operandValue1);
+                            var intValue0 = context.RuntimeModule.GetInt(operandValue0);
+                            var intValue1 = context.RuntimeModule.GetInt(operandValue1);
 
-                            return runtimeModule.MakeBool(intValue0 > intValue1);
+                            return context.RuntimeModule.MakeBool(intValue0 > intValue1);
                         }
                         else if (info.Type== QsBinaryOpExpInfo.OpType.String)
                         {
-                            var strValue0 = runtimeModule.GetString(operandValue0);
-                            var strValue1 = runtimeModule.GetString(operandValue1);
+                            var strValue0 = context.RuntimeModule.GetString(operandValue0);
+                            var strValue1 = context.RuntimeModule.GetString(operandValue1);
 
-                            return runtimeModule.MakeBool(strValue0.CompareTo(strValue1) > 0);
+                            return context.RuntimeModule.MakeBool(strValue0.CompareTo(strValue1) > 0);
                         }
                         else
                         {
@@ -248,17 +244,17 @@ namespace QuickSC
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
-                            var intValue0 = runtimeModule.GetInt(operandValue0);
-                            var intValue1 = runtimeModule.GetInt(operandValue1);
+                            var intValue0 = context.RuntimeModule.GetInt(operandValue0);
+                            var intValue1 = context.RuntimeModule.GetInt(operandValue1);
 
-                            return runtimeModule.MakeBool(intValue0 <= intValue1);
+                            return context.RuntimeModule.MakeBool(intValue0 <= intValue1);
                         }
                         else if (info.Type == QsBinaryOpExpInfo.OpType.String)
                         {
-                            var strValue0 = runtimeModule.GetString(operandValue0);
-                            var strValue1 = runtimeModule.GetString(operandValue1);
+                            var strValue0 = context.RuntimeModule.GetString(operandValue0);
+                            var strValue1 = context.RuntimeModule.GetString(operandValue1);
 
-                            return runtimeModule.MakeBool(strValue0.CompareTo(strValue1) <= 0);
+                            return context.RuntimeModule.MakeBool(strValue0.CompareTo(strValue1) <= 0);
                         }
                         else
                         {
@@ -273,17 +269,17 @@ namespace QuickSC
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
-                            var intValue0 = runtimeModule.GetInt(operandValue0);
-                            var intValue1 = runtimeModule.GetInt(operandValue1);
+                            var intValue0 = context.RuntimeModule.GetInt(operandValue0);
+                            var intValue1 = context.RuntimeModule.GetInt(operandValue1);
 
-                            return runtimeModule.MakeBool(intValue0 >= intValue1);
+                            return context.RuntimeModule.MakeBool(intValue0 >= intValue1);
                         }
                         else if (info.Type == QsBinaryOpExpInfo.OpType.String)
                         {
-                            var strValue0 = runtimeModule.GetString(operandValue0);
-                            var strValue1 = runtimeModule.GetString(operandValue1);
+                            var strValue0 = context.RuntimeModule.GetString(operandValue0);
+                            var strValue1 = context.RuntimeModule.GetString(operandValue1);
 
-                            return runtimeModule.MakeBool(strValue0.CompareTo(strValue1) >= 0);
+                            return context.RuntimeModule.MakeBool(strValue0.CompareTo(strValue1) >= 0);
                         }
                         else
                         {
@@ -292,10 +288,10 @@ namespace QuickSC
                     }
 
                 case QsBinaryOpKind.Equal:
-                    return runtimeModule.MakeBool(operandValue0.Equals(operandValue1));
+                    return context.RuntimeModule.MakeBool(operandValue0.Equals(operandValue1));
 
                 case QsBinaryOpKind.NotEqual:
-                    return runtimeModule.MakeBool(!operandValue0.Equals(operandValue1));
+                    return context.RuntimeModule.MakeBool(!operandValue0.Equals(operandValue1));
 
                 case QsBinaryOpKind.Assign:
                     {
@@ -320,7 +316,7 @@ namespace QuickSC
 
                 // var typeInstArgs = MakeTypeInstArgs(funcValue, context.TypeEnv);
                 // TODO: 일단 QsTypeInst를 Empty로 둔다 .. List때문에 문제지만 List는 내부에서 TypeInst를 안쓴다
-                funcInst = domainService.GetFuncInst(callExpInfo.FuncValue.FuncId, ImmutableArray<QsTypeInst>.Empty);
+                funcInst = evaluator.GetFuncInst(callExpInfo.FuncValue, context);
             }
             else
             {
@@ -346,7 +342,7 @@ namespace QuickSC
             var captures = evaluator.MakeCaptures(info.CaptureInfo.Captures, context);
 
             return new QsFuncInstValue(new QsScriptFuncInst(
-                false,
+                null,
                 false,
                 info.CaptureInfo.bCaptureThis ? context.ThisValue : null,
                 captures,
@@ -440,6 +436,10 @@ namespace QuickSC
 
         async ValueTask<QsValue> EvaluateListExpAsync(QsListExp listExp, QsEvalContext context)
         {
+            var info = (QsListExpInfo)context.AnalyzeInfo.InfosByNode[listExp];
+
+            var elemTypeInst = evaluator.GetTypeInst(info.ElemTypeValue, context);
+
             var elems = new List<QsValue>(listExp.Elems.Length);
 
             foreach (var elemExp in listExp.Elems)
@@ -448,7 +448,7 @@ namespace QuickSC
                 elems.Add(elem);
             }
 
-            return runtimeModule.MakeList(elems);
+            return context.RuntimeModule.MakeList(elemTypeInst, elems);
         }
 
         internal async ValueTask<QsValue> EvaluateExpAsync(QsExp exp, QsEvalContext context)

@@ -657,7 +657,8 @@ namespace QuickSC.StaticAnalyzer
                 Debug.Fail("Runtime에 리스트가 없습니다");
                 return false;
             }
-            
+
+            context.InfosByNode[listExp] = new QsListExpInfo(curElemTypeValue);
             return true;
         }
 

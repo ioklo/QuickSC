@@ -57,6 +57,7 @@ namespace QuickSC.StaticAnalyzer
     // Analyzer는 backtracking이 없어서, MutableContext를 쓴다 
     public class QsAnalyzerContext
     {
+        public string ModuleName { get; }
         public ImmutableArray<IQsMetadata> Metadatas { get; }
         public QsTypeBuildInfo TypeBuildInfo { get; }
         public IQsErrorCollector ErrorCollector { get; }
@@ -76,17 +77,19 @@ namespace QuickSC.StaticAnalyzer
         
 
         public QsAnalyzerContext(
+            string moduleName,
             ImmutableArray<IQsMetadata> metadatas,
             QsTypeBuildInfo typeBuildInfo,
             IQsErrorCollector errorCollector)
         {
+            ModuleName = moduleName;
             Metadatas = metadatas;
             TypeBuildInfo = typeBuildInfo;
             ErrorCollector = errorCollector;
 
             globalVarTypeValues = ImmutableDictionary<string, QsTypeValue>.Empty;
 
-            CurFunc = new QsAnalyzerFuncContext(new QsFuncId(null), null, false);
+            CurFunc = new QsAnalyzerFuncContext(new QsFuncId(moduleName), null, false);
             bGlobalScope = true;
             
 

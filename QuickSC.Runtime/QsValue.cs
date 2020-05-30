@@ -26,8 +26,7 @@ namespace QuickSC
 
         // 뭘 리턴해야 하는거냐
         public abstract QsValue GetMemberValue(QsVarId varId);
-
-        public abstract bool IsType(QsTypeInst typeInst);
+        public abstract QsTypeInst GetTypeInst();
     }
     
     public class QsEnumValue : QsValue
@@ -61,17 +60,9 @@ namespace QuickSC
             this.values = ((QsEnumValue)fromValue).values;
         }
 
-        public override bool IsType(QsTypeInst typeInst)
+        public override QsTypeInst GetTypeInst()
         {
-            QsTypeInst? curTypeInst = TypeInst;
-
-            while(curTypeInst != null)
-            {
-                if (curTypeInst == typeInst) return true;
-                curTypeInst = curTypeInst.GetBaseTypeInst();
-            }
-
-            return false;
+            return TypeInst;
         }
     }
 
@@ -99,7 +90,7 @@ namespace QuickSC
             throw new NotImplementedException();
         }
 
-        public override bool IsType(QsTypeInst typeInst)
+        public override QsTypeInst GetTypeInst()
         {
             throw new NotImplementedException();
         }
@@ -126,9 +117,9 @@ namespace QuickSC
             throw new InvalidOperationException();
         }
 
-        public override bool IsType(QsTypeInst type)
+        public override QsTypeInst GetTypeInst()
         {
-            return false;
+            throw new InvalidOperationException();
         }
     }
 
@@ -143,7 +134,7 @@ namespace QuickSC
             throw new InvalidOperationException();
         }
 
-        public override bool IsType(QsTypeInst typeInst)
+        public override QsTypeInst GetTypeInst()
         {
             throw new NotImplementedException();
         }
@@ -161,6 +152,11 @@ namespace QuickSC
 
     public abstract class QsObject
     {
+        public virtual QsTypeInst GetTypeInst()
+        {
+            throw new NotImplementedException();
+        }
+
         public virtual QsValue GetMemberValue(QsVarId varId)
         {
             throw new NotImplementedException();
@@ -196,9 +192,10 @@ namespace QuickSC
             Object = ((QsObjectValue)fromValue).Object;
         }
 
-        public override bool IsType(QsTypeInst type)
+        public override QsTypeInst GetTypeInst()
         {
-            throw new NotImplementedException();
+            // 초기화 전에는 null일 수 있는데 타입체커를 통과하고 나면 호출하지 않을 것이다
+            return Object!.GetTypeInst();
         }
     }
     

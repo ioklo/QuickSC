@@ -3,6 +3,7 @@ using QuickSC.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using Xunit;
 
 namespace QuickSC.RuntimeModule.Test
@@ -12,10 +13,9 @@ namespace QuickSC.RuntimeModule.Test
         [Fact]
         static void Temp()
         {
-            QsDomainService domainService = new QsDomainService();
+            QsDomainService domainService = new QsDomainService(new QsRuntimeModule(), Enumerable.Empty<IQsModule>());
 
-            var runtimeModule = new QsRuntimeModule();
-            domainService.AddModule(runtimeModule);
+            var runtimeModule = new QsRuntimeModule();            
 
             var intTypeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("int", 0));
             var listTypeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1));
@@ -31,7 +31,7 @@ namespace QuickSC.RuntimeModule.Test
             var funcInst = domainService.GetFuncInst(listAddFuncId, ImmutableArray.Create(intTypeInst));
 
             // list = [1, 2]
-            var list = runtimeModule.MakeList(new List<QsValue> { runtimeModule.MakeInt(1), runtimeModule.MakeInt(2) });
+            var list = runtimeModule.MakeList(intTypeInst, new List<QsValue> { runtimeModule.MakeInt(1), runtimeModule.MakeInt(2) });
 
             // List<int>.Add(list, 3)
             if( funcInst is QsNativeFuncInst nativeFuncInst )

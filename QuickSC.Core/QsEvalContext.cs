@@ -4,30 +4,37 @@ using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace QuickSC
 {   
     public class QsEvalContext
     {
+        public IQsRuntimeModule RuntimeModule { get; }
+        public QsDomainService DomainService { get; }
         public QsAnalyzeInfo AnalyzeInfo { get; }
 
         // 모든 모듈의 전역 변수
         public Dictionary<QsVarId, QsValue> GlobalVars { get; }
-        public QsValue?[] LocalVars { get; private set; }
 
+        public QsValue?[] LocalVars { get; private set; }
         public QsEvalFlowControl FlowControl { get; set; }
         public ImmutableArray<Task> Tasks { get; private set; }
         public QsValue? ThisValue { get; set; }
 
-        public QsEvalContext(QsAnalyzeInfo analyzeInfo)
+        public QsEvalContext(IQsRuntimeModule runtimeModule, QsDomainService domainService, QsAnalyzeInfo analyzeInfo)
         {
-            this.AnalyzeInfo = analyzeInfo;
-            this.GlobalVars = new Dictionary<QsVarId, QsValue>();
-            this.LocalVars = new QsValue?[0];
-            this.FlowControl = QsNoneEvalFlowControl.Instance;
-            this.Tasks = ImmutableArray<Task>.Empty; ;
-            this.ThisValue = null;
+            RuntimeModule = runtimeModule;
+            DomainService = domainService;
+
+            AnalyzeInfo = analyzeInfo;
+            GlobalVars = new Dictionary<QsVarId, QsValue>();
+
+            LocalVars = new QsValue?[0];
+            FlowControl = QsNoneEvalFlowControl.Instance;
+            Tasks = ImmutableArray<Task>.Empty; ;
+            ThisValue = null;            
         }
 
         public QsEvalContext(
@@ -37,12 +44,15 @@ namespace QuickSC
             ImmutableArray<Task> tasks,
             QsValue? thisValue)
         {
-            this.AnalyzeInfo = other.AnalyzeInfo;
-            this.GlobalVars = other.GlobalVars;
-            this.LocalVars = localVars;
-            this.FlowControl = flowControl;
-            this.Tasks = tasks;
-            this.ThisValue = thisValue;
+            RuntimeModule = other.RuntimeModule;
+            DomainService = other.DomainService;
+            AnalyzeInfo = other.AnalyzeInfo;
+            GlobalVars = other.GlobalVars;
+
+            LocalVars = localVars;
+            FlowControl = flowControl;
+            Tasks = tasks;
+            ThisValue = thisValue;
         }
 
         public QsEvalContext SetTasks(ImmutableArray<Task> newTasks)

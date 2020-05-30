@@ -11,6 +11,7 @@ namespace QuickSC.StaticAnalyzer
 {
     public class QsTypeSkeletonCollectorContext
     {
+        public string ModuleName { get; }
         public Dictionary<QsNameElem, QsTypeSkeleton> GlobalTypeSkeletons { get; }
         public Dictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
         public Dictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
@@ -18,8 +19,9 @@ namespace QuickSC.StaticAnalyzer
 
         public QsTypeSkeleton? ScopeSkeleton { get; set; }
 
-        public QsTypeSkeletonCollectorContext()
+        public QsTypeSkeletonCollectorContext(string moduleName)
         {
+            ModuleName = moduleName;
             GlobalTypeSkeletons = new Dictionary<QsNameElem, QsTypeSkeleton>();
             TypeIdsByLocation = new Dictionary<QsTypeIdLocation, QsTypeId>();
             FuncIdsByLocation = new Dictionary<QsFuncIdLocation, QsFuncId>();
@@ -80,9 +82,9 @@ namespace QuickSC.StaticAnalyzer
 
             QsTypeId typeId;
             if (context.ScopeSkeleton != null)
-                typeId = new QsTypeId(null, context.ScopeSkeleton.TypeId.Elems.Add(nameElem));
+                typeId = new QsTypeId(context.ModuleName, context.ScopeSkeleton.TypeId.Elems.Add(nameElem));
             else
-                typeId = new QsTypeId(null, nameElem);
+                typeId = new QsTypeId(context.ModuleName, nameElem);
 
             context.TypeIdsByLocation.Add(loc, typeId);
 
@@ -111,7 +113,7 @@ namespace QuickSC.StaticAnalyzer
 
                 if (0 < elem.Params.Length)
                 {
-                    var funcId = new QsFuncId(null, skeleton.TypeId.Elems.Add(new QsNameElem(elem.Name, 0)));
+                    var funcId = new QsFuncId(context.ModuleName, skeleton.TypeId.Elems.Add(new QsNameElem(elem.Name, 0)));
                     context.FuncIdsByLocation[QsFuncIdLocation.Make(elem)] = funcId;
                 }
             }
@@ -126,7 +128,7 @@ namespace QuickSC.StaticAnalyzer
             // TODO: 현재는 최상위만
             Debug.Assert(context.ScopeSkeleton == null);
 
-            var funcId = new QsFuncId(null, new QsNameElem(funcDecl.Name, funcDecl.TypeParams.Length));
+            var funcId = new QsFuncId(context.ModuleName, new QsNameElem(funcDecl.Name, funcDecl.TypeParams.Length));
             context.FuncIdsByLocation[QsFuncIdLocation.Make(funcDecl)] = funcId;
             return true;
         }
@@ -152,9 +154,9 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public bool CollectScript(QsScript script, IQsErrorCollector errorCollector, [NotNullWhen(returnValue: true)] out QsTypeSkeletonInfo? outInfo)
+        public bool CollectScript(string moduleName, QsScript script, IQsErrorCollector errorCollector, [NotNullWhen(returnValue: true)] out QsTypeSkeletonInfo? outInfo)
         {
-            var context = new QsTypeSkeletonCollectorContext();
+            var context = new QsTypeSkeletonCollectorContext(moduleName);
             if (!CollectScript(script, context))
             {
                 errorCollector.Add(script, $"타입 정보 모으기에 실패했습니다");

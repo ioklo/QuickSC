@@ -20,17 +20,16 @@ namespace QuickSC.Runtime
         public override QsValue MakeCopy()
         {
             return new QsValue<T>(Value);
-        }
+        }        
         
-        public override bool IsType(QsTypeInst typeInst)
-        {
-            // struct에서  is 류가 사용가능하게 해야할 수 도 있다.
-            return false;
-        }
-
         public override QsValue GetMemberValue(QsVarId varId)
         {
             throw new InvalidOperationException();
+        }
+
+        public override QsTypeInst GetTypeInst()
+        {
+            throw new NotImplementedException();
         }
     }
 

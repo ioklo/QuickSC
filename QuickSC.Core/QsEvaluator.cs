@@ -15,19 +15,13 @@ namespace QuickSC
     // TODO: Small Step으로 가야하지 않을까 싶다 (yield로 실행 point 잡는거 해보면 재미있을 것 같다)
     public class QsEvaluator
     {
-        QsDomainService domainService;
-
         QsExpEvaluator expEvaluator;
-        QsStmtEvaluator stmtEvaluator;
-        IQsRuntimeModule runtimeModule;
+        QsStmtEvaluator stmtEvaluator;        
 
-        public QsEvaluator(QsDomainService domainService, IQsCommandProvider commandProvider, IQsRuntimeModule runtimeModule)
+        public QsEvaluator(IQsCommandProvider commandProvider)
         {
-            this.domainService = domainService;
-
-            this.expEvaluator = new QsExpEvaluator(this, runtimeModule, domainService);
-            this.stmtEvaluator = new QsStmtEvaluator(this, commandProvider, runtimeModule);
-            this.runtimeModule = runtimeModule;
+            this.expEvaluator = new QsExpEvaluator(this);
+            this.stmtEvaluator = new QsStmtEvaluator(this, commandProvider);
         }
         
         public QsFuncInst GetFuncInst(QsFuncValue funcValue, QsEvalContext context)
@@ -40,17 +34,107 @@ namespace QuickSC
             return expEvaluator.EvaluateStringExpAsync(command, context);
         }
 
-        public QsTypeInst GetTypeInst(QsTypeValue typeValue, QsEvalContext context)
-        {   
-            // context.TypeValuesByTypeExp[typeExp]
-            // return new QsRawTypeInst(testTypeValue);
+        QsTypeValue ApplyTypeValue(QsTypeValue typeValue, ImmutableDictionary<QsTypeVarTypeValue, QsTypeValue> typeEnv)
+        {
+            switch(typeValue)
+            {
+                case QsTypeVarTypeValue typeVar: 
+                    return typeEnv[typeVar];
 
-            throw new NotImplementedException();
+                case QsNormalTypeValue ntv:
+                    {
+                        var appliedOuter = (ntv.Outer != null) ? ApplyTypeValue(ntv.Outer, typeEnv) : null;
+                        var appliedTypeArgs = ImmutableArray.CreateRange(ntv.TypeArgs, typeArg => ApplyTypeValue(typeArg, typeEnv));
+
+                        return new QsNormalTypeValue(appliedOuter, ntv.TypeId, appliedTypeArgs);
+                    }
+
+                case QsVoidTypeValue vtv: 
+                    return typeValue;
+
+                case QsFuncTypeValue ftv:
+                    {
+                        var appliedReturn = ApplyTypeValue(ftv.Return, typeEnv);
+                        var appliedParams = ImmutableArray.CreateRange(ftv.Params, param => ApplyTypeValue(param, typeEnv));
+
+                        return new QsFuncTypeValue(appliedReturn, appliedParams);
+                    }
+
+                default:
+                    throw new NotImplementedException();
+            }            
         }
-        
-        internal QsValue GetDefaultValue(QsTypeValue typeValue, QsEvalContext context)
+
+        public bool IsType(QsTypeInst subTypeInst, QsTypeInst typeInst, QsEvalContext context)
+        {
+            QsTypeInst? curTypeInst = subTypeInst;
+
+            while (curTypeInst != null)
+            {
+                if (curTypeInst == typeInst) return true;
+                curTypeInst = context.DomainService.GetBaseTypeInst(curTypeInst);
+            }
+
+            return false;
+        }
+
+        void MakeTypeInstArgs(QsNormalTypeValue ntv, ImmutableArray<QsTypeInst>.Builder builder, QsEvalContext context)
+        {
+            if (ntv.Outer != null)
+            {
+                if (ntv.Outer is QsNormalTypeValue outerNTV)
+                    MakeTypeInstArgs(outerNTV, builder, context);
+                else
+                    throw new InvalidOperationException(); // TODO: ntv.Outer를 normaltypeValue로 바꿔야 하지 않을까
+            }
+
+            foreach (var typeArg in ntv.TypeArgs)
+            {
+                var typeInst = GetTypeInst(typeArg, context);
+                builder.Add(typeInst);
+            }
+        }
+
+        // 실행중 TypeValue는 모두 Apply된 상태이다
+        public QsTypeInst GetTypeInst(QsTypeValue typeValue, QsEvalContext context)
+        {
+            // typeValue -> typeEnv
+            // X<int>.Y<short> => Tx -> int, Ty -> short
+            switch(typeValue)
+            {
+                case QsTypeVarTypeValue tvtv:
+                    Debug.Fail("실행중에 바인드 되지 않은 타입 인자가 나왔습니다");
+                    throw new InvalidOperationException();
+
+                case QsNormalTypeValue ntv:
+                    {
+                        var builder = ImmutableArray.CreateBuilder<QsTypeInst>();
+                        MakeTypeInstArgs(ntv, builder, context);
+
+                        return context.DomainService.GetTypeInst(ntv.TypeId, builder.ToImmutable());
+                    }
+
+                case QsVoidTypeValue vtv: 
+                    throw new NotImplementedException(); // TODO: void는 따로 처리
+
+                case QsFuncTypeValue ftv:
+                    throw new NotImplementedException(); // TODO: 함수는 따로 처리
+
+                default:
+                    throw new NotImplementedException();
+            }            
+        }
+
+        private object ApplyTypeValue(QsTypeValue typeValue, object typeEnv)
         {
             throw new NotImplementedException();
+        }
+
+        // DefaultValue란 무엇인가, 그냥 선언만 되어있는 상태        
+        public QsValue GetDefaultValue(QsTypeValue typeValue, QsEvalContext context)
+        {
+            var typeInst = GetTypeInst(typeValue, context);
+            return typeInst.MakeDefaultValue();
         }
 
         public ImmutableArray<QsValue> MakeCaptures(ImmutableArray<QsCaptureInfo.Element> captureElems, QsEvalContext context)
@@ -65,7 +149,7 @@ namespace QuickSC
                     origValue = context.LocalVars[localVar.LocalIndex]!;
                 else
                     throw new NotImplementedException();
-                
+
                 QsValue value;
                 if (captureElem.CaptureKind == QsCaptureKind.Copy)
                 {
@@ -157,7 +241,8 @@ namespace QuickSC
                 for (int i = scriptFuncInst.Captures.Length; i < argEndIndex; i++)
                     localVars[i] = args[i];
                 
-                if (scriptFuncInst.bSeqCall)
+                // Seq Call 이라면
+                if (scriptFuncInst.SeqElemTypeValue != null)
                 {
                     // context 복제
                     var newContext = new QsEvalContext(
@@ -167,8 +252,10 @@ namespace QuickSC
                         ImmutableArray<Task>.Empty,
                         thisValue);
 
+                    var elemTypeInst = GetTypeInst(scriptFuncInst.SeqElemTypeValue, context);
+
                     var asyncEnum = EvaluateScriptFuncInstSeqAsync(scriptFuncInst, args, newContext);
-                    return runtimeModule.MakeAsyncEnumerable(asyncEnum);
+                    return context.RuntimeModule.MakeEnumerable(elemTypeInst, asyncEnum);
                 }
 
                 var (prevLocalVars, prevFlowControl, prevTasks, prevThisValue) = 
@@ -211,7 +298,11 @@ namespace QuickSC
         }
         
         async ValueTask EvaluateScriptAsync(QsScript script, QsEvalContext context)
-        {   
+        {
+            var info = (QsScriptInfo)context.AnalyzeInfo.InfosByNode[script];
+
+            context.Update(new QsValue?[info.LocalVarCount], QsNoneEvalFlowControl.Instance, ImmutableArray<Task>.Empty, null);
+
             foreach(var elem in script.Elements)
             {
                 if (elem is QsStmtScriptElement statementElem)
@@ -223,9 +314,9 @@ namespace QuickSC
             }
         }
 
-        public async ValueTask<bool> EvaluateScriptAsync(QsScript script, QsAnalyzeInfo analyzeInfo)
+        public async ValueTask<bool> EvaluateScriptAsync(QsScript script, IQsRuntimeModule runtimeModule, QsDomainService domainService, QsAnalyzeInfo analyzeInfo)
         {
-            var context = new QsEvalContext(analyzeInfo);
+            var context = new QsEvalContext(runtimeModule, domainService, analyzeInfo);
             await EvaluateScriptAsync(script, context);
 
             return true;

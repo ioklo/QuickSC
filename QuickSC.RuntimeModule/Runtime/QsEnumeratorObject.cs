@@ -7,26 +7,27 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    class QsAsyncEnumeratorObject : QsObject
+    class QsEnumeratorObject : QsObject
     {
+        QsTypeInst typeInst;
         IAsyncEnumerator<QsValue> enumerator;
 
         public static QsType AddType(QsTypeBuilder typeBuilder, QsTypeValue boolTypeValue)
         {
-            var typeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("IEnumerator", 1));
+            var typeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("Enumerator", 1));
 
             var funcIdsBuilder = ImmutableDictionary.CreateBuilder<QsName, QsFuncId>();
             var elemTypeValue = new QsTypeVarTypeValue(typeId, "T");
 
             // bool MoveNext()
             var moveNext = typeBuilder.AddFunc(NativeMoveNext, new QsFunc(
-                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("IEnumerator", 1), new QsNameElem("MoveNext", 0)),
+                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("Enumerator", 1), new QsNameElem("MoveNext", 0)),
                 true, ImmutableArray<string>.Empty, boolTypeValue));
             funcIdsBuilder.Add(QsName.Text("MoveNext"), moveNext.FuncId);
 
             // T GetCurrent()
             var getCurrent = typeBuilder.AddFunc(NativeGetCurrent, new QsFunc(
-                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("IEnumerator", 1), new QsNameElem("GetCurrent", 0)),
+                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("Enumerator", 1), new QsNameElem("GetCurrent", 0)),
                 true, ImmutableArray<string>.Empty, elemTypeValue));
             funcIdsBuilder.Add(QsName.Text("GetCurrent"), getCurrent.FuncId);
 
@@ -43,8 +44,9 @@ namespace QuickSC.Runtime
             return typeBuilder.AddType(type, new QsObjectValue(null));
         }
 
-        public QsAsyncEnumeratorObject(IAsyncEnumerator<QsValue> enumerator)
+        public QsEnumeratorObject(QsTypeInst typeInst, IAsyncEnumerator<QsValue> enumerator)
         {
+            this.typeInst = typeInst;
             this.enumerator = enumerator;
         }
 
@@ -52,7 +54,7 @@ namespace QuickSC.Runtime
         {
             Debug.Assert(thisValue != null);
 
-            var enumeratorObj = GetObject<QsAsyncEnumeratorObject>(thisValue);            
+            var enumeratorObj = GetObject<QsEnumeratorObject>(thisValue);            
 
             bool bResult = await enumeratorObj.enumerator.MoveNextAsync();
             return new QsValue<bool>(bResult);
@@ -62,10 +64,15 @@ namespace QuickSC.Runtime
         {
             Debug.Assert(thisValue != null);
 
-            var enumeratorObj = GetObject<QsAsyncEnumeratorObject>(thisValue);            
+            var enumeratorObj = GetObject<QsEnumeratorObject>(thisValue);            
 
             // TODO: 여기 copy 해야 할 것 같음
             return new ValueTask<QsValue>(enumeratorObj.enumerator.Current);
+        }
+
+        public override QsTypeInst GetTypeInst()
+        {
+            return typeInst;
         }
     }
 }

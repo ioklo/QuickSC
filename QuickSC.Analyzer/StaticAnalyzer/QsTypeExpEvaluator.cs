@@ -77,6 +77,18 @@ namespace QuickSC.StaticAnalyzer
                 context.TypeValuesByTypeExp.Add(exp, typeValue);
                 return true;
             }
+            else if (exp.Name == "void")
+            {
+                if (exp.TypeArgs.Length != 0)
+                {
+                    context.ErrorCollector.Add(exp, "var는 타입 인자를 가질 수 없습니다");
+                    return false;
+                }
+
+                typeValue = QsVoidTypeValue.Instance;
+                context.TypeValuesByTypeExp.Add(exp, typeValue);
+                return true;
+            }
 
             // 1. TypeVar에서 먼저 검색
             if (context.TypeEnv.TryGetValue(exp.Name, out typeValue))
@@ -511,7 +523,7 @@ namespace QuickSC.StaticAnalyzer
             outInfo = new QsTypeEvalInfo(
                 skelInfo.TypeIdsByLocation,
                 skelInfo.FuncIdsByLocation,
-                context.TypeValuesByTypeExp.ToImmutableDictionary());
+                context.TypeValuesByTypeExp.ToImmutableWithComparer());
             return true;
         }
 

@@ -1,4 +1,6 @@
-﻿namespace QuickSC
+﻿using System.Text;
+
+namespace QuickSC
 {
     public struct QsNameElem
     {
@@ -15,6 +17,22 @@
         {
             Name = QsName.Text(name);
             TypeParamCount = typeParamCount;
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.Append(Name);
+
+            if (TypeParamCount != 0)
+            {
+                sb.Append('<');
+                for (int i = 0; i < TypeParamCount - 1; i++)
+                    sb.Append(',');
+                sb.Append('>');
+            }
+
+            return sb.ToString();
         }
     }
 }

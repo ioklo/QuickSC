@@ -17,13 +17,11 @@ namespace QuickSC
     {
         private QsEvaluator evaluator;
         private IQsCommandProvider commandProvider;
-        private IQsRuntimeModule runtimeModule;
 
-        public QsStmtEvaluator(QsEvaluator evaluator, IQsCommandProvider commandProvider, IQsRuntimeModule runtimeModule)
+        public QsStmtEvaluator(QsEvaluator evaluator, IQsCommandProvider commandProvider)
         {
             this.evaluator = evaluator;
             this.commandProvider = commandProvider;
-            this.runtimeModule = runtimeModule;
         }
 
         // TODO: CommandProvider가 Parser도 제공해야 할 것 같다
@@ -32,7 +30,7 @@ namespace QuickSC
             foreach (var command in stmt.Commands)
             {
                 var cmdValue = await evaluator.EvaluateStringExpAsync(command, context);
-                var cmdText = runtimeModule.GetString(cmdValue);
+                var cmdText = context.RuntimeModule.GetString(cmdValue);
 
                 await commandProvider.ExecuteAsync(cmdText);
             }
@@ -50,7 +48,7 @@ namespace QuickSC
             bool bTestPassed;
             if (stmt.TestType == null)
             {
-                bTestPassed = runtimeModule.GetBool(condValue);
+                bTestPassed = context.RuntimeModule.GetBool(condValue);
             }
             else
             {
@@ -58,7 +56,9 @@ namespace QuickSC
                 var ifStmtInfo = (QsIfStmtInfo)context.AnalyzeInfo.InfosByNode[stmt];
                 var testTypeInst = evaluator.GetTypeInst(ifStmtInfo.TestTypeValue, context);
 
-                bTestPassed = condValue.IsType(testTypeInst); // typeValue.GetTypeId는 Type의 TypeId일것이다
+                var condValueTypeInst = condValue.GetTypeInst();
+
+                bTestPassed = evaluator.IsType(condValueTypeInst, testTypeInst, context);
             }
 
             if (bTestPassed)
@@ -99,7 +99,7 @@ namespace QuickSC
                 {
                     var condValue = await evaluator.EvaluateExpAsync(forStmt.CondExp, context);                    
 
-                    if (!runtimeModule.GetBool(condValue)) 
+                    if (!context.RuntimeModule.GetBool(condValue)) 
                         break;
                 }
 
@@ -181,7 +181,7 @@ namespace QuickSC
             var captures = evaluator.MakeCaptures(info.CaptureInfo.Captures, context);
             
             var funcInst = new QsScriptFuncInst(
-                false,
+                null,
                 false,
                 info.CaptureInfo.bCaptureThis ? context.ThisValue : null,
                 captures,
@@ -219,7 +219,7 @@ namespace QuickSC
             var captures = evaluator.MakeCaptures(info.CaptureInfo.Captures, context);
 
             var funcInst = new QsScriptFuncInst(
-                false,
+                null,
                 false,
                 info.CaptureInfo.bCaptureThis ? context.ThisValue : null,
                 captures,
@@ -254,7 +254,7 @@ namespace QuickSC
             while (true)
             {
                 var moveNextResult = await evaluator.EvaluateFuncInstAsync(enumerator, moveNextInst, ImmutableArray<QsValue>.Empty, context);
-                if (!runtimeModule.GetBool(moveNextResult)) break;
+                if (!context.RuntimeModule.GetBool(moveNextResult)) break;
 
                 // GetCurrent
                 var getCurrentResult = await evaluator.EvaluateFuncInstAsync(enumerator, getCurrentInst, ImmutableArray<QsValue>.Empty, context);

@@ -18,7 +18,7 @@ namespace QuickSC
         QsAnalyzer analyzer;
         QsEvaluator evaluator;
 
-        public QsDefaultApplication(IQsCommandProvider commandProvider, IQsRuntimeModule runtimeModule)
+        public QsDefaultApplication(IQsCommandProvider commandProvider)
         {
             QsLexer lexer = new QsLexer();
             parser = new QsParser(lexer);
@@ -29,22 +29,27 @@ namespace QuickSC
 
             var capturer = new QsCapturer();
             analyzer = new QsAnalyzer(capturer);
-
-            var domainService = new QsDomainService();
-            evaluator = new QsEvaluator(domainService, commandProvider, runtimeModule);
+            
+            evaluator = new QsEvaluator(commandProvider);        
         }
-
-        // 
-        public async ValueTask<bool> RunAsync(string input, ImmutableArray<IQsModule> modules, IQsErrorCollector errorCollector) // 레퍼런스를 포함
+        
+        public async ValueTask<bool> RunAsync(
+            string moduleName, string input, IQsRuntimeModule runtimeModule, ImmutableArray<IQsModule> modulesExceptRuntimeModule, IQsErrorCollector errorCollector) // 레퍼런스를 포함
         {
-            var metadatas = ImmutableArray.CreateRange(modules, module => (IQsMetadata)module);
+            var metadatasBuilder = ImmutableArray.CreateBuilder<IQsMetadata>(modulesExceptRuntimeModule.Length + 1);
+
+            metadatasBuilder.Add((IQsMetadata)runtimeModule);
+            foreach(var module in modulesExceptRuntimeModule)
+                metadatasBuilder.Add((IQsMetadata)module);
+
+            var metadatas = metadatasBuilder.MoveToImmutable();
 
             // 파싱 QsParserContext -> QsScript             
             var script = await parser.ParseScriptAsync(input);
             if (script == null)
                 return false;
 
-            if (!typeSkeletonCollector.CollectScript(script, errorCollector, out var collectInfo))
+            if (!typeSkeletonCollector.CollectScript(moduleName, script, errorCollector, out var collectInfo))
                 return false;
 
             // 2. skeleton과 metadata로 트리의 모든 TypeExp들을 TypeValue로 변환하기            
@@ -52,14 +57,17 @@ namespace QuickSC
                 return false;
 
             // 3. Type, Func만들기, MetadataBuilder
-            var buildInfo = typeBuilder.BuildScript(script, typeEvalInfo);
+            var buildInfo = typeBuilder.BuildScript(moduleName, script, typeEvalInfo);
 
             // globalVariable이 빠진상태            
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
-            if (!analyzer.AnalyzeScript(script, metadatas, buildInfo, errorCollector, out var analyzeInfo))
+            if (!analyzer.AnalyzeScript(moduleName, script, metadatas, buildInfo, errorCollector, out var analyzeInfo))
                 return false;
 
-            if (!await evaluator.EvaluateScriptAsync(script, analyzeInfo))
+            var scriptModule = new QsScriptModule(moduleName);
+            var domainService = new QsDomainService(runtimeModule, modulesExceptRuntimeModule.Add(scriptModule));
+
+            if (!await evaluator.EvaluateScriptAsync(script, runtimeModule, domainService, analyzeInfo))
                 return false;
 
             return true;

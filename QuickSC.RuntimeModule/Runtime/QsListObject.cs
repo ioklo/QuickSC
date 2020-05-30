@@ -13,17 +13,20 @@ namespace QuickSC.Runtime
     // List
     public class QsListObject : QsObject
     {
+        QsTypeInst typeInst;
         public List<QsValue> Elems { get; }
 
-        public QsListObject(List<QsValue> elems)
+        public QsListObject(QsTypeInst typeInst, List<QsValue> elems)
         {
+            this.typeInst = typeInst;
             Elems = elems;
         }
 
-        public static void AddType(
+        public static QsType AddType(
+            QsTypeBuilder typeBuilder,
+            QsRuntimeModule runtimeModule,
             QsTypeId enumeratorId,
-            QsTypeValue intTypeValue,
-            QsTypeBuilder typeBuilder)
+            QsTypeValue intTypeValue)
         {
             QsTypeId listId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1));
             QsTypeValue listElemTypeValue = new QsTypeVarTypeValue(listId, "T");
@@ -42,7 +45,10 @@ namespace QuickSC.Runtime
                 QsVoidTypeValue.Instance, intTypeValue));
             memberFuncsBuilder.Add(QsName.Text("RemoveAt"), listRemoveAt.FuncId);
 
-            var listGetEnumerator = typeBuilder.AddFunc(NativeGetEnumerator, new QsFunc(
+            Invoker wrappedGetEnumerator =
+                (typeArgs, thisValue, args) => NativeGetEnumerator(runtimeModule, enumeratorId, typeArgs, thisValue, args);
+
+            var listGetEnumerator = typeBuilder.AddFunc(wrappedGetEnumerator, new QsFunc(
                 new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("GetEnumerator", 0)),
                 true, ImmutableArray<string>.Empty,
                 new QsNormalTypeValue(null, enumeratorId, listElemTypeValue)));
@@ -64,16 +70,20 @@ namespace QuickSC.Runtime
                 memberFuncsBuilder.ToImmutable(),
                 ImmutableDictionary<string, QsVarId>.Empty);
 
-            typeBuilder.AddType(type, new QsObjectValue(null));
+            return typeBuilder.AddType(type, new QsObjectValue(null));
         }
         
-        static ValueTask<QsValue> NativeGetEnumerator(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
+        // Enumerator<T> List<T>.GetEnumerator()
+        static ValueTask<QsValue> NativeGetEnumerator(QsRuntimeModule runtimeModule, QsTypeId enumeratorId, ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
             var list = GetObject<QsListObject>(thisValue);
 
+            // enumerator<T>
+            var enumeratorInst = runtimeModule.GetTypeInst(enumeratorId, typeArgs); // NOTICE: List와 Enumerator의 typeArgs 크기가 똑같아서 바로 집어넣었다
+
             // TODO: Runtime 메모리 관리자한테 new를 요청해야 합니다
-            return new ValueTask<QsValue>(new QsObjectValue(new QsAsyncEnumeratorObject(ToAsyncEnum(list.Elems).GetAsyncEnumerator())));
+            return new ValueTask<QsValue>(new QsObjectValue(new QsEnumeratorObject(enumeratorInst, ToAsyncEnum(list.Elems).GetAsyncEnumerator())));
 
 #pragma warning disable CS1998
             async IAsyncEnumerable<QsValue> ToAsyncEnum(IEnumerable<QsValue> enumerable)
@@ -115,6 +125,11 @@ namespace QuickSC.Runtime
             list.Elems.RemoveAt(((QsValue<int>)args[0]).Value);
             
             return new ValueTask<QsValue>(QsVoidValue.Instance);
+        }
+
+        public override QsTypeInst GetTypeInst()
+        {
+            return typeInst;
         }
     }
 }
