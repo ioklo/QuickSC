@@ -50,14 +50,14 @@ namespace QuickSC.StaticAnalyzer
         // (QsTypeId parentTypeId, 
     }
 
-    public class QsTypeSkeletonInfo
+    public class QsTypeSkelCollectResult
     {
         public ImmutableDictionary<QsNameElem, QsTypeSkeleton> GlobalTypeSkeletons { get; }
         public ImmutableDictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
         public ImmutableDictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
         public ImmutableDictionary<QsTypeId, QsTypeSkeleton> TypeSkeletonsByTypeId { get; }
 
-        public QsTypeSkeletonInfo(
+        public QsTypeSkelCollectResult(
             ImmutableDictionary<QsNameElem, QsTypeSkeleton> globalTypeSkeletons,
             ImmutableDictionary<QsTypeIdLocation, QsTypeId> typeIdsByLocation,
             ImmutableDictionary<QsFuncIdLocation, QsFuncId> funcIdsByLocation,
@@ -154,17 +154,17 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public bool CollectScript(string moduleName, QsScript script, IQsErrorCollector errorCollector, [NotNullWhen(returnValue: true)] out QsTypeSkeletonInfo? outInfo)
+        public bool CollectScript(string moduleName, QsScript script, IQsErrorCollector errorCollector, [NotNullWhen(returnValue: true)] out QsTypeSkelCollectResult? outResult)
         {
             var context = new QsTypeSkeletonCollectorContext(moduleName);
             if (!CollectScript(script, context))
             {
                 errorCollector.Add(script, $"타입 정보 모으기에 실패했습니다");
-                outInfo = null;
+                outResult = null;
                 return false;
             }
 
-            outInfo = new QsTypeSkeletonInfo(
+            outResult = new QsTypeSkelCollectResult(
                 context.GlobalTypeSkeletons.ToImmutableDictionary(),
                 context.TypeIdsByLocation.ToImmutableDictionary(),
                 context.FuncIdsByLocation.ToImmutableDictionary(),

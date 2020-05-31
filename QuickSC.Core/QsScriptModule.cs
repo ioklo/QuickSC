@@ -1,4 +1,5 @@
 ﻿using QuickSC.Runtime;
+using QuickSC.StaticAnalyzer;
 using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
@@ -6,61 +7,36 @@ using System.Collections.Immutable;
 using System.Text;
 
 namespace QuickSC
-{
-    abstract class QsScriptFuncTemplate
-    {
-
-    }
-
-    class QsFuncDeclTemplate : QsScriptFuncTemplate
-    {
-        public QsFunc Func { get; }
-        public QsFuncDecl FuncDecl { get; }
-        public int LocalVarCount { get; }        
-    }
-
-    class QsEnumDeclElemFuncTemplate : QsScriptFuncTemplate
-    {
-        public QsEnumDeclElement EnumDeclElem { get; }
-    }
-
+{   
     class QsScriptModule : IQsModule
     {
         public string ModuleName { get; }
         ImmutableDictionary<QsFuncId, QsScriptFuncTemplate> funcTemplates;
 
-        public QsScriptModule(string moduleName)
+        public QsScriptModule(string moduleName, ImmutableDictionary<QsFuncId, QsScriptFuncTemplate> funcTemplates)
         {
             ModuleName = moduleName;
+            this.funcTemplates = funcTemplates;
         }
 
         // FuncValue -> 
         public QsFuncInst GetFuncInst(QsFuncId funcId, ImmutableArray<QsTypeInst> typeArgs)
         {
+            if (typeArgs.Length != 0)
+                throw new NotImplementedException();
+
             var template = funcTemplates[funcId];
 
-            if (template is QsFuncDeclTemplate funcDeclTemplate)
+            if (template is QsScriptFuncTemplate.FuncDecl fd)
             {
-                QsTypeValue? seqElemTypeValue = null;
-                if (funcDeclTemplate.FuncDecl.FuncKind == QsFuncKind.Sequence)
-                    seqElemTypeValue = funcDeclTemplate.Func.RetTypeValue;
-
-                // TODO: Instantiation 미지원
-                if (typeArgs.Length != 0)
-                    throw new NotImplementedException();
-
-                return new QsScriptFuncInst(
-                    seqElemTypeValue,
-                    funcDeclTemplate.Func.bThisCall,
-                    null,
-                    ImmutableArray<QsValue>.Empty,
-                    funcDeclTemplate.LocalVarCount,
-                    funcDeclTemplate.FuncDecl.Body);
+                return new QsScriptFuncInst(fd.SeqElemTypeValue, fd.bThisCall, null, ImmutableArray<QsValue>.Empty, fd.LocalVarCount, fd.Body);
             }
-            else if (template is QsEnumDeclElemFuncTemplate enumTemplate)
-            {
-                return new QsEnumElemFuncInst();
-            }
+
+            throw new NotImplementedException();
+            //else if (template is QsEnumDeclElemFuncTemplate enumTemplate)
+            //{
+            //    return new QsEnumElemFuncInst();
+            //}
         }
 
         public QsTypeInst GetTypeInst(QsTypeId typeId, ImmutableArray<QsTypeInst> typeArgs)

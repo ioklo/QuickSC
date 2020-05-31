@@ -60,7 +60,7 @@ namespace QuickSC.StaticAnalyzer
             else
             {
                 // TestType이 있을때만 넣는다
-                context.InfosByNode[ifStmt] = new QsIfStmtInfo(context.TypeBuildInfo.TypeValuesByTypeExp[ifStmt.TestType]);
+                context.InfosByNode[ifStmt] = new QsIfStmtInfo(context.TypeValuesByTypeExp[ifStmt.TestType]);
             }
 
             AnalyzeStmt(ifStmt.Body, context);
@@ -212,7 +212,7 @@ namespace QuickSC.StaticAnalyzer
             if (!analyzer.AnalyzeExp(foreachStmt.Obj, context, out var objTypeValue))
                 return;
 
-            var elemTypeValue = context.TypeBuildInfo.TypeValuesByTypeExp[foreachStmt.Type];
+            var elemTypeValue = context.TypeValuesByTypeExp[foreachStmt.Type];
 
             if (!typeService.GetMemberFuncValue(
                 false, objTypeValue,

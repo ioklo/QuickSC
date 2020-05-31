@@ -26,7 +26,10 @@ namespace QuickSC
         
         public QsFuncInst GetFuncInst(QsFuncValue funcValue, QsEvalContext context)
         {
-            throw new NotImplementedException();
+            var builder = ImmutableArray.CreateBuilder<QsTypeInst>();
+            MakeTypeInstArgs(funcValue, builder, context);
+
+            return context.DomainService.GetFuncInst(funcValue.FuncId, builder.ToImmutable());
         }
 
         public ValueTask<QsValue> EvaluateStringExpAsync(QsStringExp command, QsEvalContext context)
@@ -76,6 +79,23 @@ namespace QuickSC
             }
 
             return false;
+        }
+
+        void MakeTypeInstArgs(QsFuncValue fv, ImmutableArray<QsTypeInst>.Builder builder, QsEvalContext context)
+        {
+            if (fv.Outer != null)
+            {
+                if (fv.Outer is QsNormalTypeValue outerNTV)
+                    MakeTypeInstArgs(outerNTV, builder, context);
+                else
+                    throw new InvalidOperationException(); // TODO: ntv.Outer를 normaltypeValue로 바꿔야 하지 않을까
+            }
+
+            foreach (var typeArg in fv.TypeArgs)
+            {
+                var typeInst = GetTypeInst(typeArg, context);
+                builder.Add(typeInst);
+            }
         }
 
         void MakeTypeInstArgs(QsNormalTypeValue ntv, ImmutableArray<QsTypeInst>.Builder builder, QsEvalContext context)

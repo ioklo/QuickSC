@@ -14,8 +14,8 @@ namespace QuickSC.StaticAnalyzer
     {
         public bool GetTypeById(QsTypeId typeId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsType? outType)
         {
-            if (typeId.ModuleName == null)
-                return context.TypeBuildInfo.TypesById.TryGetValue(typeId, out outType);
+            if (typeId.ModuleName == context.ModuleName)
+                return context.TypesById.TryGetValue(typeId, out outType);
             
             foreach (var metadata in context.Metadatas)
                 if (typeId.ModuleName == metadata.ModuleName)
@@ -27,8 +27,8 @@ namespace QuickSC.StaticAnalyzer
 
         public bool GetFuncById(QsFuncId funcId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsFunc? outFunc)
         {
-            if (funcId.ModuleName == null)
-                return context.TypeBuildInfo.FuncsById.TryGetValue(funcId, out outFunc);
+            if (funcId.ModuleName == context.ModuleName)
+                return context.FuncsById.TryGetValue(funcId, out outFunc);
 
             foreach (var metadata in context.Metadatas)
                 if (funcId.ModuleName == metadata.ModuleName)
@@ -40,8 +40,8 @@ namespace QuickSC.StaticAnalyzer
 
         public bool GetVarById(QsVarId varId, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsVariable? outVar)
         {
-            if (varId.ModuleName == null)
-                return context.TypeBuildInfo.VarsById.TryGetValue(varId, out outVar);
+            if (varId.ModuleName == context.ModuleName)
+                return context.VarsById.TryGetValue(varId, out outVar);
 
             foreach (var metadata in context.Metadatas)
                 if (varId.ModuleName == metadata.ModuleName)
@@ -101,7 +101,7 @@ namespace QuickSC.StaticAnalyzer
             if (!type.GetMemberVarId(memberName, out var memberVar))
                 return false;
 
-            var variable = context.TypeBuildInfo.VarsById[memberVar.Value.VarId];
+            var variable = context.VarsById[memberVar.Value.VarId];
 
             var typeEnv = new Dictionary<QsTypeVarTypeValue, QsTypeValue>();
             MakeTypeEnv(typeValue, context, typeEnv);
@@ -177,7 +177,7 @@ namespace QuickSC.StaticAnalyzer
             var funcs = new List<QsFunc>();
             var nameElem = new QsNameElem(name, typeParamCount);
 
-            if (context.TypeBuildInfo.FuncsById.TryGetValue(new QsFuncId(context.ModuleName, nameElem), out var outFunc))
+            if (context.FuncsById.TryGetValue(new QsFuncId(context.ModuleName, nameElem), out var outFunc))
                 funcs.Add(outFunc);
 
             foreach (var refMetadata in context.Metadatas)
@@ -211,7 +211,7 @@ namespace QuickSC.StaticAnalyzer
             var nameElem = new QsNameElem(name, 0);
 
             // 내 스크립트에 있는 전역 변수가 우선한다
-            if (context.TypeBuildInfo.VarsById.TryGetValue(new QsVarId(context.ModuleName, nameElem), out var outVar))
+            if (context.VarsById.TryGetValue(new QsVarId(context.ModuleName, nameElem), out var outVar))
             {
                 outGlobalVar = outVar;
                 return true;
@@ -256,7 +256,7 @@ namespace QuickSC.StaticAnalyzer
             var candidates = new List<QsTypeValue>();
 
             // TODO: 추후 namespace 검색도 해야 한다
-            if (context.TypeBuildInfo.TypesById.TryGetValue(new QsTypeId(context.ModuleName, nameElem), out var globalType))
+            if (context.TypesById.TryGetValue(new QsTypeId(context.ModuleName, nameElem), out var globalType))
                 candidates.Add(new QsNormalTypeValue(null, globalType.TypeId, typeArgs));
 
             foreach (var refMetadata in context.Metadatas)
@@ -482,7 +482,7 @@ namespace QuickSC.StaticAnalyzer
 
         public void AddVar(QsVariable variable, QsAnalyzerContext context)
         {
-            context.TypeBuildInfo.VarsById.Add(variable.VarId, variable);
+            context.VarsById.Add(variable.VarId, variable);
         }
 
         public bool GetMemberFuncValue(bool bStaticOnly, QsTypeValue objTypeValue, QsName memberName, ImmutableArray<QsTypeValue> typeArgs, QsAnalyzerContext context, 
@@ -568,12 +568,12 @@ namespace QuickSC.StaticAnalyzer
 
         internal bool IsVarStatic(QsVarId varId, QsAnalyzerContext context)
         {
-            return context.TypeBuildInfo.VarsById[varId].bStatic;
+            return context.VarsById[varId].bStatic;
         }
 
         internal bool IsFuncStatic(QsFuncId funcId, QsAnalyzerContext context)
         {
-            return !context.TypeBuildInfo.FuncsById[funcId].bThisCall;
+            return !context.FuncsById[funcId].bThisCall;
         }
     }
 }

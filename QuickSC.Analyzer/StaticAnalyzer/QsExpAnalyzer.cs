@@ -61,7 +61,7 @@ namespace QuickSC.StaticAnalyzer
                 return true;
             }
 
-            var typeArgs = ImmutableArray.CreateRange(idExp.TypeArgs, typeArg => context.TypeBuildInfo.TypeValuesByTypeExp[typeArg]);
+            var typeArgs = ImmutableArray.CreateRange(idExp.TypeArgs, typeArg => context.TypeValuesByTypeExp[typeArg]);
 
             // TODO: this scope 변수, 함수 검색            
 
@@ -340,7 +340,7 @@ namespace QuickSC.StaticAnalyzer
             // 2. global 검색
             if (typeService.GetGlobalFunc(exp.Value, exp.TypeArgs.Length, context, out var globalFunc))
             {
-                var typeArgs = ImmutableArray.CreateRange(exp.TypeArgs, typeArg => context.TypeBuildInfo.TypeValuesByTypeExp[typeArg]);
+                var typeArgs = ImmutableArray.CreateRange(exp.TypeArgs, typeArg => context.TypeValuesByTypeExp[typeArg]);
 
                 var funcValue = new QsFuncValue(null, globalFunc.FuncId, typeArgs);
                 var funcTypeValue = typeService.GetFuncTypeValue(funcValue, context);
@@ -459,7 +459,7 @@ namespace QuickSC.StaticAnalyzer
 
         ImmutableArray<QsTypeValue> GetTypeValues(ImmutableArray<QsTypeExp> typeExps, QsAnalyzerContext context)
         {
-            return ImmutableArray.CreateRange(typeExps, typeExp => context.TypeBuildInfo.TypeValuesByTypeExp[typeExp]);
+            return ImmutableArray.CreateRange(typeExps, typeExp => context.TypeValuesByTypeExp[typeExp]);
         }
 
         bool AnalyzeExps(ImmutableArray<QsExp> exps, QsAnalyzerContext context, out ImmutableArray<QsTypeValue> outTypeValues)

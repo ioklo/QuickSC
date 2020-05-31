@@ -35,7 +35,7 @@ namespace QuickSC.StaticAnalyzer
             // 4. var x = 1, y = "string"; // 각각 한다
 
             var elemsBuilder = ImmutableArray.CreateBuilder<QsVarDeclInfo.Element>(varDecl.Elems.Length);
-            var declTypeValue = context.TypeBuildInfo.TypeValuesByTypeExp[varDecl.Type];
+            var declTypeValue = context.TypeValuesByTypeExp[varDecl.Type];
 
             foreach (var elem in varDecl.Elems)
             {
@@ -158,7 +158,7 @@ namespace QuickSC.StaticAnalyzer
                     return false;
                 }
 
-                var paramTypeValue = context.TypeBuildInfo.TypeValuesByTypeExp[param.Type];
+                var paramTypeValue = context.TypeValuesByTypeExp[param.Type];
 
                 paramTypeValuesBuilder.Add(paramTypeValue);
                 context.CurFunc.AddVarInfo(param.Name, paramTypeValue);
@@ -189,16 +189,31 @@ namespace QuickSC.StaticAnalyzer
         
         public void AnalyzeFuncDecl(QsFuncDecl funcDecl, QsAnalyzerContext context)
         {
-            var func = context.TypeBuildInfo.FuncsByFuncDecl[funcDecl];
+            var func = context.FuncsByFuncDecl[funcDecl];
 
             var funcContext = new QsAnalyzerFuncContext(func.FuncId, func.RetTypeValue, funcDecl.FuncKind == QsFuncKind.Sequence);
             var prevFunc = context.CurFunc;
             context.CurFunc = funcContext;
 
-            try
-            {
-                
+            if (0 < funcDecl.TypeParams.Length || funcDecl.VariadicParamIndex != null)
+                throw new NotImplementedException();
 
+            try
+            {   
+                // 파라미터 순서대로 추가
+                foreach(var param in funcDecl.Params)
+                {
+                    var paramTypeValue = context.TypeValuesByTypeExp[param.Type];
+                    funcContext.AddVarInfo(param.Name, paramTypeValue);
+                }
+
+                AnalyzeStmt(funcDecl.Body, context);
+
+                // TODO: Body가 실제로 리턴을 제대로 하는지 확인해야 할 필요가 있다
+
+                context.FuncTemplatesById[func.FuncId] = new QsScriptFuncTemplate.FuncDecl(
+                    funcDecl.FuncKind == QsFuncKind.Sequence ? func.RetTypeValue : null,
+                    func.bThisCall, funcContext.LocalVarCount, funcDecl.Body);
             }
             finally
             {
@@ -233,21 +248,25 @@ namespace QuickSC.StaticAnalyzer
 
             context.InfosByNode[script] = new QsScriptInfo(context.CurFunc.LocalVarCount);
 
-            return new QsAnalyzeInfo(context.InfosByNode.ToImmutableWithComparer());
+            return new QsAnalyzeInfo(
+                context.InfosByNode.ToImmutableWithComparer(),
+                context.FuncTemplatesById.ToImmutableDictionary());
         }
 
         public bool AnalyzeScript(
             string moduleName,
             QsScript script,
             ImmutableArray<IQsMetadata> metadatas,
-            QsTypeBuildInfo typeBuildInfo,
+            QsTypeEvalResult evalResult,
+            QsTypeAndFuncBuildResult buildResult,            
             IQsErrorCollector errorCollector,
             [NotNullWhen(returnValue: true)] out QsAnalyzeInfo? outInfo)
         {
             var context = new QsAnalyzerContext(
                 moduleName,
                 metadatas,
-                typeBuildInfo,
+                evalResult,
+                buildResult,
                 errorCollector);
 
             AnalyzeScript(script, context);
@@ -258,7 +277,7 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
 
-            outInfo = new QsAnalyzeInfo(context.InfosByNode.ToImmutableWithComparer());
+            outInfo = new QsAnalyzeInfo(context.InfosByNode.ToImmutableWithComparer(), context.FuncTemplatesById.ToImmutableDictionary());
             return true;
         }
 

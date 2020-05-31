@@ -12,19 +12,25 @@ namespace QuickSC.StaticAnalyzer
     public class QsTypeEvalContext
     {
         public ImmutableArray<IQsMetadata> RefMetadatas{ get; }
-        public QsTypeSkeletonInfo SkelInfo { get; }
-        
+        public ImmutableDictionary<QsNameElem, QsTypeSkeleton> GlobalTypeSkeletons { get; }
+        public ImmutableDictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
+        public ImmutableDictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
+        public ImmutableDictionary<QsTypeId, QsTypeSkeleton> TypeSkeletonsByTypeId { get; }
+
         public Dictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
         public ImmutableDictionary<string, QsTypeValue> TypeEnv { get; set; }
         public IQsErrorCollector ErrorCollector { get; }
 
         public QsTypeEvalContext(
             ImmutableArray<IQsMetadata> refMetadatas,
-            QsTypeSkeletonInfo skelInfo, 
+            QsTypeSkelCollectResult skelInfo, 
             IQsErrorCollector errorCollector)
         {
             RefMetadatas = refMetadatas;
-            SkelInfo = skelInfo;
+            GlobalTypeSkeletons = skelInfo.GlobalTypeSkeletons;
+            TypeIdsByLocation = skelInfo.TypeIdsByLocation;
+            FuncIdsByLocation= skelInfo.FuncIdsByLocation;
+            TypeSkeletonsByTypeId = skelInfo.TypeSkeletonsByTypeId;
             ErrorCollector = errorCollector;
             
             TypeValuesByTypeExp = new Dictionary<QsTypeExp, QsTypeValue>(QsRefEqComparer<QsTypeExp>.Instance);
@@ -37,19 +43,12 @@ namespace QuickSC.StaticAnalyzer
         }
     }
 
-    public class QsTypeEvalInfo
+    public class QsTypeEvalResult
     {
-        public ImmutableDictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
-        public ImmutableDictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
         public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
 
-        public QsTypeEvalInfo(
-            ImmutableDictionary<QsTypeIdLocation, QsTypeId> typeIdsByLocation,
-            ImmutableDictionary<QsFuncIdLocation, QsFuncId> funcIdsByLocation,
-            ImmutableDictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp)
+        public QsTypeEvalResult(ImmutableDictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp)
         {
-            TypeIdsByLocation = typeIdsByLocation;
-            FuncIdsByLocation = funcIdsByLocation;
             TypeValuesByTypeExp = typeValuesByTypeExp;
         }
     }
@@ -112,7 +111,7 @@ namespace QuickSC.StaticAnalyzer
 
             // 3-1. GlobalSkeleton에서 검색
             List<QsTypeValue> candidates = new List<QsTypeValue>();
-            if (context.SkelInfo.GlobalTypeSkeletons.TryGetValue(new QsNameElem(exp.Name, exp.TypeArgs.Length), out var skeleton))
+            if (context.GlobalTypeSkeletons.TryGetValue(new QsNameElem(exp.Name, exp.TypeArgs.Length), out var skeleton))
             {
                 // global이니까 outer는 null
                 candidates.Add(new QsNormalTypeValue(null, skeleton.TypeId, typeArgs));
@@ -184,7 +183,7 @@ namespace QuickSC.StaticAnalyzer
             if (!(parent is QsNormalTypeValue normalParent))
                 return false;
             
-            if (!context.SkelInfo.TypeSkeletonsByTypeId.TryGetValue(normalParent.TypeId, out var parentSkeleton))
+            if (!context.TypeSkeletonsByTypeId.TryGetValue(normalParent.TypeId, out var parentSkeleton))
                 return false;                
 
             if (!parentSkeleton.MemberSkeletons.TryGetValue(new QsNameElem(memberName, typeArgs.Length), out childSkeleton))
@@ -208,7 +207,7 @@ namespace QuickSC.StaticAnalyzer
         {
             var prevTypeEnv = context.TypeEnv;
 
-            var typeId = context.SkelInfo.TypeIdsByLocation[QsTypeIdLocation.Make(enumDecl)];
+            var typeId = context.TypeIdsByLocation[QsTypeIdLocation.Make(enumDecl)];
             foreach (var typeParam in enumDecl.TypeParams)
             {
                 context.UpdateTypeVar(typeParam, new QsTypeVarTypeValue(typeId, typeParam));
@@ -236,7 +235,7 @@ namespace QuickSC.StaticAnalyzer
 
             var prevTypeEnv = context.TypeEnv;
 
-            var funcId = context.SkelInfo.FuncIdsByLocation[QsFuncIdLocation.Make(funcDecl)];
+            var funcId = context.FuncIdsByLocation[QsFuncIdLocation.Make(funcDecl)];
             foreach (var param in funcDecl.TypeParams)
                 context.UpdateTypeVar(param, new QsTypeVarTypeValue(funcId, param));
 
@@ -503,13 +502,13 @@ namespace QuickSC.StaticAnalyzer
         public bool EvaluateScript(
             QsScript script,
             ImmutableArray<IQsMetadata> metadatas,
-            QsTypeSkeletonInfo skelInfo,             
+            QsTypeSkelCollectResult skelResult,
             IQsErrorCollector errorCollector,
-            [NotNullWhen(returnValue: true)] out QsTypeEvalInfo? outInfo)
+            [NotNullWhen(returnValue: true)] out QsTypeEvalResult? outInfo)
         {
             var context = new QsTypeEvalContext(
                 metadatas,
-                skelInfo,
+                skelResult,
                 errorCollector);
 
             EvaluateScript(script, context);
@@ -520,10 +519,7 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
 
-            outInfo = new QsTypeEvalInfo(
-                skelInfo.TypeIdsByLocation,
-                skelInfo.FuncIdsByLocation,
-                context.TypeValuesByTypeExp.ToImmutableWithComparer());
+            outInfo = new QsTypeEvalResult(context.TypeValuesByTypeExp.ToImmutableWithComparer());
             return true;
         }
 

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Text;
 
 namespace QuickSC.StaticAnalyzer
@@ -59,41 +60,49 @@ namespace QuickSC.StaticAnalyzer
     {
         public string ModuleName { get; }
         public ImmutableArray<IQsMetadata> Metadatas { get; }
-        public QsTypeBuildInfo TypeBuildInfo { get; }
+
+        public ImmutableDictionary<QsTypeId, QsType> TypesById { get; }
+        public ImmutableDictionary<QsFuncId, QsFunc> FuncsById { get; }
+        public ImmutableDictionary<QsFuncDecl, QsFunc> FuncsByFuncDecl { get; }
+        public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
+
+        public Dictionary<QsVarId, QsVariable> VarsById { get; }
+
         public IQsErrorCollector ErrorCollector { get; }
-
-        // 전역변수의 타입, 
-        // TODO: 전역변수는 전역타입과 이름이 겹치면 안된다.
-        ImmutableDictionary<string, QsTypeValue> globalVarTypeValues;
-
+        
         // 현재 실행되고 있는 함수
         public QsAnalyzerFuncContext CurFunc { get; set; }
 
         // CurFunc와 bGlobalScope를 나누는 이유는, globalScope에서 BlockStmt 안으로 들어가면 global이 아니기 때문이다
         public bool bGlobalScope { get; set; }
-        
-        public Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo> InfosByNode { get; }
 
-        
+        public Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo> InfosByNode { get; }
+        public Dictionary<QsFuncId, QsScriptFuncTemplate> FuncTemplatesById { get; }
 
         public QsAnalyzerContext(
             string moduleName,
             ImmutableArray<IQsMetadata> metadatas,
-            QsTypeBuildInfo typeBuildInfo,
+            QsTypeEvalResult evalResult,
+            QsTypeAndFuncBuildResult buildResult,
             IQsErrorCollector errorCollector)
         {
             ModuleName = moduleName;
             Metadatas = metadatas;
-            TypeBuildInfo = typeBuildInfo;
-            ErrorCollector = errorCollector;
 
-            globalVarTypeValues = ImmutableDictionary<string, QsTypeValue>.Empty;
+            TypesById = buildResult.Types.ToImmutableDictionary(type => type.TypeId);
+            FuncsById = buildResult.Funcs.ToImmutableDictionary(func => func.FuncId);
+            VarsById = buildResult.Vars.ToDictionary(v => v.VarId);
+            FuncsByFuncDecl = buildResult.FuncsByFuncDecl;
+            TypeValuesByTypeExp = evalResult.TypeValuesByTypeExp;
+
+            ErrorCollector = errorCollector;
 
             CurFunc = new QsAnalyzerFuncContext(new QsFuncId(moduleName), null, false);
             bGlobalScope = true;
             
 
             InfosByNode = new Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo>(QsRefEqComparer<IQsSyntaxNode>.Instance);
+            FuncTemplatesById = new Dictionary<QsFuncId, QsScriptFuncTemplate>();
         }       
 
         // 1. exp가 무슨 타입을 가지는지

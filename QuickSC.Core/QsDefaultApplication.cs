@@ -49,22 +49,22 @@ namespace QuickSC
             if (script == null)
                 return false;
 
-            if (!typeSkeletonCollector.CollectScript(moduleName, script, errorCollector, out var collectInfo))
+            if (!typeSkeletonCollector.CollectScript(moduleName, script, errorCollector, out var skelResult))
                 return false;
 
             // 2. skeleton과 metadata로 트리의 모든 TypeExp들을 TypeValue로 변환하기            
-            if (!typeExpEvaluator.EvaluateScript(script, metadatas, collectInfo, errorCollector, out var typeEvalInfo))
+            if (!typeExpEvaluator.EvaluateScript(script, metadatas, skelResult, errorCollector, out var typeEvalResult))
                 return false;
 
             // 3. Type, Func만들기, MetadataBuilder
-            var buildInfo = typeBuilder.BuildScript(moduleName, script, typeEvalInfo);
+            var typeAndFuncBuildResult = typeBuilder.BuildScript(moduleName, script, skelResult, typeEvalResult);
 
             // globalVariable이 빠진상태            
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
-            if (!analyzer.AnalyzeScript(moduleName, script, metadatas, buildInfo, errorCollector, out var analyzeInfo))
+            if (!analyzer.AnalyzeScript(moduleName, script, metadatas, typeEvalResult, typeAndFuncBuildResult, errorCollector, out var analyzeInfo))
                 return false;
 
-            var scriptModule = new QsScriptModule(moduleName);
+            var scriptModule = new QsScriptModule(moduleName, analyzeInfo.FuncTemplatesById);
             var domainService = new QsDomainService(runtimeModule, modulesExceptRuntimeModule.Add(scriptModule));
 
             if (!await evaluator.EvaluateScriptAsync(script, runtimeModule, domainService, analyzeInfo))
