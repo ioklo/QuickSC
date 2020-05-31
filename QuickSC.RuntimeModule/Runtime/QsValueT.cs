@@ -31,6 +31,27 @@ namespace QuickSC.Runtime
         {
             throw new NotImplementedException();
         }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsValue<T> value &&
+                   EqualityComparer<T>.Default.Equals(Value, value.Value);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
+
+        public static bool operator ==(QsValue<T>? left, QsValue<T>? right)
+        {
+            return EqualityComparer<QsValue<T>?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsValue<T>? left, QsValue<T>? right)
+        {
+            return !(left == right);
+        }
     }
 
 }

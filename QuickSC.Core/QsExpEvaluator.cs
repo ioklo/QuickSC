@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using static QuickSC.QsEvaluator;
@@ -117,6 +116,13 @@ namespace QuickSC
                         var intValue = context.RuntimeModule.GetInt(operandValue);
                         context.RuntimeModule.SetInt(operandValue, intValue - 1);
                         return operandValue;
+                    }
+
+                case QsUnaryOpKind.Minus:
+                    {
+                        var operandValue = await EvaluateExpAsync(exp.Operand, context);
+                        var intValue = context.RuntimeModule.GetInt(operandValue);
+                        return context.RuntimeModule.MakeInt(-intValue);
                     }
             }
 
@@ -349,7 +355,18 @@ namespace QuickSC
                 info.LocalVarCount,
                 exp.Body));
         }
-        
+
+        async ValueTask<QsValue> EvaluateIndexerExpAsync(QsIndexerExp exp, QsEvalContext context)
+        {
+            var info = (QsIndexerExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+            
+            QsValue thisValue = await EvaluateExpAsync(exp.Object, context);
+            var index = await EvaluateExpAsync(exp.Index, context);
+            var funcInst = evaluator.GetFuncInst(info.FuncValue, context);
+
+            return await evaluator.EvaluateFuncInstAsync(thisValue, funcInst, ImmutableArray.Create(index), context);
+        }
+
         async ValueTask<QsValue> EvaluateMemberCallExpAsync(QsMemberCallExp exp, QsEvalContext context)
         {
             var info = (QsMemberCallExpInfo)context.AnalyzeInfo.InfosByNode[exp];
@@ -463,6 +480,7 @@ namespace QuickSC
                 QsBinaryOpExp binaryOpExp => await EvaluateBinaryOpExpAsync(binaryOpExp, context),
                 QsCallExp callExp => await EvaluateCallExpAsync(callExp, context),
                 QsLambdaExp lambdaExp => EvaluateLambdaExp(lambdaExp, context),
+                QsIndexerExp indexerExp => await EvaluateIndexerExpAsync(indexerExp, context),
                 QsMemberCallExp memberCallExp => await EvaluateMemberCallExpAsync(memberCallExp, context),
                 QsMemberExp memberExp => await EvaluateMemberExpAsync(memberExp, context),
                 QsListExp listExp => await EvaluateListExpAsync(listExp, context),

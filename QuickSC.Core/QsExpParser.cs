@@ -259,6 +259,7 @@ namespace QuickSC
         #region Unary, Prefix Inc/Dec
         static (QsToken Token, QsUnaryOpKind OpKind)[] unaryInfos = new (QsToken Token, QsUnaryOpKind OpKind)[]
         {
+            (QsMinusToken.Instance, QsUnaryOpKind.Minus),
             (QsExclToken.Instance, QsUnaryOpKind.LogicalNot),
             (QsPlusPlusToken.Instance, QsUnaryOpKind.PrefixInc),
             (QsMinusMinusToken.Instance, QsUnaryOpKind.PrefixDec),

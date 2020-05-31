@@ -60,30 +60,34 @@ namespace QuickSC.EvalTest
                 text = reader.ReadToEnd();
             }
 
+            Assert.StartsWith("// ", text);
+
+            int firstLineEnd = text.IndexOfAny(new char[] { '\r', '\n' });
+            Assert.True(firstLineEnd != -1);
+
+            var expected = text.Substring(3, firstLineEnd - 3);
+
             var runtimeModule = new QsRuntimeModule();
             var errorCollector = new QsTestErrorCollector();
             await app.RunAsync(Path.GetFileNameWithoutExtension(data.Path), text, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
 
             Assert.False(errorCollector.HasError);
-            Assert.Equal(data.Expected, cmdProvider.Output);
+            Assert.Equal(expected, cmdProvider.Output);
         }
     }
     
     public class QsEvalTestData : IXunitSerializable
     {
         public string Path { get; private set; }
-        public string Expected { get; private set; }
 
         public QsEvalTestData()
         {
             Path = string.Empty;
-            Expected = string.Empty;
         }
 
-        public QsEvalTestData(string path, string expected)
+        public QsEvalTestData(string path)
         {
             Path = path;
-            Expected = expected;
         }
 
         public override string ToString()
@@ -94,34 +98,49 @@ namespace QuickSC.EvalTest
         public void Deserialize(IXunitSerializationInfo info)
         {
             Path = info.GetValue<string>("Path");
-            Expected = info.GetValue<string>("Expected");
         }
 
         public void Serialize(IXunitSerializationInfo info)
         {
             info.AddValue("Path", Path);
-            info.AddValue("Expected", Expected);
         }
     }
 
     class QsEvalTestDataFactory : IEnumerable<object[]>
     {
-        List<QsEvalTestData> data;
+        // List<QsEvalTestData> data;
 
         public QsEvalTestDataFactory()
         {
-            data = new List<QsEvalTestData>
-            {
-                new QsEvalTestData(@"Input\Exp\IdentifierExp\01_GlobalVariable.qs", "1"),
-                new QsEvalTestData(@"Input\Exp\IdentifierExp\02_GlobalScopedVariable.qs", "21"),
-                new QsEvalTestData(@"Input\Exp\IdentifierExp\03_LocalVariable.qs", "21"),
-            };
+            //data = new List<QsEvalTestData>
+            //{
+            //    new QsEvalTestData(@"Input\Exp\IdentifierExp\01_GlobalVariable.qs", "1"),
+            //    new QsEvalTestData(@"Input\Exp\IdentifierExp\02_GlobalScopedVariable.qs", "21"),
+            //    new QsEvalTestData(@"Input\Exp\IdentifierExp\03_LocalVariable.qs", "21"),
+            //    new QsEvalTestData(@"Input\Exp\StringExp\01_PlainText.qs", "hello"),
+            //    new QsEvalTestData(@"Input\Exp\StringExp\02_Interpolation.qs", "hello.3"),
+            //    new QsEvalTestData(@"Input\Exp\IntLiteral\01_SimpleInt.qs", "1024"),
+            //    new QsEvalTestData(@"Input\Exp\BoolLiteral\01_SimpleBool.qs", "true false"),
+            //    new QsEvalTestData(@"Input\Exp\BinaryOpExp\01_BoolOperation.qs", "false true true true false false true false true true false"),
+            //    new QsEvalTestData(@"Input\Exp\BinaryOpExp\02_IntOperation.qs", "-3 4 4 false true true -4 -6 -26 2 3 true false true true false false true false true true"),
+            //    new QsEvalTestData(@"Input\Exp\BinaryOpExp\03_StringOperation.qs", "hi hello world world true true false false onetwo true false true true false false true false true true"),
+            //    new QsEvalTestData(@"Input\Exp\UnaryOpExp\01_BoolOperation.qs", "true false false true"),
+            //    new QsEvalTestData(@"Input\Exp\UnaryOpExp\02_IntOperation.qs", "-3 3 -3 -2 -2 -3"),
+            //    new QsEvalTestData(@"Input\Exp\CallExp\01_CallFunc.qs", "1 2 false"),
+            //    new QsEvalTestData(@"Input\Exp\CallExp\02_CallLambda.qs", "1 3 true"),
+
+            //};
         }
 
         public IEnumerator<object[]> GetEnumerator()
         {
-            foreach (var item in data)
-                yield return new object[] { item };
+            var curDir = Directory.GetCurrentDirectory();
+
+            foreach (var path in Directory.EnumerateFiles(curDir, "*.qs", SearchOption.AllDirectories))
+            {
+                var relPath = Path.GetRelativePath(curDir, path);
+                yield return new object[] { new QsEvalTestData(relPath) };
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator()

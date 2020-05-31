@@ -568,12 +568,18 @@ namespace QuickSC.StaticAnalyzer
 
         internal bool IsVarStatic(QsVarId varId, QsAnalyzerContext context)
         {
-            return context.VarsById[varId].bStatic;
+            if (!GetVarById(varId, context, out var variable))
+                throw new InvalidOperationException();
+
+            return variable.bStatic;
         }
 
         internal bool IsFuncStatic(QsFuncId funcId, QsAnalyzerContext context)
         {
-            return !context.FuncsById[funcId].bThisCall;
+            if (!GetFuncById(funcId, context, out var func))
+                throw new InvalidOperationException();
+
+            return !func.bThisCall;
         }
     }
 }

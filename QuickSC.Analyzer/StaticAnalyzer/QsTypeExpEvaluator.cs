@@ -321,6 +321,13 @@ namespace QuickSC.StaticAnalyzer
             EvaluateStmt(lambdaExp.Body, context);
         }
 
+        void EvaluateIndexerExp(QsIndexerExp exp, QsTypeEvalContext context)
+        {
+            EvaluateExp(exp.Object, context);
+
+            EvaluateExp(exp.Index, context);
+        }
+
         void EvaluateMemberCallExp(QsMemberCallExp memberCallExp, QsTypeEvalContext context)
         {
             EvaluateExp(memberCallExp.Object, context);
@@ -355,6 +362,7 @@ namespace QuickSC.StaticAnalyzer
                 case QsBinaryOpExp binaryOpExp: EvaluateBinaryOpExp(binaryOpExp, context); break;
                 case QsCallExp callExp: EvaluateCallExp(callExp, context); break;
                 case QsLambdaExp lambdaExp: EvaluateLambdaExp(lambdaExp, context); break;
+                case QsIndexerExp indexerExp: EvaluateIndexerExp(indexerExp, context); break;
                 case QsMemberCallExp memberCallExp: EvaluateMemberCallExp(memberCallExp, context); break;
                 case QsMemberExp memberExp: EvaluateMemberExp(memberExp, context); break;
                 case QsListExp listExp: EvaluateListExp(listExp, context); break;

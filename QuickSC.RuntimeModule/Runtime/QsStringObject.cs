@@ -15,5 +15,27 @@ namespace QuickSC.Runtime
             this.typeInst = typeInst;
             Data = data;
         }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsStringObject @object &&
+                   EqualityComparer<QsTypeInst>.Default.Equals(typeInst, @object.typeInst) &&
+                   Data == @object.Data;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(typeInst, Data);
+        }
+
+        public static bool operator ==(QsStringObject? left, QsStringObject? right)
+        {
+            return EqualityComparer<QsStringObject?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsStringObject? left, QsStringObject? right)
+        {
+            return !(left == right);
+        }
     }
 }

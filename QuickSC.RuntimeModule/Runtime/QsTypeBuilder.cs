@@ -11,15 +11,13 @@ namespace QuickSC.Runtime
     {
         IQsMetadata metadata;        
         List<QsNativeType> types;
-        Dictionary<QsTypeId, QsValue> defaultValues;
-        List<(QsFunc Func, Invoker Invoker)> funcs;
+        List<QsNativeFunc> funcs;
 
         public QsTypeBuilder(IQsMetadata metadata)
         {
             this.metadata = metadata;
             types = new List<QsNativeType>();
-            defaultValues = new Dictionary<QsTypeId, QsValue>();
-            funcs = new List<(QsFunc Func, Invoker Invoker)>();
+            funcs = new List<QsNativeFunc>();
         }
 
         public QsType AddType(QsType type, QsValue defaultValue)
@@ -30,17 +28,14 @@ namespace QuickSC.Runtime
 
         public QsFunc AddFunc(Invoker Invoker, QsFunc func)
         {
-            funcs.Add((func, Invoker));
+            funcs.Add(new QsNativeFunc(func, Invoker));
             return func;
         }        
 
         public ImmutableDictionary<QsTypeId, QsNativeType> GetAllTypes() =>
             types.ToImmutableDictionary(type => type.Type.TypeId);
 
-        public ImmutableDictionary<QsTypeId, QsValue> GetDefaultValuesByTypeId() =>
-            defaultValues.ToImmutableDictionary();
-
-        public ImmutableDictionary<QsFuncId, (QsFunc Func, Invoker Invoker)> GetAllFuncs() =>
+        public ImmutableDictionary<QsFuncId, QsNativeFunc> GetAllFuncs() =>
             funcs.ToImmutableDictionary(info => info.Func.FuncId);
     }
 }

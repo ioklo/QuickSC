@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<ImmutableArray<QsTypeInst>, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
-
     public class QsRuntimeModule : IQsRuntimeModule, IQsMetadata
     {
         public const string MODULE_NAME = "System.Runtime";
@@ -24,7 +22,7 @@ namespace QuickSC.Runtime
 
         // globalTypes
         ImmutableDictionary<QsTypeId, QsNativeType> nativeTypesById;
-        ImmutableDictionary<QsFuncId, (QsFunc Func, Invoker Invoker)> funcsById;
+        ImmutableDictionary<QsFuncId, QsNativeFunc> nativeFuncsById;
 
         QsType MakeEmptyGlobalType(QsTypeId typeId)
         {
@@ -53,7 +51,7 @@ namespace QuickSC.Runtime
             enumerableType = QsEnumerableObject.AddType(typeBuilder, this, enumeratorType.TypeId);
 
             nativeTypesById = typeBuilder.GetAllTypes();
-            funcsById = typeBuilder.GetAllFuncs();
+            nativeFuncsById = typeBuilder.GetAllFuncs();
         }
         
         public string GetString(QsValue value)
@@ -75,20 +73,26 @@ namespace QuickSC.Runtime
         
         public bool GetTypeById(QsTypeId typeId, [NotNullWhen(true)] out QsType? outType)
         {
-            if (!nativeTypesById.TryGetValue(typeId, out var outNativeType))
+            if (!nativeTypesById.TryGetValue(typeId, out var nativeType))
             {
                 outType = null;
                 return false;
             }
 
-            outType = outNativeType.Type;
+            outType = nativeType.Type;
             return true;
         }
 
         public bool GetFuncById(QsFuncId funcId, [NotNullWhen(true)] out QsFunc? outFunc)
         {
-            outFunc = null;
-            return false;
+            if (!nativeFuncsById.TryGetValue(funcId, out var nativeFunc))
+            {
+                outFunc = null;
+                return false;
+            }
+
+            outFunc = nativeFunc.Func;
+            return true;
         }
 
         public bool GetVarById(QsVarId typeId, [NotNullWhen(true)] out QsVariable? outVar)
@@ -144,7 +148,7 @@ namespace QuickSC.Runtime
         {
             // X<T(X)>.Y<U(Y)>.Func<V(F)>()
             // X<int>.Y<short>.Func<bool>() 를 만들어 봅시다. typeEnv를 만들어서 그냥 던져 볼겁니다
-            var func = funcsById[funcId];            // TODO: funcsById 이름 변경할 것
+            var func = nativeFuncsById[funcId];            // TODO: funcsById 이름 변경할 것
             var Invoker = func.Invoker;
 
             // typeEnv는 [T(X) => int, U(Y) => short, V(F) => bool]

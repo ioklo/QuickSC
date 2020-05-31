@@ -197,6 +197,27 @@ namespace QuickSC
             // 초기화 전에는 null일 수 있는데 타입체커를 통과하고 나면 호출하지 않을 것이다
             return Object!.GetTypeInst();
         }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsObjectValue value &&
+                   EqualityComparer<QsObject?>.Default.Equals(Object, value.Object);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Object);
+        }
+
+        public static bool operator ==(QsObjectValue? left, QsObjectValue? right)
+        {
+            return EqualityComparer<QsObjectValue?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsObjectValue? left, QsObjectValue? right)
+        {
+            return !(left == right);
+        }
     }
     
 }

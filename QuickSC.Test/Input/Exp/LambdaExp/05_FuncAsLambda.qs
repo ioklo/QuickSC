@@ -1,4 +1,6 @@
-﻿void Func()
+﻿// hi
+
+void Func()
 {
     @echo hi
 }

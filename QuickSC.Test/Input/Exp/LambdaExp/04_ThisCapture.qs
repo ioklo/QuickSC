@@ -1,4 +1,6 @@
-﻿class X
+﻿// 5
+
+class X
 {
     int x;
 
@@ -17,5 +19,4 @@
 var f = Func();
 var v = f(1);
 
-// 5
 @echo $v

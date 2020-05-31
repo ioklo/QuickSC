@@ -148,6 +148,9 @@ namespace QuickSC.StaticAnalyzer
             if (!typeService.GetGlobalTypeValue("string", context, out var stringTypeValue))
                 Debug.Fail("Runtime에 string이 없습니다");
 
+            foreach(var elem in stringExp.Elements)
+                analyzer.AnalyzeStringExpElement(elem, context);
+
             typeValue = stringTypeValue;
             return true;
         }
@@ -237,8 +240,7 @@ namespace QuickSC.StaticAnalyzer
             }
             else if (binaryOpExp.Kind == QsBinaryOpKind.Equal || binaryOpExp.Kind == QsBinaryOpKind.NotEqual)
             {
-                // TODO: 비교가능함은 어떻게 하나
-                if (operandTypeValue0 != operandTypeValue1)
+                if (!EqualityComparer<QsTypeValue>.Default.Equals(operandTypeValue0, operandTypeValue1))
                 {
                     context.ErrorCollector.Add(binaryOpExp, $"{operandTypeValue0}와 {operandTypeValue1}을 비교할 수 없습니다");
                     return false;
@@ -457,6 +459,41 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
+        bool AnalyzeIndexerExp(QsIndexerExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        {
+            outTypeValue = null;
+
+            if (!AnalyzeExp(exp.Object, context, out var objTypeValue))
+                return false;
+
+            if (!AnalyzeExp(exp.Index, context, out var indexTypeValue))
+                return false;
+
+            // objTypeValue에 indexTypeValue를 인자로 갖고 있는 indexer가 있는지
+            if (!typeService.GetMemberFuncValue(false, objTypeValue, QsName.Special(QsSpecialName.Indexer), ImmutableArray<QsTypeValue>.Empty, context, out var funcValue))
+            {
+                context.ErrorCollector.Add(exp, "객체에 indexer함수가 없습니다");
+                return false;
+            }
+
+            // TODO: Non-Static만 검색하는 함수를 따로 만들자
+            if (typeService.IsFuncStatic(funcValue.FuncId, context))
+            {
+                Debug.Fail("객체에 indexer가 있는데 Static입니다");
+                return false;
+            }
+
+            var funcTypeValue = typeService.GetFuncTypeValue(funcValue, context);
+
+            if (!CheckParamTypes(exp, funcTypeValue.Params, ImmutableArray.Create(indexTypeValue), context))
+                return false;
+
+            context.InfosByNode[exp] = new QsIndexerExpInfo(funcValue);
+
+            outTypeValue = funcTypeValue.Return;
+            return true;
+        }
+
         ImmutableArray<QsTypeValue> GetTypeValues(ImmutableArray<QsTypeExp> typeExps, QsAnalyzerContext context)
         {
             return ImmutableArray.CreateRange(typeExps, typeExp => context.TypeValuesByTypeExp[typeExp]);
@@ -638,7 +675,7 @@ namespace QuickSC.StaticAnalyzer
                     continue;
                 }
 
-                if (curElemTypeValue != elemTypeValue)
+                if (!EqualityComparer<QsTypeValue>.Default.Equals(curElemTypeValue, elemTypeValue))
                 {
                     // TODO: 둘의 공통 조상을 찾아야 하는지 결정을 못했다..
                     context.ErrorCollector.Add(listExp, $"원소 {elem}의 타입이 {curElemTypeValue} 가 아닙니다");
@@ -672,8 +709,9 @@ namespace QuickSC.StaticAnalyzer
                 QsStringExp stringExp => AnalyzeStringExp(stringExp, context, out typeValue),
                 QsUnaryOpExp unaryOpExp => AnalyzeUnaryOpExp(unaryOpExp, context, out typeValue),
                 QsBinaryOpExp binaryOpExp => AnalyzeBinaryOpExp(binaryOpExp, context, out typeValue),
-                QsCallExp callExp => AnalyzeCallExp(callExp, context, out typeValue),
+                QsCallExp callExp => AnalyzeCallExp(callExp, context, out typeValue),                
                 QsLambdaExp lambdaExp => AnalyzeLambdaExp(lambdaExp, context, out typeValue),
+                QsIndexerExp indexerExp => AnalyzeIndexerExp(indexerExp, context, out typeValue),
                 QsMemberCallExp memberCallExp => AnalyzeMemberCallExp(memberCallExp, context, out typeValue),
                 QsMemberExp memberExp => AnalyzeMemberExp(memberExp, context, out typeValue),
                 QsListExp listExp => AnalyzeListExp(listExp, context, out typeValue),

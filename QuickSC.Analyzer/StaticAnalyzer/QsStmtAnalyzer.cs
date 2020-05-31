@@ -27,13 +27,7 @@ namespace QuickSC.StaticAnalyzer
         {
             foreach (var cmd in cmdStmt.Commands)
                 foreach (var elem in cmd.Elements)
-                {
-                    if (elem is QsExpStringExpElement expElem)
-                    {
-                        // TODO: exp의 결과 string으로 변환 가능해야 하는 조건도 고려해야 한다
-                        analyzer.AnalyzeExp(expElem.Exp, context, out var _);
-                    }
-                }
+                    analyzer.AnalyzeStringExpElement(elem, context);
         }
 
         void AnalyzeVarDeclStmt(QsVarDeclStmt varDeclStmt, QsAnalyzerContext context)

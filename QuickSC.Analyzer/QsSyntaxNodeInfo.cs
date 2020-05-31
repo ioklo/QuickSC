@@ -244,4 +244,13 @@ namespace QuickSC
             LocalVarCount = localVarCount;
         }
     }
+
+    public class QsIndexerExpInfo : QsSyntaxNodeInfo
+    {
+        public QsFuncValue FuncValue { get; }
+        public QsIndexerExpInfo(QsFuncValue funcValue)
+        {
+            FuncValue = funcValue;
+        }
+    }
 }

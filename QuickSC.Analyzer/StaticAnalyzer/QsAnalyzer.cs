@@ -70,7 +70,7 @@ namespace QuickSC.StaticAnalyzer
                             context.ErrorCollector.Add(elem, $"타입 {initExpTypeValue}의 값은 타입 {varDecl.Type}의 변수 {elem.VarName}에 대입할 수 없습니다.");
                     }
 
-                    AddElement(elem.VarName, declTypeValue, context);
+                    AddElement(elem.VarName, typeValue, context);
                 }
             }
 
@@ -92,6 +92,15 @@ namespace QuickSC.StaticAnalyzer
                     int localVarIndex = context.CurFunc.AddVarInfo(name, typeValue);
                     elemsBuilder.Add(new QsVarDeclInfo.Element(typeValue, new QsLocalStorage(localVarIndex)));
                 }
+            }
+        }
+
+        public void AnalyzeStringExpElement(QsStringExpElement elem, QsAnalyzerContext context)
+        {
+            if (elem is QsExpStringExpElement expElem)
+            {
+                // TODO: exp의 결과 string으로 변환 가능해야 하는 조건도 고려해야 한다
+                AnalyzeExp(expElem.Exp, context, out var _);
             }
         }
 
