@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -46,9 +47,9 @@ namespace QuickSC.Runtime
 
             stringType = typeBuilder.AddType(MakeEmptyGlobalType(new QsTypeId(MODULE_NAME, new QsNameElem("string", 0))), new QsObjectValue(null));
             enumeratorType = QsEnumeratorObject.AddType(typeBuilder, new QsNormalTypeValue(null, boolType.TypeId));
-            listType = QsListObject.AddType(typeBuilder, this, enumeratorType.TypeId, new QsNormalTypeValue(null, intType.TypeId));
+            listType = QsListObject.AddType(typeBuilder, enumeratorType.TypeId, new QsNormalTypeValue(null, intType.TypeId));
 
-            enumerableType = QsEnumerableObject.AddType(typeBuilder, this, enumeratorType.TypeId);
+            enumerableType = QsEnumerableObject.AddType(typeBuilder, enumeratorType.TypeId);
 
             nativeTypesById = typeBuilder.GetAllTypes();
             nativeFuncsById = typeBuilder.GetAllFuncs();
@@ -64,9 +65,9 @@ namespace QuickSC.Runtime
             throw new InvalidOperationException();
         }
 
-        public QsValue MakeEnumerable(QsTypeInst elemTypeInst, IAsyncEnumerable<QsValue> asyncEnumerable)
+        public QsValue MakeEnumerable(QsDomainService domainService, QsTypeValue elemTypeValue, IAsyncEnumerable<QsValue> asyncEnumerable)
         {
-            var enumerableInst = GetTypeInst(enumerableType.TypeId, ImmutableArray.Create(elemTypeInst));
+            var enumerableInst = domainService.GetTypeInst(new QsNormalTypeValue(null, enumerableType.TypeId, elemTypeValue));
 
             return new QsObjectValue(new QsEnumerableObject(enumerableInst, asyncEnumerable));
         }
@@ -111,15 +112,15 @@ namespace QuickSC.Runtime
             return new QsValue<int>(i);
         }
 
-        public QsValue MakeString(string str)
+        public QsValue MakeString(QsDomainService domainService, string str)
         {
-            var stringInst = GetTypeInst(stringType.TypeId, ImmutableArray<QsTypeInst>.Empty);
+            var stringInst = domainService.GetTypeInst(new QsNormalTypeValue(null, stringType.TypeId));
             return new QsObjectValue(new QsStringObject(stringInst, str));
         }
 
-        public QsValue MakeList(QsTypeInst elemTypeInst, List<QsValue> elems)
+        public QsValue MakeList(QsDomainService domainService, QsTypeValue elemTypeValue, List<QsValue> elems)
         {
-            var listInst = GetTypeInst(listType.TypeId, ImmutableArray.Create(elemTypeInst));
+            var listInst = domainService.GetTypeInst(new QsNormalTypeValue(null, listType.TypeId, elemTypeValue));
 
             return new QsObjectValue(new QsListObject(listInst, elems));
         }
@@ -128,7 +129,7 @@ namespace QuickSC.Runtime
         {
             return ((QsValue<int>)value).Value;
         }
-
+        
         public void SetInt(QsValue value, int i)
         {
             ((QsValue<int>)value).Value = i;
@@ -144,20 +145,38 @@ namespace QuickSC.Runtime
             ((QsValue<bool>)value).Value = b;
         }
 
-        public QsFuncInst GetFuncInst(QsFuncId funcId, ImmutableArray<QsTypeInst> typeArgs)
+        public QsFuncInst GetFuncInst(QsDomainService domainService, QsFuncValue fv)
         {
+            var typeEnv = domainService.MakeTypeEnv(fv);
+
             // X<T(X)>.Y<U(Y)>.Func<V(F)>()
             // X<int>.Y<short>.Func<bool>() 를 만들어 봅시다. typeEnv를 만들어서 그냥 던져 볼겁니다
-            var func = nativeFuncsById[funcId];            // TODO: funcsById 이름 변경할 것
+            var func = nativeFuncsById[fv.FuncId];            // TODO: funcsById 이름 변경할 것
             var Invoker = func.Invoker;
 
             // typeEnv는 [T(X) => int, U(Y) => short, V(F) => bool]
-            return new QsNativeFuncInst(func.Func.bThisCall, (thisValue, argValues) => Invoker(typeArgs, thisValue, argValues));
+            return new QsNativeFuncInst(func.Func.bThisCall, (thisValue, argValues) => Invoker(domainService, typeEnv, thisValue, argValues));
         }
-
-        public QsTypeInst GetTypeInst(QsTypeId typeId, ImmutableArray<QsTypeInst> typeArgs)
+        
+        public QsTypeInst GetTypeInst(QsDomainService domainService, QsNormalTypeValue ntv)
         {
-            return new QsNativeTypeInst(typeId, nativeTypesById[typeId].DefaultValue, typeArgs);
-        }        
+            // class X<T> { class Y<U> : B<U, T> { } }
+            // 
+            // GetTypeInst(domainService, X<>.Y<>, [intInst, boolInst])
+            //     GetTypeInst(domainService, B<,>, [boolInst, intInst])
+
+            if (!domainService.GetBaseTypeValue(ntv, out var baseTypeValue))
+                throw new InvalidOperationException();
+
+            QsTypeInst? baseTypeInst = null;
+            if (baseTypeValue != null)
+                baseTypeInst = domainService.GetTypeInst(baseTypeValue);
+
+            var typeEnv = domainService.MakeTypeEnv(ntv);
+
+            var nativeType = nativeTypesById[ntv.TypeId];
+
+            return new QsNativeTypeInst(baseTypeInst, ntv.TypeId, nativeType.DefaultValue, typeEnv);
+        }
     }
 }

@@ -14,12 +14,10 @@ namespace QuickSC.StaticAnalyzer
     class QsStmtAnalyzer
     {
         QsAnalyzer analyzer;
-        QsAnalyzerTypeService typeService;
 
-        public QsStmtAnalyzer(QsAnalyzer analyzer, QsAnalyzerTypeService typeService)
+        public QsStmtAnalyzer(QsAnalyzer analyzer)
         {
             this.analyzer = analyzer;
-            this.typeService = typeService;
         }
 
         // CommandStmt에 있는 expStringElement를 분석한다
@@ -37,7 +35,7 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeIfStmt(QsIfStmt ifStmt, QsAnalyzerContext context) 
         {
-            if (!typeService.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+            if (!context.MetadataService.GetGlobalTypeValue("bool", out var boolTypeValue))
                 Debug.Fail("Runtime에 bool타입이 없습니다");
 
             if (!analyzer.AnalyzeExp(ifStmt.Cond, context, out var condTypeValue))            
@@ -75,7 +73,7 @@ namespace QuickSC.StaticAnalyzer
 
         void AnalyzeForStmt(QsForStmt forStmt, QsAnalyzerContext context)
         {
-            if (!typeService.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+            if (!context.MetadataService.GetGlobalTypeValue("bool", out var boolTypeValue))
                 Debug.Fail("Runtime에 bool타입이 없습니다");
 
             if (forStmt.Initializer != null)
@@ -200,7 +198,7 @@ namespace QuickSC.StaticAnalyzer
         
         void AnalyzeForeachStmt(QsForeachStmt foreachStmt, QsAnalyzerContext context)
         {
-            if (!typeService.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+            if (!context.MetadataService.GetGlobalTypeValue("bool", out var boolTypeValue))
                 Debug.Fail("Runtime에 bool타입이 없습니다");
 
             if (!analyzer.AnalyzeExp(foreachStmt.Obj, context, out var objTypeValue))
@@ -208,10 +206,10 @@ namespace QuickSC.StaticAnalyzer
 
             var elemTypeValue = context.TypeValuesByTypeExp[foreachStmt.Type];
 
-            if (!typeService.GetMemberFuncValue(
+            if (!context.MetadataService.GetMemberFuncValue(
                 false, objTypeValue,
                 QsName.Text("GetEnumerator"), ImmutableArray<QsTypeValue>.Empty,
-                context, out var getEnumeratorValue))
+                out var getEnumeratorValue))
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "foreach ... in 뒤 객체는 IEnumerator<T> GetEnumerator() 함수가 있어야 합니다.");
                 return;
@@ -221,17 +219,17 @@ namespace QuickSC.StaticAnalyzer
             // TODO: 각 함수들이 thiscall인지도 확인해야 한다
 
             // 1. elemTypeValue가 VarTypeValue이면 GetEnumerator의 리턴값으로 판단한다
-            var getEnumeratorTypeValue = typeService.GetFuncTypeValue(getEnumeratorValue, context);
+            var getEnumeratorTypeValue = context.MetadataService.GetFuncTypeValue(getEnumeratorValue);
 
-            if (!typeService.GetMemberFuncValue(
+            if (!context.MetadataService.GetMemberFuncValue(
                 false, getEnumeratorTypeValue.Return,
-                QsName.Text("MoveNext"), ImmutableArray<QsTypeValue>.Empty, context, out var moveNextValue))
+                QsName.Text("MoveNext"), ImmutableArray<QsTypeValue>.Empty, out var moveNextValue))
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "enumerator doesn't have 'bool MoveNext()' function");
                 return;
             }
 
-            var moveNextTypeValue = typeService.GetFuncTypeValue(moveNextValue, context);
+            var moveNextTypeValue = context.MetadataService.GetFuncTypeValue(moveNextValue);
 
             if (!analyzer.IsAssignable(boolTypeValue, moveNextTypeValue.Return, context))
             {
@@ -239,15 +237,15 @@ namespace QuickSC.StaticAnalyzer
                 return;
             }
 
-            if (!typeService.GetMemberFuncValue(
+            if (!context.MetadataService.GetMemberFuncValue(
                 false, getEnumeratorTypeValue.Return, 
-                QsName.Text("GetCurrent"), ImmutableArray<QsTypeValue>.Empty, context, out var getCurrentValue))
+                QsName.Text("GetCurrent"), ImmutableArray<QsTypeValue>.Empty, out var getCurrentValue))
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "enumerator doesn't have 'GetCurrent()' function");
                 return;
             }
 
-            var getCurrentTypeValue = typeService.GetFuncTypeValue(getCurrentValue, context);
+            var getCurrentTypeValue = context.MetadataService.GetFuncTypeValue(getCurrentValue);
             if (getCurrentTypeValue.Return == QsVoidTypeValue.Instance)
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "'GetCurrent()' function cannot return void");

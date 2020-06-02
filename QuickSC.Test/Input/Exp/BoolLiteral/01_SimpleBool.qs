@@ -1,4 +1,4 @@
 ﻿// true false
 
 // read
-@echo ${true} ${false}
+@${true} ${false}

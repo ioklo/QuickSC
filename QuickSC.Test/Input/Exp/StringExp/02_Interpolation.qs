@@ -5,4 +5,4 @@ string x = "hello";
 
 string y = "$x.$i";
 
-@echo $y
+@$y

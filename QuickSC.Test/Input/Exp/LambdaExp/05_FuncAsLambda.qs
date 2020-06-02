@@ -2,7 +2,7 @@
 
 void Func()
 {
-    @echo hi
+    @hi
 }
 
 (() => void) f = Func;

@@ -6,7 +6,7 @@ class C
 }
 
 C.F = i => {
-    @echo $i
+    @$i
 });
 
 C.F(2);

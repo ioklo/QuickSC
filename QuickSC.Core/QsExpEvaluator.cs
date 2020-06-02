@@ -67,7 +67,7 @@ namespace QuickSC
                 }
             }
 
-            return context.RuntimeModule.MakeString(sb.ToString());
+            return context.RuntimeModule.MakeString(context.DomainService, sb.ToString());
         }
 
         async ValueTask<QsValue> EvaluateUnaryOpExpAsync(QsUnaryOpExp exp, QsEvalContext context)
@@ -177,7 +177,7 @@ namespace QuickSC
                             var strValue0 = context.RuntimeModule.GetString(operandValue0);
                             var strValue1 = context.RuntimeModule.GetString(operandValue1);
 
-                            return context.RuntimeModule.MakeString(strValue0 + strValue1);
+                            return context.RuntimeModule.MakeString(context.DomainService, strValue0 + strValue1);
                         }
                         else
                         {
@@ -322,7 +322,7 @@ namespace QuickSC
 
                 // var typeInstArgs = MakeTypeInstArgs(funcValue, context.TypeEnv);
                 // TODO: 일단 QsTypeInst를 Empty로 둔다 .. List때문에 문제지만 List는 내부에서 TypeInst를 안쓴다
-                funcInst = evaluator.GetFuncInst(callExpInfo.FuncValue, context);
+                funcInst = context.DomainService.GetFuncInst(callExpInfo.FuncValue);
             }
             else
             {
@@ -362,7 +362,7 @@ namespace QuickSC
             
             QsValue thisValue = await EvaluateExpAsync(exp.Object, context);
             var index = await EvaluateExpAsync(exp.Index, context);
-            var funcInst = evaluator.GetFuncInst(info.FuncValue, context);
+            var funcInst = context.DomainService.GetFuncInst(info.FuncValue);
 
             return await evaluator.EvaluateFuncInstAsync(thisValue, funcInst, ImmutableArray.Create(index), context);
         }
@@ -377,7 +377,7 @@ namespace QuickSC
                     {
                         QsValue thisValue = await EvaluateExpAsync(exp.Object, context);
                         var args = await EvaluateArgsAsync(exp.Args);
-                        var funcInst = evaluator.GetFuncInst(instanceFuncCall.FuncValue, context);
+                        var funcInst = context.DomainService.GetFuncInst(instanceFuncCall.FuncValue);
                         return await evaluator.EvaluateFuncInstAsync(thisValue, funcInst, args, context);
                     }
 
@@ -386,7 +386,7 @@ namespace QuickSC
                         if (staticFuncCall.bEvaluateObject)
                             await EvaluateExpAsync(exp.Object, context);
                         var args = await EvaluateArgsAsync(exp.Args);
-                        var funcInst = evaluator.GetFuncInst(staticFuncCall.FuncValue, context);
+                        var funcInst = context.DomainService.GetFuncInst(staticFuncCall.FuncValue);
                         return await evaluator.EvaluateFuncInstAsync(null, funcInst, args, context);
                     }
 
@@ -455,8 +455,6 @@ namespace QuickSC
         {
             var info = (QsListExpInfo)context.AnalyzeInfo.InfosByNode[listExp];
 
-            var elemTypeInst = evaluator.GetTypeInst(info.ElemTypeValue, context);
-
             var elems = new List<QsValue>(listExp.Elems.Length);
 
             foreach (var elemExp in listExp.Elems)
@@ -465,7 +463,7 @@ namespace QuickSC
                 elems.Add(elem);
             }
 
-            return context.RuntimeModule.MakeList(elemTypeInst, elems);
+            return context.RuntimeModule.MakeList(context.DomainService, info.ElemTypeValue, elems);
         }
 
         internal async ValueTask<QsValue> EvaluateExpAsync(QsExp exp, QsEvalContext context)

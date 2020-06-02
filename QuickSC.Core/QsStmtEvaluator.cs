@@ -54,7 +54,7 @@ namespace QuickSC
             {
                 // 분석기가 미리 계산해 놓은 TypeValue를 가져온다
                 var ifStmtInfo = (QsIfStmtInfo)context.AnalyzeInfo.InfosByNode[stmt];
-                var testTypeInst = evaluator.GetTypeInst(ifStmtInfo.TestTypeValue, context);
+                var testTypeInst = context.DomainService.GetTypeInst(ifStmtInfo.TestTypeValue);
 
                 var condValueTypeInst = condValue.GetTypeInst();
 
@@ -242,13 +242,13 @@ namespace QuickSC
             var info = (QsForeachStmtInfo)context.AnalyzeInfo.InfosByNode[foreachStmt];
 
             var objValue = await evaluator.EvaluateExpAsync(foreachStmt.Obj, context);
-            var getEnumeratorInst = evaluator.GetFuncInst(info.GetEnumeratorValue, context);
+            var getEnumeratorInst = context.DomainService.GetFuncInst(info.GetEnumeratorValue);
 
             var enumerator = await evaluator.EvaluateFuncInstAsync(objValue, getEnumeratorInst, ImmutableArray<QsValue>.Empty, context);
-            var moveNextInst = evaluator.GetFuncInst(info.MoveNextValue, context);
-            var getCurrentInst = evaluator.GetFuncInst(info.GetCurrentValue, context);
+            var moveNextInst = context.DomainService.GetFuncInst(info.MoveNextValue);
+            var getCurrentInst = context.DomainService.GetFuncInst(info.GetCurrentValue);
 
-            var elemTypeInst = evaluator.GetTypeInst(info.ElemTypeValue, context);
+            var elemTypeInst = context.DomainService.GetTypeInst(info.ElemTypeValue);
             context.LocalVars[info.ElemLocalIndex] = elemTypeInst.MakeDefaultValue();
 
             while (true)

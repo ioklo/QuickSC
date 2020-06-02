@@ -7,4 +7,4 @@
 }
 
 foreach(var i in Func())
-    @echo $i
+    @$i

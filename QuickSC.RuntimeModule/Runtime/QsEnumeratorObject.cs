@@ -50,7 +50,7 @@ namespace QuickSC.Runtime
             this.enumerator = enumerator;
         }
 
-        static async ValueTask<QsValue> NativeMoveNext(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static async ValueTask<QsValue> NativeMoveNext(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
 
@@ -60,7 +60,7 @@ namespace QuickSC.Runtime
             return new QsValue<bool>(bResult);
         }
 
-        static ValueTask<QsValue> NativeGetCurrent(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeGetCurrent(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
 

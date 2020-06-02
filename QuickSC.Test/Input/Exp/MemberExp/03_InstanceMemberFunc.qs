@@ -6,7 +6,7 @@ class C
 
     public void F()
     {
-        @echo $x
+        @$x
     }
 
     public C(int x)

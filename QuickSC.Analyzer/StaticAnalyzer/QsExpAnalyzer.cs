@@ -17,12 +17,10 @@ namespace QuickSC.StaticAnalyzer
     class QsExpAnalyzer
     {
         QsAnalyzer analyzer;        
-        QsAnalyzerTypeService typeService;        
 
-        public QsExpAnalyzer(QsAnalyzer analyzer, QsAnalyzerTypeService typeService)
+        public QsExpAnalyzer(QsAnalyzer analyzer)
         {
             this.analyzer = analyzer;
-            this.typeService = typeService;
         }
 
         // x
@@ -67,7 +65,7 @@ namespace QuickSC.StaticAnalyzer
 
             // 전역 변수/함수, 레퍼런스에서 검색
             var candidates = new List<(QsTypeValue TypeValue, QsIdentifierExpInfo Info)>();
-            if (idExp.TypeArgs.Length == 0 && typeService.GetGlobalVar(idExp.Value, context, out var globalVar))
+            if (idExp.TypeArgs.Length == 0 && context.MetadataService.GetGlobalVar(idExp.Value, out var globalVar))
             {
                 // GlobalVar
                 candidates.Add((globalVar.TypeValue, new QsIdentifierExpInfo(new QsGlobalStorage(globalVar.VarId))));
@@ -95,7 +93,7 @@ namespace QuickSC.StaticAnalyzer
             }
 
             // 전역/레퍼런스 타입에서 검색, GlobalType, RefType
-            if (typeService.GetGlobalTypeValue(idExp.Value, typeArgs, context, out typeValue))
+            if (context.MetadataService.GetGlobalTypeValue(idExp.Value, typeArgs, out typeValue))
             {
                 // 여기는 MemberExp로부터만 오기 때문에 MemberExp에 추가해본다
                 outValue = (true, typeValue);
@@ -127,7 +125,7 @@ namespace QuickSC.StaticAnalyzer
 
         internal bool AnalyzeBoolLiteralExp(QsBoolLiteralExp boolExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            if (!typeService.GetGlobalTypeValue("bool", context, out var boolTypeValue))
+            if (!context.MetadataService.GetGlobalTypeValue("bool", out var boolTypeValue))
                 Debug.Fail("Runtime에 bool이 없습니다");
 
             typeValue = boolTypeValue;
@@ -136,7 +134,7 @@ namespace QuickSC.StaticAnalyzer
 
         internal bool AnalyzeIntLiteralExp(QsIntLiteralExp intExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            if (!typeService.GetGlobalTypeValue("int", context, out var intTypeValue))
+            if (!context.MetadataService.GetGlobalTypeValue("int", out var intTypeValue))
                 Debug.Fail("Runtime에 int가 없습니다");
 
             typeValue = intTypeValue;
@@ -145,7 +143,7 @@ namespace QuickSC.StaticAnalyzer
 
         internal bool AnalyzeStringExp(QsStringExp stringExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            if (!typeService.GetGlobalTypeValue("string", context, out var stringTypeValue))
+            if (!context.MetadataService.GetGlobalTypeValue("string", out var stringTypeValue))
                 Debug.Fail("Runtime에 string이 없습니다");
 
             foreach(var elem in stringExp.Elements)
@@ -160,8 +158,8 @@ namespace QuickSC.StaticAnalyzer
             typeValue = null;
 
             // TODO: operator 함수 선택 방식 따로 만들기, 지금은 하드코딩
-            if (!typeService.GetGlobalTypeValue("bool", context, out var boolTypeValue) || 
-                !typeService.GetGlobalTypeValue("int", context, out var intTypeValue))
+            if (!context.MetadataService.GetGlobalTypeValue("bool", out var boolTypeValue) || 
+                !context.MetadataService.GetGlobalTypeValue("int", out var intTypeValue))
             {
                 Debug.Fail("Runtime에 bool, int가 없습니다");
                 return false;
@@ -212,9 +210,9 @@ namespace QuickSC.StaticAnalyzer
         {
             typeValue = null;
 
-            if (!typeService.GetGlobalTypeValue("bool", context, out var boolTypeValue) ||
-                !typeService.GetGlobalTypeValue("int", context, out var intTypeValue) ||
-                !typeService.GetGlobalTypeValue("string", context, out var stringTypeValue))
+            if (!context.MetadataService.GetGlobalTypeValue("bool", out var boolTypeValue) ||
+                !context.MetadataService.GetGlobalTypeValue("int", out var intTypeValue) ||
+                !context.MetadataService.GetGlobalTypeValue("string", out var stringTypeValue))
             {
                 Debug.Fail("Runtime에 bool, int가 없습니다");
                 return false;
@@ -340,12 +338,12 @@ namespace QuickSC.StaticAnalyzer
             // 1. this 검색
 
             // 2. global 검색
-            if (typeService.GetGlobalFunc(exp.Value, exp.TypeArgs.Length, context, out var globalFunc))
+            if (context.MetadataService.GetGlobalFunc(exp.Value, exp.TypeArgs.Length, out var globalFunc))
             {
                 var typeArgs = ImmutableArray.CreateRange(exp.TypeArgs, typeArg => context.TypeValuesByTypeExp[typeArg]);
 
                 var funcValue = new QsFuncValue(null, globalFunc.FuncId, typeArgs);
-                var funcTypeValue = typeService.GetFuncTypeValue(funcValue, context);
+                var funcTypeValue = context.MetadataService.GetFuncTypeValue(funcValue);
 
                 if (!CheckParamTypes(exp, funcTypeValue.Params, args, context))
                 {
@@ -470,20 +468,20 @@ namespace QuickSC.StaticAnalyzer
                 return false;
 
             // objTypeValue에 indexTypeValue를 인자로 갖고 있는 indexer가 있는지
-            if (!typeService.GetMemberFuncValue(false, objTypeValue, QsName.Special(QsSpecialName.Indexer), ImmutableArray<QsTypeValue>.Empty, context, out var funcValue))
+            if (!context.MetadataService.GetMemberFuncValue(false, objTypeValue, QsName.Special(QsSpecialName.Indexer), ImmutableArray<QsTypeValue>.Empty, out var funcValue))
             {
                 context.ErrorCollector.Add(exp, "객체에 indexer함수가 없습니다");
                 return false;
             }
 
             // TODO: Non-Static만 검색하는 함수를 따로 만들자
-            if (typeService.IsFuncStatic(funcValue.FuncId, context))
+            if (context.MetadataService.IsFuncStatic(funcValue.FuncId))
             {
                 Debug.Fail("객체에 indexer가 있는데 Static입니다");
                 return false;
             }
 
-            var funcTypeValue = typeService.GetFuncTypeValue(funcValue, context);
+            var funcTypeValue = context.MetadataService.GetFuncTypeValue(funcValue);
 
             if (!CheckParamTypes(exp, funcTypeValue.Params, ImmutableArray.Create(indexTypeValue), context))
                 return false;
@@ -533,10 +531,10 @@ namespace QuickSC.StaticAnalyzer
             var (bStaticObject, objTypeValue) = outValue.Value;
             
             // 함수에서 찾기.. FuncValue도 같이 주는것이 좋을 듯 하다
-            if (typeService.GetMemberFuncValue(bStaticOnly: bStaticObject, objTypeValue, QsName.Text(exp.MemberName), memberTypeArgs, context, out var funcValue))
+            if (context.MetadataService.GetMemberFuncValue(bStaticOnly: bStaticObject, objTypeValue, QsName.Text(exp.MemberName), memberTypeArgs, out var funcValue))
             {
-                bool bStaticFunc = typeService.IsFuncStatic(funcValue.FuncId, context);
-                var funcTypeValue = typeService.GetFuncTypeValue(funcValue, context);
+                bool bStaticFunc = context.MetadataService.IsFuncStatic(funcValue.FuncId);
+                var funcTypeValue = context.MetadataService.GetFuncTypeValue(funcValue);
 
                 if (!CheckParamTypes(exp, funcTypeValue.Params, args, context))
                     return false;
@@ -551,10 +549,10 @@ namespace QuickSC.StaticAnalyzer
 
             // 변수에서 찾기
             if (memberTypeArgs.Length == 0 && 
-                typeService.GetMemberVarValue(bStaticOnly: bStaticObject, objTypeValue, exp.MemberName, context, out var varValue))
+                context.MetadataService.GetMemberVarValue(bStaticOnly: bStaticObject, objTypeValue, exp.MemberName, out var varValue))
             {
-                bool bStaticVar = typeService.IsVarStatic(varValue.VarId, context);
-                var varFuncTypeValue = typeService.GetVarTypeValue(varValue, context) as QsFuncTypeValue;
+                bool bStaticVar = context.MetadataService.IsVarStatic(varValue.VarId);
+                var varFuncTypeValue = context.MetadataService.GetVarTypeValue(varValue) as QsFuncTypeValue;
 
                 if (varFuncTypeValue == null)
                 {
@@ -595,7 +593,7 @@ namespace QuickSC.StaticAnalyzer
                     return false;
                 }
 
-                if (!typeService.GetMemberVar(objNormalTypeValue.TypeId, memberExp.MemberName, context, out var memberVar))
+                if (!context.MetadataService.GetMemberVar(objNormalTypeValue.TypeId, memberExp.MemberName, out var memberVar))
                 {
                     outTypeValue = null;
                     return false;
@@ -604,7 +602,7 @@ namespace QuickSC.StaticAnalyzer
                 if (0 < memberExp.MemberTypeArgs.Length)
                     context.ErrorCollector.Add(memberExp, "멤버변수에는 타입인자를 붙일 수 없습니다");
 
-                outTypeValue = typeService.MakeTypeValue(objNormalTypeValue, memberVar.Value.Var.TypeValue, context);
+                outTypeValue = context.MetadataService.MakeTypeValue(objNormalTypeValue, memberVar.Value.Var.TypeValue);
 
                 // instance이지만 static 이라면, exp는 실행하고, static변수에서 가져온다
                 if (memberVar.Value.bStatic)
@@ -629,7 +627,7 @@ namespace QuickSC.StaticAnalyzer
                     return false;
                 }
 
-                if (typeService.GetMemberVar(objNormalTypeValue.TypeId, memberExp.MemberName, context, out var variable))
+                if (context.MetadataService.GetMemberVar(objNormalTypeValue.TypeId, memberExp.MemberName, out var variable))
                 {
                     if (0 < memberExp.MemberTypeArgs.Length)
                     {
@@ -646,7 +644,7 @@ namespace QuickSC.StaticAnalyzer
                     }
                     else
                     {
-                        outTypeValue = typeService.MakeTypeValue(objNormalTypeValue, variable.Value.Var.TypeValue, context);
+                        outTypeValue = context.MetadataService.MakeTypeValue(objNormalTypeValue, variable.Value.Var.TypeValue);
                         context.InfosByNode[memberExp] = QsMemberExpInfo.MakeStatic(false, new QsVarValue(objNormalTypeValue, variable.Value.Var.VarId));
                         return true;
                     }                    
@@ -689,7 +687,7 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
 
-            if (!typeService.GetGlobalTypeValue("List", ImmutableArray.Create(curElemTypeValue), context, out typeValue))
+            if (!context.MetadataService.GetGlobalTypeValue("List", ImmutableArray.Create(curElemTypeValue), out typeValue))
             {
                 Debug.Fail("Runtime에 리스트가 없습니다");
                 return false;

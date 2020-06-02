@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<ImmutableArray<QsTypeInst>, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
+    using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
 
     // List
     public class QsListObject : QsObject
@@ -23,8 +23,7 @@ namespace QuickSC.Runtime
         }
 
         public static QsType AddType(
-            QsTypeBuilder typeBuilder,
-            QsRuntimeModule runtimeModule,
+            QsTypeBuilder typeBuilder,            
             QsTypeId enumeratorId,
             QsTypeValue intTypeValue)
         {
@@ -46,7 +45,7 @@ namespace QuickSC.Runtime
             memberFuncsBuilder.Add(QsName.Text("RemoveAt"), listRemoveAt.FuncId);
 
             Invoker wrappedGetEnumerator =
-                (typeArgs, thisValue, args) => NativeGetEnumerator(runtimeModule, enumeratorId, typeArgs, thisValue, args);
+                (domainService, typeArgs, thisValue, args) => NativeGetEnumerator(domainService, enumeratorId, typeArgs, thisValue, args);
 
             var listGetEnumerator = typeBuilder.AddFunc(wrappedGetEnumerator, new QsFunc(
                 new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("GetEnumerator", 0)),
@@ -74,13 +73,13 @@ namespace QuickSC.Runtime
         }
         
         // Enumerator<T> List<T>.GetEnumerator()
-        static ValueTask<QsValue> NativeGetEnumerator(QsRuntimeModule runtimeModule, QsTypeId enumeratorId, ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeGetEnumerator(QsDomainService domainService, QsTypeId enumeratorId, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
             var list = GetObject<QsListObject>(thisValue);
 
             // enumerator<T>
-            var enumeratorInst = runtimeModule.GetTypeInst(enumeratorId, typeArgs); // NOTICE: List와 Enumerator의 typeArgs 크기가 똑같아서 바로 집어넣었다
+            var enumeratorInst = domainService.GetTypeInst(new QsNormalTypeValue(null, enumeratorId, typeEnv.TypeValues[0]));
 
             // TODO: Runtime 메모리 관리자한테 new를 요청해야 합니다
             return new ValueTask<QsValue>(new QsObjectValue(new QsEnumeratorObject(enumeratorInst, ToAsyncEnum(list.Elems).GetAsyncEnumerator())));
@@ -94,7 +93,7 @@ namespace QuickSC.Runtime
 #pragma warning restore CS1998
         }
 
-        static ValueTask<QsValue> NativeIndexer(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeIndexer(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(args.Length == 1);
             Debug.Assert(thisValue != null);
@@ -105,7 +104,7 @@ namespace QuickSC.Runtime
         }
 
         // List<T>.Add
-        static ValueTask<QsValue> NativeAdd(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeAdd(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(args.Length == 1);
             Debug.Assert(thisValue != null);
@@ -116,7 +115,7 @@ namespace QuickSC.Runtime
             return new ValueTask<QsValue>(QsVoidValue.Instance);
         }
 
-        static ValueTask<QsValue> NativeRemoveAt(ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeRemoveAt(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(args.Length == 1);
             Debug.Assert(thisValue != null);

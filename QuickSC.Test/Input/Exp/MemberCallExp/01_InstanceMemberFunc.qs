@@ -9,7 +9,7 @@ class X
 
     public void F(int i)
     {
-        @echo $x $i
+        @$x $i
     }
 
     public X(int x) { this.x = x; }

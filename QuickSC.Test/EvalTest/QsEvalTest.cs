@@ -20,14 +20,7 @@ namespace QuickSC.EvalTest
 
         public Task ExecuteAsync(string cmdText)
         {
-            if (cmdText.StartsWith("echo "))
-            {
-                sb.Append(cmdText.Substring(5));
-            }
-            else
-            {
-                Error = true;
-            }
+            sb.Append(cmdText);
 
             return Task.CompletedTask;
         }
@@ -108,30 +101,6 @@ namespace QuickSC.EvalTest
 
     class QsEvalTestDataFactory : IEnumerable<object[]>
     {
-        // List<QsEvalTestData> data;
-
-        public QsEvalTestDataFactory()
-        {
-            //data = new List<QsEvalTestData>
-            //{
-            //    new QsEvalTestData(@"Input\Exp\IdentifierExp\01_GlobalVariable.qs", "1"),
-            //    new QsEvalTestData(@"Input\Exp\IdentifierExp\02_GlobalScopedVariable.qs", "21"),
-            //    new QsEvalTestData(@"Input\Exp\IdentifierExp\03_LocalVariable.qs", "21"),
-            //    new QsEvalTestData(@"Input\Exp\StringExp\01_PlainText.qs", "hello"),
-            //    new QsEvalTestData(@"Input\Exp\StringExp\02_Interpolation.qs", "hello.3"),
-            //    new QsEvalTestData(@"Input\Exp\IntLiteral\01_SimpleInt.qs", "1024"),
-            //    new QsEvalTestData(@"Input\Exp\BoolLiteral\01_SimpleBool.qs", "true false"),
-            //    new QsEvalTestData(@"Input\Exp\BinaryOpExp\01_BoolOperation.qs", "false true true true false false true false true true false"),
-            //    new QsEvalTestData(@"Input\Exp\BinaryOpExp\02_IntOperation.qs", "-3 4 4 false true true -4 -6 -26 2 3 true false true true false false true false true true"),
-            //    new QsEvalTestData(@"Input\Exp\BinaryOpExp\03_StringOperation.qs", "hi hello world world true true false false onetwo true false true true false false true false true true"),
-            //    new QsEvalTestData(@"Input\Exp\UnaryOpExp\01_BoolOperation.qs", "true false false true"),
-            //    new QsEvalTestData(@"Input\Exp\UnaryOpExp\02_IntOperation.qs", "-3 3 -3 -2 -2 -3"),
-            //    new QsEvalTestData(@"Input\Exp\CallExp\01_CallFunc.qs", "1 2 false"),
-            //    new QsEvalTestData(@"Input\Exp\CallExp\02_CallLambda.qs", "1 3 true"),
-
-            //};
-        }
-
         public IEnumerator<object[]> GetEnumerator()
         {
             var curDir = Directory.GetCurrentDirectory();

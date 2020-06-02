@@ -8,9 +8,9 @@ namespace QuickSC.Runtime
     {
         QsValue MakeBool(bool b);
         QsValue MakeInt(int i);
-        QsValue MakeString(string str);
-        QsValue MakeEnumerable(QsTypeInst elemTypeInst, IAsyncEnumerable<QsValue> asyncEnumerable);
-        QsValue MakeList(QsTypeInst elemTypeInst, List<QsValue> elems);
+        QsValue MakeString(QsDomainService domainService, string str);
+        QsValue MakeEnumerable(QsDomainService domainService, QsTypeValue elemTypeValue, IAsyncEnumerable<QsValue> asyncEnumerable);
+        QsValue MakeList(QsDomainService domainService, QsTypeValue elemTypeValue, List<QsValue> elems);
 
         int GetInt(QsValue value);
         void SetInt(QsValue value, int i);

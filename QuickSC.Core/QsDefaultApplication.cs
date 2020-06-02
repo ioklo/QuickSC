@@ -59,13 +59,21 @@ namespace QuickSC
             // 3. Type, Func만들기, MetadataBuilder
             var typeAndFuncBuildResult = typeBuilder.BuildScript(moduleName, script, skelResult, typeEvalResult);
 
+            var metadataService = new QsMetadataService(
+                moduleName,
+                typeAndFuncBuildResult.Types.ToImmutableDictionary(type => type.TypeId),
+                typeAndFuncBuildResult.Funcs.ToImmutableDictionary(func => func.FuncId),
+                typeAndFuncBuildResult.Vars.ToImmutableDictionary(v => v.VarId),
+                metadatas, errorCollector);
+
             // globalVariable이 빠진상태            
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
-            if (!analyzer.AnalyzeScript(moduleName, script, metadatas, typeEvalResult, typeAndFuncBuildResult, errorCollector, out var analyzeInfo))
+            if (!analyzer.AnalyzeScript(moduleName, script, metadataService, typeEvalResult, typeAndFuncBuildResult, errorCollector, out var analyzeInfo))
                 return false;
 
             var scriptModule = new QsScriptModule(moduleName, analyzeInfo.FuncTemplatesById);
-            var domainService = new QsDomainService(runtimeModule, modulesExceptRuntimeModule.Add(scriptModule));
+
+            var domainService = new QsDomainService(metadataService, runtimeModule, modulesExceptRuntimeModule.Add(scriptModule));
 
             if (!await evaluator.EvaluateScriptAsync(script, runtimeModule, domainService, analyzeInfo))
                 return false;

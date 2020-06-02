@@ -11,7 +11,7 @@ class C
 }
 
 C c = new C(i => {
-    @echo $i
+    @$i
 });
 
 c.F(2);

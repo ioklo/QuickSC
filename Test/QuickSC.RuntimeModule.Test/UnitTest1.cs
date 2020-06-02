@@ -10,28 +10,49 @@ namespace QuickSC.RuntimeModule.Test
 {
     public class UnitTest1
     {
+        class QsTestErrorCollector : IQsErrorCollector
+        {
+            public bool HasError => throw new NotImplementedException();
+
+            public void Add(object obj, string msg)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+
         [Fact]
         static void Temp()
         {
-            QsDomainService domainService = new QsDomainService(new QsRuntimeModule(), Enumerable.Empty<IQsModule>());
+            var errorCollector = new QsTestErrorCollector();
 
-            var runtimeModule = new QsRuntimeModule();            
+            var runtimeModule = new QsRuntimeModule();
+
+            QsMetadataService metadataService = new QsMetadataService(
+                "Temp", 
+                ImmutableDictionary<QsTypeId, QsType>.Empty, 
+                ImmutableDictionary<QsFuncId, QsFunc>.Empty, 
+                ImmutableDictionary<QsVarId, QsVariable>.Empty,
+                ImmutableArray.Create<IQsMetadata>(runtimeModule),
+                errorCollector);
+
+            QsDomainService domainService = new QsDomainService(metadataService, runtimeModule, Enumerable.Empty<IQsModule>());            
 
             var intTypeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("int", 0));
             var listTypeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1));
 
             // int
-            var intTypeInst = domainService.GetTypeInst(intTypeId, ImmutableArray<QsTypeInst>.Empty);
+            var intTypeValue = new QsNormalTypeValue(null, intTypeId);
 
             // List<int>
-            var listTypeInst = domainService.GetTypeInst(listTypeId, ImmutableArray.Create(intTypeInst));
+            var listTypeValue = new QsNormalTypeValue(null, listTypeId, intTypeValue);
 
             // List<int>.Add
             var listAddFuncId = new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("Add", 0));
-            var funcInst = domainService.GetFuncInst(listAddFuncId, ImmutableArray.Create(intTypeInst));
+            var funcInst = domainService.GetFuncInst(new QsFuncValue(listTypeValue, listAddFuncId));
 
             // list = [1, 2]
-            var list = runtimeModule.MakeList(intTypeInst, new List<QsValue> { runtimeModule.MakeInt(1), runtimeModule.MakeInt(2) });
+            var list = runtimeModule.MakeList(domainService, intTypeValue, new List<QsValue> { runtimeModule.MakeInt(1), runtimeModule.MakeInt(2) });
 
             // List<int>.Add(list, 3)
             if( funcInst is QsNativeFuncInst nativeFuncInst )

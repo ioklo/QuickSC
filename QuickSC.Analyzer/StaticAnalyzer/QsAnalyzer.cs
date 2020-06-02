@@ -14,16 +14,14 @@ namespace QuickSC.StaticAnalyzer
     {
         QsCapturer capturer;
         QsExpAnalyzer expAnalyzer;
-        QsStmtAnalyzer stmtAnalyzer;
-        QsAnalyzerTypeService typeService;
+        QsStmtAnalyzer stmtAnalyzer;        
 
         public QsAnalyzer(QsCapturer capturer)
         {
             // 내부 전용 클래스는 new를 써서 직접 만들어도 된다 (DI, 인자로 받을 필요 없이)
             this.capturer = capturer;
-            this.typeService = new QsAnalyzerTypeService();
-            this.expAnalyzer = new QsExpAnalyzer(this, typeService);
-            this.stmtAnalyzer = new QsStmtAnalyzer(this, typeService);
+            this.expAnalyzer = new QsExpAnalyzer(this);
+            this.stmtAnalyzer = new QsStmtAnalyzer(this);
         }
 
         
@@ -83,7 +81,7 @@ namespace QuickSC.StaticAnalyzer
                 {
                     var varId = new QsVarId(context.ModuleName, ImmutableArray.Create(new QsNameElem(name, 0)));
                     var variable = new QsVariable(true, varId, typeValue);
-                    typeService.AddVar(variable, context);
+                    context.MetadataService.AddVar(variable);
 
                     elemsBuilder.Add(new QsVarDeclInfo.Element(typeValue, new QsGlobalStorage(varId)));
                 }
@@ -144,7 +142,7 @@ namespace QuickSC.StaticAnalyzer
                     elemsBuilder.Add(new QsCaptureInfo.Element(needCapture.Kind, new QsLocalStorage(localVarInfo.Index)));
                     context.CurFunc.AddVarInfo(needCapture.VarName, localVarInfo.TypeValue);
                 }
-                else if (typeService.GetGlobalVar(needCapture.VarName, context, out var globalVar))
+                else if (context.MetadataService.GetGlobalVar(needCapture.VarName, out var globalVar))
                 {
                     continue;
                     // TODO: 람다에서 글로벌 변수는 캡쳐하지 않는다 QsLambdaExpInfo.Elem.MakeGlobal 제거
@@ -265,7 +263,7 @@ namespace QuickSC.StaticAnalyzer
         public bool AnalyzeScript(
             string moduleName,
             QsScript script,
-            ImmutableArray<IQsMetadata> metadatas,
+            QsMetadataService metadataService,            
             QsTypeEvalResult evalResult,
             QsTypeAndFuncBuildResult buildResult,            
             IQsErrorCollector errorCollector,
@@ -273,7 +271,7 @@ namespace QuickSC.StaticAnalyzer
         {
             var context = new QsAnalyzerContext(
                 moduleName,
-                metadatas,
+                metadataService,
                 evalResult,
                 buildResult,
                 errorCollector);
@@ -292,7 +290,7 @@ namespace QuickSC.StaticAnalyzer
 
         public bool IsAssignable(QsTypeValue toTypeValue, QsTypeValue fromTypeValue, QsAnalyzerContext context)
         {
-            return typeService.IsAssignable(toTypeValue, fromTypeValue, context);
+            return context.MetadataService.IsAssignable(toTypeValue, fromTypeValue);
         }
     }
 }

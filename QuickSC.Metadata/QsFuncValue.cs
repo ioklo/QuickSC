@@ -17,5 +17,12 @@ namespace QuickSC
             FuncId = funcId;
             TypeArgs = typeArgs;
         }
+
+        public QsFuncValue(QsTypeValue? outer, QsFuncId funcId, params QsTypeValue[] typeArgs)
+        {
+            Outer = outer;
+            FuncId = funcId;
+            TypeArgs = ImmutableArray.Create(typeArgs);
+        }
     }
 }

@@ -37,5 +37,10 @@ namespace QuickSC.Runtime
         {
             return !(left == right);
         }
+
+        public override QsTypeInst GetTypeInst()
+        {
+            return typeInst;
+        }
     }
 }

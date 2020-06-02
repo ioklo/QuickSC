@@ -7,32 +7,40 @@ namespace QuickSC.Runtime
 {
     class QsNativeTypeInst : QsTypeInst
     {
+        QsTypeInst? baseTypeInst;
+
         QsTypeId typeId;
         QsValue defaultValue;
-        ImmutableArray<QsTypeInst> typeArgs;
+        QsTypeEnv typeEnv;
 
-        public QsNativeTypeInst(QsTypeId typeId, QsValue defaultValue, ImmutableArray<QsTypeInst> typeArgs)
+        public QsNativeTypeInst(QsTypeInst? baseTypeInst, QsTypeId typeId, QsValue defaultValue, QsTypeEnv typeEnv)
         {
+            this.baseTypeInst = baseTypeInst;
             this.typeId = typeId;
             this.defaultValue = defaultValue;
-            this.typeArgs = typeArgs;
+            this.typeEnv = typeEnv;
+        }
+
+        public override QsValue MakeDefaultValue()
+        {
+            return defaultValue.MakeCopy();
+        }
+
+        public override QsTypeInst? GetBaseTypeInst()
+        {
+            return baseTypeInst;
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsNativeTypeInst inst &&
                    EqualityComparer<QsTypeId>.Default.Equals(typeId, inst.typeId) &&
-                   typeArgs.Equals(inst.typeArgs);
+                   typeEnv.Equals(inst.typeEnv);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(typeId, typeArgs);
-        }
-
-        public override QsValue MakeDefaultValue()
-        {
-            return defaultValue.MakeCopy();
+            return HashCode.Combine(typeId, typeEnv);
         }
 
         public static bool operator ==(QsNativeTypeInst? left, QsNativeTypeInst? right)

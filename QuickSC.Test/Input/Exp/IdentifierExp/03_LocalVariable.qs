@@ -5,8 +5,8 @@ int x = 1;
 void Func()
 {
     int x = 2;
-    @echo $x
+    @$x
 }
 
 Func();
-@echo $x
+@$x

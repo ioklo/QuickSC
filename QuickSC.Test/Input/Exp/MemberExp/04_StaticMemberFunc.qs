@@ -4,7 +4,7 @@ class C
 {
     public static void F(int i)
     {
-        @echo $i
+        @$i
     }
 }
 

@@ -22,16 +22,8 @@ namespace QuickSC
         {
             this.expEvaluator = new QsExpEvaluator(this);
             this.stmtEvaluator = new QsStmtEvaluator(this, commandProvider);
-        }
+        }        
         
-        public QsFuncInst GetFuncInst(QsFuncValue funcValue, QsEvalContext context)
-        {
-            var builder = ImmutableArray.CreateBuilder<QsTypeInst>();
-            MakeTypeInstArgs(funcValue, builder, context);
-
-            return context.DomainService.GetFuncInst(funcValue.FuncId, builder.ToImmutable());
-        }
-
         public ValueTask<QsValue> EvaluateStringExpAsync(QsStringExp command, QsEvalContext context)
         {
             return expEvaluator.EvaluateStringExpAsync(command, context);
@@ -74,76 +66,14 @@ namespace QuickSC
 
             while (curTypeInst != null)
             {
-                if (curTypeInst == typeInst) return true;
-                curTypeInst = context.DomainService.GetBaseTypeInst(curTypeInst);
+                if (EqualityComparer<QsTypeInst?>.Default.Equals(curTypeInst, typeInst)) return true;
+                curTypeInst = curTypeInst.GetBaseTypeInst();
             }
 
             return false;
         }
 
-        void MakeTypeInstArgs(QsFuncValue fv, ImmutableArray<QsTypeInst>.Builder builder, QsEvalContext context)
-        {
-            if (fv.Outer != null)
-            {
-                if (fv.Outer is QsNormalTypeValue outerNTV)
-                    MakeTypeInstArgs(outerNTV, builder, context);
-                else
-                    throw new InvalidOperationException(); // TODO: ntv.Outer를 normaltypeValue로 바꿔야 하지 않을까
-            }
-
-            foreach (var typeArg in fv.TypeArgs)
-            {
-                var typeInst = GetTypeInst(typeArg, context);
-                builder.Add(typeInst);
-            }
-        }
-
-        void MakeTypeInstArgs(QsNormalTypeValue ntv, ImmutableArray<QsTypeInst>.Builder builder, QsEvalContext context)
-        {
-            if (ntv.Outer != null)
-            {
-                if (ntv.Outer is QsNormalTypeValue outerNTV)
-                    MakeTypeInstArgs(outerNTV, builder, context);
-                else
-                    throw new InvalidOperationException(); // TODO: ntv.Outer를 normaltypeValue로 바꿔야 하지 않을까
-            }
-
-            foreach (var typeArg in ntv.TypeArgs)
-            {
-                var typeInst = GetTypeInst(typeArg, context);
-                builder.Add(typeInst);
-            }
-        }
-
-        // 실행중 TypeValue는 모두 Apply된 상태이다
-        public QsTypeInst GetTypeInst(QsTypeValue typeValue, QsEvalContext context)
-        {
-            // typeValue -> typeEnv
-            // X<int>.Y<short> => Tx -> int, Ty -> short
-            switch(typeValue)
-            {
-                case QsTypeVarTypeValue tvtv:
-                    Debug.Fail("실행중에 바인드 되지 않은 타입 인자가 나왔습니다");
-                    throw new InvalidOperationException();
-
-                case QsNormalTypeValue ntv:
-                    {
-                        var builder = ImmutableArray.CreateBuilder<QsTypeInst>();
-                        MakeTypeInstArgs(ntv, builder, context);
-
-                        return context.DomainService.GetTypeInst(ntv.TypeId, builder.ToImmutable());
-                    }
-
-                case QsVoidTypeValue vtv: 
-                    throw new NotImplementedException(); // TODO: void는 따로 처리
-
-                case QsFuncTypeValue ftv:
-                    throw new NotImplementedException(); // TODO: 함수는 따로 처리
-
-                default:
-                    throw new NotImplementedException();
-            }            
-        }
+        
 
         private object ApplyTypeValue(QsTypeValue typeValue, object typeEnv)
         {
@@ -153,7 +83,7 @@ namespace QuickSC
         // DefaultValue란 무엇인가, 그냥 선언만 되어있는 상태        
         public QsValue GetDefaultValue(QsTypeValue typeValue, QsEvalContext context)
         {
-            var typeInst = GetTypeInst(typeValue, context);
+            var typeInst = context.DomainService.GetTypeInst(typeValue);
             return typeInst.MakeDefaultValue();
         }
 
@@ -272,10 +202,8 @@ namespace QuickSC
                         ImmutableArray<Task>.Empty,
                         thisValue);
 
-                    var elemTypeInst = GetTypeInst(scriptFuncInst.SeqElemTypeValue, context);
-
                     var asyncEnum = EvaluateScriptFuncInstSeqAsync(scriptFuncInst, args, newContext);
-                    return context.RuntimeModule.MakeEnumerable(elemTypeInst, asyncEnum);
+                    return context.RuntimeModule.MakeEnumerable(context.DomainService, (QsNormalTypeValue)scriptFuncInst.SeqElemTypeValue, asyncEnum);
                 }
 
                 var (prevLocalVars, prevFlowControl, prevTasks, prevThisValue) = 

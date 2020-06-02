@@ -19,4 +19,4 @@ class X
 var f = Func();
 var v = f(1);
 
-@echo $v
+@$v

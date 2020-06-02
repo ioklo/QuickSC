@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<ImmutableArray<QsTypeInst>, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
+    using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
 
     public class QsTypeBuilder
     {

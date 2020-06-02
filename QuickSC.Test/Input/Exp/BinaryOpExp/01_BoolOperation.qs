@@ -4,11 +4,8 @@ bool b;
 
 b = false; // assignment
 
-string p = "$b ${b = true} $b";
-@echo $p
+@$b ${b = true} $b
 
-p = " ${false == false} ${false == true} ${true == false} ${true == true}";
-@echo $p
+@ ${false == false} ${false == true} ${true == false} ${true == true}
 
-p = " ${false != false} ${false != true} ${true != false} ${true != true}";
-@echo $p
+@ ${false != false} ${false != true} ${true != false} ${true != true}

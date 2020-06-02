@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<ImmutableArray<QsTypeInst>, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
+    using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
 
     class QsEnumerableObject : QsObject
     {
         QsTypeInst typeInst;
         IAsyncEnumerable<QsValue> enumerable;
 
-        public static QsType AddType(QsTypeBuilder typeBuilder, QsRuntimeModule runtimeModule, QsTypeId enumeratorId)
+        public static QsType AddType(QsTypeBuilder typeBuilder, QsTypeId enumeratorId)
         {
             // T
             var typeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("Enumerable", 1));
@@ -27,7 +27,7 @@ namespace QuickSC.Runtime
 
             var funcBuilder = ImmutableDictionary.CreateBuilder<QsName, QsFuncId>();
 
-            Invoker wrappedGetEnumerator = (typeArgs, thisValue, args) => NativeGetEnumerator(runtimeModule, enumeratorId, typeArgs, thisValue, args);
+            Invoker wrappedGetEnumerator = (domainService, typeArgs, thisValue, args) => NativeGetEnumerator(domainService, enumeratorId, typeArgs, thisValue, args);
 
             var func = typeBuilder.AddFunc(wrappedGetEnumerator, new QsFunc(
                 new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("Enumerable", 1), new QsNameElem("GetEnumerator", 0)),
@@ -52,13 +52,13 @@ namespace QuickSC.Runtime
         }
         
         // Enumerator<T> Enumerable<T>.GetEnumerator()
-        static ValueTask<QsValue> NativeGetEnumerator(QsRuntimeModule runtimeModule, QsTypeId enumeratorId, ImmutableArray<QsTypeInst> typeArgs, QsValue? thisValue, ImmutableArray<QsValue> args)
+        static ValueTask<QsValue> NativeGetEnumerator(QsDomainService domainService, QsTypeId enumeratorId, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
 
             var enumerableObject = GetObject<QsEnumerableObject>(thisValue);
 
-            var enumeratorInst = runtimeModule.GetTypeInst(enumeratorId, typeArgs);
+            var enumeratorInst = domainService.GetTypeInst(new QsNormalTypeValue(null, enumeratorId, typeEnv.TypeValues[0]));
 
             // TODO: 여기 copy 해야 할 것 같음
             return new ValueTask<QsValue>(new QsObjectValue(new QsEnumeratorObject(enumeratorInst, enumerableObject.enumerable.GetAsyncEnumerator())));

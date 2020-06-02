@@ -5,18 +5,13 @@ string t = s;
 
 s = "hello"; // 
 
-string p = "$t $s ${s = "world"} $s";
-@echo $p
+@$t $s ${s = "world"} $s
 
 string t2 = "${"h"}${"i"}";
-p = " ${t == t2} ${s == "world"} ${t != t2} ${s != "world"}";
-@echo $p
+@ ${t == t2} ${s == "world"} ${t != t2} ${s != "world"}
 
-p = " ${"one" + "two"}";
-@echo $p
+@ ${"one" + "two"}
 
-p = " ${"s1" < "s1abcd"} ${"s1abcd" < "s1"} ${"s1" <= "s1abcd"} ${"s1" <= "s1"} ${"s1abcd" <= "s1"}";
-@echo $p
+@ ${"s1" < "s1abcd"} ${"s1abcd" < "s1"} ${"s1" <= "s1abcd"} ${"s1" <= "s1"} ${"s1abcd" <= "s1"}
 
-p = " ${"s1" > "s1abcd"} ${"s1abcd" > "s1"} ${"s1" >= "s1abcd"} ${"s1" >= "s1"} ${"s1abcd" >= "s1"}";
-@echo $p
+@ ${"s1" > "s1abcd"} ${"s1abcd" > "s1"} ${"s1" >= "s1abcd"} ${"s1" >= "s1"} ${"s1abcd" >= "s1"}

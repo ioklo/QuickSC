@@ -2,4 +2,4 @@
 
 string x = "hello";
 
-@echo $x
+@$x

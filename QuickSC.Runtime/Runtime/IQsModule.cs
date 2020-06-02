@@ -8,7 +8,7 @@ namespace QuickSC.Runtime
     public interface IQsModule
     {
         string ModuleName { get; }
-        QsTypeInst GetTypeInst(QsTypeId typeId, ImmutableArray<QsTypeInst> typeArgs);
-        QsFuncInst GetFuncInst(QsFuncId funcId, ImmutableArray<QsTypeInst> typeArgs);
+        QsTypeInst GetTypeInst(QsDomainService domainService, QsNormalTypeValue typeValue);
+        QsFuncInst GetFuncInst(QsDomainService domainService, QsFuncValue fv);
     }
 }

@@ -59,14 +59,11 @@ namespace QuickSC.StaticAnalyzer
     public class QsAnalyzerContext
     {
         public string ModuleName { get; }
-        public ImmutableArray<IQsMetadata> Metadatas { get; }
 
-        public ImmutableDictionary<QsTypeId, QsType> TypesById { get; }
-        public ImmutableDictionary<QsFuncId, QsFunc> FuncsById { get; }
         public ImmutableDictionary<QsFuncDecl, QsFunc> FuncsByFuncDecl { get; }
         public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
 
-        public Dictionary<QsVarId, QsVariable> VarsById { get; }
+        public QsMetadataService MetadataService { get; }
 
         public IQsErrorCollector ErrorCollector { get; }
         
@@ -77,21 +74,18 @@ namespace QuickSC.StaticAnalyzer
         public bool bGlobalScope { get; set; }
 
         public Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo> InfosByNode { get; }
-        public Dictionary<QsFuncId, QsScriptFuncTemplate> FuncTemplatesById { get; }
+        public Dictionary<QsFuncId, QsScriptFuncTemplate> FuncTemplatesById { get; }        
 
         public QsAnalyzerContext(
             string moduleName,
-            ImmutableArray<IQsMetadata> metadatas,
+            QsMetadataService metadataService,
             QsTypeEvalResult evalResult,
             QsTypeAndFuncBuildResult buildResult,
             IQsErrorCollector errorCollector)
         {
             ModuleName = moduleName;
-            Metadatas = metadatas;
-
-            TypesById = buildResult.Types.ToImmutableDictionary(type => type.TypeId);
-            FuncsById = buildResult.Funcs.ToImmutableDictionary(func => func.FuncId);
-            VarsById = buildResult.Vars.ToDictionary(v => v.VarId);
+            MetadataService = metadataService;
+            
             FuncsByFuncDecl = buildResult.FuncsByFuncDecl;
             TypeValuesByTypeExp = evalResult.TypeValuesByTypeExp;
 

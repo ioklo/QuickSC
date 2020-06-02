@@ -1,4 +1,4 @@
-// 1
+// 11
 
 class C
 {
@@ -6,7 +6,7 @@ class C
 }
 
 C.x = 1;
-@echo ${C.x}
+@${C.x}
 
 var c = new C();
-@echo ${c.x}
+@${c.x}

@@ -6,8 +6,8 @@ x = 1;
 {
     int x;
     x = 2; // write
-    @echo $x
+    @$x
 }
 
 // read
-@echo $x
+@$x

@@ -7,4 +7,4 @@ class X
 }
 
 X x = new X(2);
-@echo ${x.x}
+@${x.x}
