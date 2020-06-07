@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,11 +19,16 @@ namespace QuickSC.EvalTest
         public string Output { get => sb.ToString(); }
         StringBuilder sb = new StringBuilder();
 
-        public Task ExecuteAsync(string cmdText)
+        public async Task ExecuteAsync(string cmdText)
         {
-            sb.Append(cmdText);
+            if (cmdText == "yield")
+            {
+                // TODO: 좋은 방법이 있으면 교체한다
+                await Task.Delay(500);
+                return;
+            }
 
-            return Task.CompletedTask;
+            sb.Append(cmdText);
         }
     }
 
@@ -35,6 +41,11 @@ namespace QuickSC.EvalTest
         public void Add(object obj, string msg)
         {
             messages.Add((obj, msg));
+        }
+
+        public string GetMessages()
+        {
+            return string.Join("\r\n", messages.Select(message => message.Item2));
         }
     }
 
@@ -64,7 +75,7 @@ namespace QuickSC.EvalTest
             var errorCollector = new QsTestErrorCollector();
             await app.RunAsync(Path.GetFileNameWithoutExtension(data.Path), text, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
 
-            Assert.False(errorCollector.HasError);
+            Assert.False(errorCollector.HasError, errorCollector.GetMessages());
             Assert.Equal(expected, cmdProvider.Output);
         }
     }

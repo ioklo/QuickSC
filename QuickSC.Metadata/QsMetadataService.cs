@@ -16,15 +16,13 @@ namespace QuickSC
         ImmutableDictionary<QsVarId, QsVariable> varsById;
 
         ImmutableArray<IQsMetadata> metadatas;
-        IQsErrorCollector errorCollector;
 
         public QsMetadataService(
             string moduleName,
             ImmutableDictionary<QsTypeId, QsType> typesById,
             ImmutableDictionary<QsFuncId, QsFunc> funcsById,
             ImmutableDictionary<QsVarId, QsVariable> varsById,
-            ImmutableArray<IQsMetadata> metadatas,
-            IQsErrorCollector errorCollector)
+            ImmutableArray<IQsMetadata> metadatas)
         {
             this.moduleName = moduleName;
             this.typesById = typesById;
@@ -32,7 +30,6 @@ namespace QuickSC
             this.varsById = varsById;
 
             this.metadatas = metadatas;
-            this.errorCollector = errorCollector;
         }
         
 
@@ -191,116 +188,80 @@ namespace QuickSC
             };
         }
 
-        public bool GetGlobalFunc(string name, int typeParamCount, [NotNullWhen(returnValue: true)] out QsFunc? outGlobalFunc)
+        public bool GetGlobalFuncs(string name, int typeParamCount, out ImmutableArray<QsFunc> outGlobalFunc)
         {
             // 전역 변수와는 달리 전역 함수는 다른 모듈들과 동등하게 검색한다
-            var funcs = new List<QsFunc>();
+            var funcsBuilder = ImmutableArray.CreateBuilder<QsFunc>();
             var nameElem = new QsNameElem(name, typeParamCount);
 
             if (funcsById.TryGetValue(new QsFuncId(moduleName, nameElem), out var outFunc))
-                funcs.Add(outFunc);
+                funcsBuilder.Add(outFunc);
 
             foreach (var refMetadata in metadatas)
             {
                 var funcId = new QsFuncId(refMetadata.ModuleName, nameElem);
                 if (refMetadata.GetFuncById(funcId, out var outRefFunc))
-                    funcs.Add(outRefFunc);
+                    funcsBuilder.Add(outRefFunc);
             }
 
-            if (funcs.Count == 1)
-            {
-                outGlobalFunc = funcs[0];
-                return true;
-            }
-            else if (1 < funcs.Count)
-            {
-                // TODO: syntaxNode를 가리키도록 해야 합니다
-                errorCollector.Add(name, $"한 개 이상의 {name} 전역 함수가 있습니다");
-            }
-            else
-            {
-                errorCollector.Add(name, $"{name} 이름의 전역 함수가 없습니다");
-            }
-
-            outGlobalFunc = null;
-            return false;
+            outGlobalFunc = funcsBuilder.ToImmutable();
+            return outGlobalFunc.Length != 0;
         }
 
-        public bool GetGlobalVar(string name, [NotNullWhen(returnValue: true)] out QsVariable? outGlobalVar)
+        public bool GetGlobalVars(string name, out ImmutableArray<QsVariable> outGlobalVars)
         {
             var nameElem = new QsNameElem(name, 0);
 
             // 내 스크립트에 있는 전역 변수가 우선한다
-            if (varsById.TryGetValue(new QsVarId(moduleName, nameElem), out var outVar))
+            if (varsById.TryGetValue(new QsVarId(moduleName, nameElem), out var scriptGlobalVar))
             {
-                outGlobalVar = outVar;
+                outGlobalVars = ImmutableArray.Create(scriptGlobalVar);
                 return true;
             }
 
-            var vars = new List<QsVariable>();
+            var varsBuilder = ImmutableArray.CreateBuilder<QsVariable>();
             foreach (var refMetadata in metadatas)
-                if (refMetadata.GetVarById(new QsVarId(refMetadata.ModuleName, nameElem), out var outRefVar))
-                    vars.Add(outRefVar);
+                if (refMetadata.GetVarById(new QsVarId(refMetadata.ModuleName, nameElem), out var refGlobalVar))
+                    varsBuilder.Add(refGlobalVar);
 
-            if (vars.Count == 1)
-            {
-                outGlobalVar = vars[0];
-                return true;
-            }
-            else if (1 < vars.Count)
-            {
-                // TODO: syntaxNode를 가리키도록 해야 합니다
-                errorCollector.Add(name, $"한 개 이상의 {name} 전역 변수가 있습니다");
-            }
-            else
-            {
-                errorCollector.Add(name, $"{name} 이름의 전역 함수가 없습니다");
-            }
-
-            outGlobalVar = null;
-            return false;
+            outGlobalVars = varsBuilder.ToImmutable();
+            return outGlobalVars.Length != 0;
         }
 
         public bool GetGlobalTypeValue(string name, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
-            return GetGlobalTypeValue(name, ImmutableArray<QsTypeValue>.Empty, out outTypeValue);
-        }
-
-        public bool GetGlobalTypeValue(
-            string name, 
-            ImmutableArray<QsTypeValue> typeArgs,             
-            [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
-        {
-            var nameElem = new QsNameElem(name, typeArgs.Length);
-            var candidates = new List<QsTypeValue>();
-
-            // TODO: 추후 namespace 검색도 해야 한다
-            if (typesById.TryGetValue(new QsTypeId(moduleName, nameElem), out var globalType))
-                candidates.Add(new QsNormalTypeValue(null, globalType.TypeId, typeArgs));
-
-            foreach (var refMetadata in metadatas)
+            if (GetGlobalTypeValues(name, ImmutableArray<QsTypeValue>.Empty, out var typeValues) && typeValues.Length == 1)
             {
-                if (refMetadata.GetTypeById(new QsTypeId(refMetadata.ModuleName, nameElem), out var type))
-                    candidates.Add(new QsNormalTypeValue(null, type.TypeId, typeArgs));
-            }
-
-            if (candidates.Count == 1)
-            {
-                outTypeValue = candidates[0];
+                outTypeValue = typeValues[0];
                 return true;
-            }
-            else if (1 < candidates.Count)
-            {
-                outTypeValue = null;
-                errorCollector.Add(name, $"이름이 같은 {name} 타입이 여러개 입니다");
-                return false;
             }
             else
             {
                 outTypeValue = null;
-                errorCollector.Add(name, $"{name} 타입을 찾지 못했습니다");
                 return false;
             }
+        }
+
+        public bool GetGlobalTypeValues(
+            string name, 
+            ImmutableArray<QsTypeValue> typeArgs,             
+            out ImmutableArray<QsTypeValue> outTypeValues)
+        {
+            var nameElem = new QsNameElem(name, typeArgs.Length);
+            var typeValuesBuilder = ImmutableArray.CreateBuilder<QsTypeValue>();
+
+            // TODO: 추후 namespace 검색도 해야 한다
+            if (typesById.TryGetValue(new QsTypeId(moduleName, nameElem), out var globalType))
+                typeValuesBuilder.Add(new QsNormalTypeValue(null, globalType.TypeId, typeArgs));
+
+            foreach (var refMetadata in metadatas)
+            {
+                if (refMetadata.GetTypeById(new QsTypeId(refMetadata.ModuleName, nameElem), out var type))
+                    typeValuesBuilder.Add(new QsNormalTypeValue(null, type.TypeId, typeArgs));
+            }
+
+            outTypeValues = typeValuesBuilder.ToImmutableArray();
+            return outTypeValues.Length != 0;
         }
 
         // class X<T> { class Y<U> { S<T>.List<U> u; } } => MakeTypeValue(X<int>.Y<short>, S<T>.List<U>, context) => S<int>.Dict<short>

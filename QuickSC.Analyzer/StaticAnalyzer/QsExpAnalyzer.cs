@@ -41,8 +41,6 @@ namespace QuickSC.StaticAnalyzer
 
         internal bool AnalyzeIdExpWithStatic(QsIdentifierExp idExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out (bool bStatic, QsTypeValue TypeValue)? outValue)
         {
-            QsTypeValue? typeValue;
-
             // 변수에서 검색
             if (context.CurFunc.GetVarInfo(idExp.Value, out var localVarInfo))
             {
@@ -65,9 +63,16 @@ namespace QuickSC.StaticAnalyzer
 
             // 전역 변수/함수, 레퍼런스에서 검색
             var candidates = new List<(QsTypeValue TypeValue, QsIdentifierExpInfo Info)>();
-            if (idExp.TypeArgs.Length == 0 && context.MetadataService.GetGlobalVar(idExp.Value, out var globalVar))
+            if (idExp.TypeArgs.Length == 0 && context.MetadataService.GetGlobalVars(idExp.Value, out var globalVars))
             {
-                // GlobalVar
+                if (1 < globalVars.Length)
+                {
+                    context.ErrorCollector.Add(idExp, $"{idExp.Value} 이름의 전역 변수가 한 개 이상 있습니다");
+                    outValue = null;
+                    return false;
+                }
+
+                var globalVar = globalVars[0];
                 candidates.Add((globalVar.TypeValue, new QsIdentifierExpInfo(new QsGlobalStorage(globalVar.VarId))));
             }
 
@@ -93,15 +98,25 @@ namespace QuickSC.StaticAnalyzer
             }
 
             // 전역/레퍼런스 타입에서 검색, GlobalType, RefType
-            if (context.MetadataService.GetGlobalTypeValue(idExp.Value, typeArgs, out typeValue))
+            if (context.MetadataService.GetGlobalTypeValues(idExp.Value, typeArgs, out var typeValues))
             {
-                // 여기는 MemberExp로부터만 오기 때문에 MemberExp에 추가해본다
-                outValue = (true, typeValue);
-                return true;
+                if (typeValues.Length == 1)
+                {
+                    // 여기는 MemberExp로부터만 오기 때문에 MemberExp에 추가해본다
+                    outValue = (true, typeValues[0]);
+                    return true;
+                }
+
+                if (1 < candidates.Count)
+                {
+                    outValue = null;
+                    context.ErrorCollector.Add(idExp, $"이름이 같은 {idExp.Value} 타입이 여러개 입니다");
+                    return false;
+                }
             }
 
             outValue = null;
-            context.ErrorCollector.Add(idExp, "가능한 함수, 람다가 없습니다");
+            context.ErrorCollector.Add(idExp, $"이름이 {idExp.Value} 인 함수, 람다, 타입이 가 없습니다");
             return false;
         }
 
@@ -338,8 +353,17 @@ namespace QuickSC.StaticAnalyzer
             // 1. this 검색
 
             // 2. global 검색
-            if (context.MetadataService.GetGlobalFunc(exp.Value, exp.TypeArgs.Length, out var globalFunc))
-            {
+            if (context.MetadataService.GetGlobalFuncs(exp.Value, exp.TypeArgs.Length, out var globalFuncs))
+            {                
+                if (1 < globalFuncs.Length)
+                {
+                    context.ErrorCollector.Add(exp, $"이름이 {exp.Value}인 전역 함수가 여러 개 있습니다");
+                    outValue = null;
+                    return false;                    
+                }
+
+                var globalFunc = globalFuncs[0];
+
                 var typeArgs = ImmutableArray.CreateRange(exp.TypeArgs, typeArg => context.TypeValuesByTypeExp[typeArg]);
 
                 var funcValue = new QsFuncValue(null, globalFunc.FuncId, typeArgs);
@@ -687,12 +711,14 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
 
-            if (!context.MetadataService.GetGlobalTypeValue("List", ImmutableArray.Create(curElemTypeValue), out typeValue))
+            if (!context.MetadataService.GetGlobalTypeValues("List", ImmutableArray.Create(curElemTypeValue), out var typeValues) || 
+                typeValues.Length != 1)
             {
-                Debug.Fail("Runtime에 리스트가 없습니다");
+                Debug.Fail("Runtime에 적합한 리스트가 없습니다");
                 return false;
             }
 
+            typeValue = typeValues[0];
             context.InfosByNode[listExp] = new QsListExpInfo(curElemTypeValue);
             return true;
         }

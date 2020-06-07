@@ -134,7 +134,7 @@ namespace QuickSC.StaticAnalyzer
             context.CurFunc = func;
 
             // 필요한 변수들을 찾는다
-            var elemsBuilder = ImmutableArray.CreateBuilder<QsCaptureInfo.Element>(captureResult.NeedCaptures.Length);
+            var elemsBuilder = ImmutableArray.CreateBuilder<QsCaptureInfo.Element>();
             foreach (var needCapture in captureResult.NeedCaptures)
             {
                 if (context.CurFunc.GetVarInfo(needCapture.VarName, out var localVarInfo))
@@ -142,9 +142,11 @@ namespace QuickSC.StaticAnalyzer
                     elemsBuilder.Add(new QsCaptureInfo.Element(needCapture.Kind, new QsLocalStorage(localVarInfo.Index)));
                     context.CurFunc.AddVarInfo(needCapture.VarName, localVarInfo.TypeValue);
                 }
-                else if (context.MetadataService.GetGlobalVar(needCapture.VarName, out var globalVar))
+                else if (context.MetadataService.GetGlobalVars(needCapture.VarName, out var globalVars))
                 {
+                    // globalVars가 한개 인지 검사는 Body 분석 에서 할 것이기 때문에 하지 않는다
                     continue;
+                    
                     // TODO: 람다에서 글로벌 변수는 캡쳐하지 않는다 QsLambdaExpInfo.Elem.MakeGlobal 제거
                     // elemsBuilder.Add(QsLambdaExpInfo.Elem.MakeGlobal(needCapture.Kind, globalVar.VarId));
                     // context.CurFunc.AddVarInfo(needCapture.VarName, globalVar.TypeValue);
@@ -176,7 +178,7 @@ namespace QuickSC.StaticAnalyzer
             context.bGlobalScope = bPrevGlobalScope;
             context.CurFunc = prevFunc;
 
-            outCaptureInfo = new QsCaptureInfo(false, elemsBuilder.MoveToImmutable());
+            outCaptureInfo = new QsCaptureInfo(false, elemsBuilder.ToImmutable());
             outFuncTypeValue = new QsFuncTypeValue(
                 func.RetTypeValue ?? QsVoidTypeValue.Instance,
                 paramTypeValuesBuilder.MoveToImmutable());

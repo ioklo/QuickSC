@@ -73,13 +73,6 @@ namespace QuickSC
             return false;
         }
 
-        
-
-        private object ApplyTypeValue(QsTypeValue typeValue, object typeEnv)
-        {
-            throw new NotImplementedException();
-        }
-
         // DefaultValue란 무엇인가, 그냥 선언만 되어있는 상태        
         public QsValue GetDefaultValue(QsTypeValue typeValue, QsEvalContext context)
         {
@@ -163,7 +156,8 @@ namespace QuickSC
                         break;
 
                     case QsLocalStorage storage: 
-                        Debug.Assert(context.LocalVars[storage.LocalIndex] == null);
+                        // For문에서 재사용할 수 있다
+                        // Debug.Assert(context.LocalVars[storage.LocalIndex] == null);
                         context.LocalVars[storage.LocalIndex] = value;
                         break;
 
@@ -262,9 +256,13 @@ namespace QuickSC
             }
         }
 
-        public async ValueTask<bool> EvaluateScriptAsync(QsScript script, IQsRuntimeModule runtimeModule, QsDomainService domainService, QsAnalyzeInfo analyzeInfo)
+        public async ValueTask<bool> EvaluateScriptAsync(
+            QsScript script, 
+            IQsRuntimeModule runtimeModule, 
+            QsDomainService domainService, 
+            QsStaticValueService staticValueService, QsAnalyzeInfo analyzeInfo)
         {
-            var context = new QsEvalContext(runtimeModule, domainService, analyzeInfo);
+            var context = new QsEvalContext(runtimeModule, domainService, staticValueService, analyzeInfo);
             await EvaluateScriptAsync(script, context);
 
             return true;
@@ -272,7 +270,7 @@ namespace QuickSC
 
         public QsValue GetStaticValue(QsVarValue varValue, QsEvalContext context)
         {
-            throw new NotImplementedException();
+            return context.StaticValueService.GetValue(varValue);
         }
     }
 }

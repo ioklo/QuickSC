@@ -4,7 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,6 +14,72 @@ namespace QuickSC.Shell
 {
     class Program
     {
+        class QsDemoErrorCollector : IQsErrorCollector
+        {
+            public List<(object, string)> Messages = new List<(object, string)>();
+
+            public bool HasError => Messages.Count != 0;
+
+            public void Add(object obj, string msg)
+            {
+                Messages.Add((obj, msg));
+            }
+        }
+
+        class QsRawCommandProvider : IQsCommandProvider
+        {
+            public Task ExecuteAsync(string cmdText)
+            {
+                var tcs = new TaskCompletionSource<int>();
+
+                var psi = new ProcessStartInfo(cmdText);
+                psi.UseShellExecute = false;
+
+                var process = new Process();
+                process.StartInfo = psi;
+                process.EnableRaisingEvents = true;
+
+                process.Exited += (sender, args) =>
+                {
+                    tcs.SetResult(process.ExitCode);
+                    process.Dispose();
+                };
+
+                process.Start();
+
+                return tcs.Task;
+            }
+        }
+            
+
+        class QsCmdCommandProvider : IQsCommandProvider
+        {   
+            public Task ExecuteAsync(string cmdText)
+            {
+                var tcs = new TaskCompletionSource<int>();
+
+                var psi = new ProcessStartInfo();
+                psi.FileName = "cmd.exe";
+                psi.Arguments = "/c " + cmdText;
+                psi.UseShellExecute = false;
+
+                var process = new Process();
+                process.StartInfo = psi;
+                process.EnableRaisingEvents = true;
+
+                process.Exited += (sender, args) =>
+                {
+                    tcs.SetResult(process.ExitCode);
+                    process.Dispose();
+                };
+
+                process.Start();
+
+                return tcs.Task;
+            }
+        }
+
+
         class QsDemoCommandProvider : IQsCommandProvider
         {
             StringBuilder sb = new StringBuilder();
@@ -49,85 +117,70 @@ namespace QuickSC.Shell
             public string GetOutput() => sb.ToString();
         }
 
-        
-
-        static async Task Main2(string[] args)
+        public static IQsCommandProvider? MakeCommandProvider()
         {
-            // 어디서 부터 조립해야 하나
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                var shellEnv = Environment.GetEnvironmentVariable("SHELL");
+                if (shellEnv != null)
+                    return new QsRawCommandProvider();
 
-            // Application - input -> output 
+                return null;
+            }
 
-            // code
-            var app = new QsApplication(input);
-            await app.RunAsync();
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                // cmd를 사용한다.
+                return new QsCmdCommandProvider();
+            }
+
+            return null;
         }
 
         static async Task Main(string[] args)
         {
+            if (args.Length < 1)
+            {
+                Console.WriteLine("Usage: QuickSC.Shell [script file]");
+                return;
+            }
+
             try
             {
-                var lexer = new QsLexer();
-                var parser = new QsParser(lexer);
-
-                var cmdProvider = new QsDemoCommandProvider();
-
-                // var typeValueFactory = new QsTypeValueFactory();                
-
-                var runtimeModule = new QsRuntimeModule();
-
-                var evaluator = new QsEvaluator(cmdProvider, runtimeModule);
-                
-                var input = @"
-
-enum X
-{
-    First,
-    Second (int i)
-}
-
-var x = X.First;
-x = X.Second (2);
-
-if (x is X.First)
-    @echo hi
-
-";
-                var buffer = new QsBuffer(new StringReader(input));
-                var pos = await buffer.MakePosition().NextAsync();
-                var parserContext = QsParserContext.Make(QsLexerContext.Make(pos));
-
-                var scriptResult = await parser.ParseScriptAsync(parserContext);
-                if (!scriptResult.HasValue)
+                var cmdProvider = MakeCommandProvider();
+                if (cmdProvider == null)
                 {
-                    Console.WriteLine("파싱에 실패했습니다");
+                    Console.WriteLine("Failed to choose appropriate command provider");
                     return;
                 }
 
-                var errors = new List<(object obj, string Message)>();
-                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem, errors, ImmutableArray.Create<IQsMetadata>(runtimeModule));
-                if (analyzerContext == null || 0 < errors.Count)
-                {   
-                    foreach(var error in errors)
-                    {
-                        Console.WriteLine(error.Message);
-                    }
+                // code
+                var app = new QsDefaultApplication(cmdProvider);
+                var runtimeModule = new QsRuntimeModule();
+                var errorCollector = new QsDemoErrorCollector();
 
-
-                    Console.WriteLine("분석에 실패했습니다");
-                    return;
-                }                
-                    
-                var evalContext = QsEvalContext.Make(analyzerContext);
-                var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);
-                if (!newEvalContext.HasValue)
+                using (var stream = new StreamReader(args[0]))
                 {
-                    Console.WriteLine("실행에 실패했습니다");
-                    return;
+                    var input = await stream.ReadToEndAsync();
+                    var moduleName = Path.GetFileNameWithoutExtension(args[0]);
+                    var runResult = await app.RunAsync(moduleName, input, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
+                    
+                    if (errorCollector.HasError)
+                    {
+                        foreach(var (obj, msg) in errorCollector.Messages)
+                        {
+                            Console.WriteLine($"{obj}: {msg}");
+                        }
+                    }
+                    else if (!runResult)
+                    {
+                        Console.WriteLine("실행 에러");
+                    }
                 }
             }
             catch(Exception e)
             {
-                Console.WriteLine(e);
+                Console.WriteLine(e.ToString());
             }
         }
     }

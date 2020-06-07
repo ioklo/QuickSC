@@ -10,12 +10,13 @@ using System.Collections.Immutable;
 using System.Threading;
 using QuickSC.StaticAnalyzer;
 using QuickSC.Runtime;
+using System.Linq;
 
 namespace QuickSC.Blazor
 {
     public class Program
     {
-        static IJSRuntime? jsRuntime;
+        internal static IJSRuntime? jsRuntime;
 
         public static async Task Main(string[] args)
         {
@@ -33,6 +34,18 @@ namespace QuickSC.Blazor
         static async Task WriteAsync(string msg)
         {
             await jsRuntime.InvokeVoidAsync("writeConsole", msg);
+        }
+
+        class QsDemoErrorCollector : IQsErrorCollector
+        {
+            public List<(object, string)> Messages = new List<(object, string)>();
+
+            public bool HasError => Messages.Count != 0;
+
+            public void Add(object obj, string msg)
+            {
+                Messages.Add((obj, msg));
+            }
         }
 
         class QsDemoCommandProvider : IQsCommandProvider
@@ -75,45 +88,27 @@ namespace QuickSC.Blazor
         {
             try
             {
-                var lexer = new QsLexer();
-                var parser = new QsParser(lexer);
-                var buffer = new QsBuffer(new StringReader(input));
-                var pos = await buffer.MakePosition().NextAsync();
-                var parserContext = QsParserContext.Make(QsLexerContext.Make(pos));
-
-                var scriptResult = await parser.ParseScriptAsync(parserContext);
-                if (!scriptResult.HasValue)
-                {
-                    await WriteAsync("에러 (파싱 실패)");
-                    return false;
-                }
-
+                var demoCmdProvider = new QsDemoCommandProvider();
+                var app = new QsDefaultApplication(demoCmdProvider);
                 var runtimeModule = new QsRuntimeModule();
-                var errors = new List<(object obj, string Message)>();
-                var analyzerContext = QsAnalyzer.AnalyzeScript(scriptResult.Elem, errors, ImmutableArray.Create<IQsMetadata>(runtimeModule));
+                var errorCollector = new QsDemoErrorCollector();
 
-                if (analyzerContext == null || 0 < errors.Count)
+                var runResult = await app.RunAsync("Demo", input, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
+                
+                if (errorCollector.HasError)
                 {
-                    await WriteAsync("에러 (타입 체킹 실패)"); // 다들 아는 단어로
+                    foreach(var (obj, msg) in errorCollector.Messages)
+                    {
+                        await WriteAsync(string.Join("\n", errorCollector.Messages.Select(m => m.Item2)));
+                    }
+
                     return false;
                 }
 
-                var demoCmdProvider = new QsDemoCommandProvider();                
+                if (!runResult)
+                    await WriteAsync("실행 실패");
 
-                var evaluator = new QsEvaluator(demoCmdProvider, runtimeModule);
-                var evalContext = QsEvalContext.Make(new QsEvalStaticContext(
-                    analyzerContext.TypeValuesByTypeExp.ToImmutableDictionary(),
-                    analyzerContext.StoragesByExp.ToImmutableDictionary(),
-                    analyzerContext.CaptureInfosByLocation.ToImmutableDictionary()));
-
-                var newEvalContext = await evaluator.EvaluateScriptAsync(scriptResult.Elem, evalContext);
-                if (newEvalContext == null)
-                {
-                    await WriteAsync("에러 (실행 실패)");
-                    return false;
-                }
-
-                return true;
+                return runResult;
             }
             catch (Exception e)
             {

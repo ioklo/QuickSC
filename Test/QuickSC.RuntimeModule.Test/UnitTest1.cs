@@ -33,8 +33,7 @@ namespace QuickSC.RuntimeModule.Test
                 ImmutableDictionary<QsTypeId, QsType>.Empty, 
                 ImmutableDictionary<QsFuncId, QsFunc>.Empty, 
                 ImmutableDictionary<QsVarId, QsVariable>.Empty,
-                ImmutableArray.Create<IQsMetadata>(runtimeModule),
-                errorCollector);
+                ImmutableArray.Create<IQsMetadata>(runtimeModule));
 
             QsDomainService domainService = new QsDomainService(metadataService, runtimeModule, Enumerable.Empty<IQsModule>());            
 

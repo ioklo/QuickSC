@@ -13,6 +13,7 @@ namespace QuickSC
     {
         public IQsRuntimeModule RuntimeModule { get; }
         public QsDomainService DomainService { get; }
+        public QsStaticValueService StaticValueService { get; }
         public QsAnalyzeInfo AnalyzeInfo { get; }
 
         // 모든 모듈의 전역 변수
@@ -23,10 +24,15 @@ namespace QuickSC
         public ImmutableArray<Task> Tasks { get; private set; }
         public QsValue? ThisValue { get; set; }
 
-        public QsEvalContext(IQsRuntimeModule runtimeModule, QsDomainService domainService, QsAnalyzeInfo analyzeInfo)
+        public QsEvalContext(
+            IQsRuntimeModule runtimeModule, 
+            QsDomainService domainService, 
+            QsStaticValueService staticValueService,
+            QsAnalyzeInfo analyzeInfo)
         {
             RuntimeModule = runtimeModule;
             DomainService = domainService;
+            StaticValueService = staticValueService;
 
             AnalyzeInfo = analyzeInfo;
             GlobalVars = new Dictionary<QsVarId, QsValue>();
@@ -46,6 +52,7 @@ namespace QuickSC
         {
             RuntimeModule = other.RuntimeModule;
             DomainService = other.DomainService;
+            StaticValueService = other.StaticValueService;
             AnalyzeInfo = other.AnalyzeInfo;
             GlobalVars = other.GlobalVars;
 

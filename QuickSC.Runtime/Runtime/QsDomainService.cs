@@ -112,6 +112,6 @@ namespace QuickSC.Runtime
             }
 
             return new QsTypeEnv(builder.ToImmutable());
-        }
+        }        
     }
 }

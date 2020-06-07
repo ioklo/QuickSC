@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC
 {
-    class QsDefaultApplication
+    public class QsDefaultApplication
     {
         QsParser parser;
         QsTypeSkeletonCollector typeSkeletonCollector;
@@ -64,7 +64,7 @@ namespace QuickSC
                 typeAndFuncBuildResult.Types.ToImmutableDictionary(type => type.TypeId),
                 typeAndFuncBuildResult.Funcs.ToImmutableDictionary(func => func.FuncId),
                 typeAndFuncBuildResult.Vars.ToImmutableDictionary(v => v.VarId),
-                metadatas, errorCollector);
+                metadatas);
 
             // globalVariable이 빠진상태            
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
@@ -75,7 +75,9 @@ namespace QuickSC
 
             var domainService = new QsDomainService(metadataService, runtimeModule, modulesExceptRuntimeModule.Add(scriptModule));
 
-            if (!await evaluator.EvaluateScriptAsync(script, runtimeModule, domainService, analyzeInfo))
+            var staticValueService = new QsStaticValueService();
+
+            if (!await evaluator.EvaluateScriptAsync(script, runtimeModule, domainService, staticValueService, analyzeInfo))
                 return false;
 
             return true;

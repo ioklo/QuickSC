@@ -76,6 +76,9 @@ namespace QuickSC.StaticAnalyzer
             if (!context.MetadataService.GetGlobalTypeValue("bool", out var boolTypeValue))
                 Debug.Fail("Runtime에 bool타입이 없습니다");
 
+            var (prevFunc, prevVarTypeValues, bPrevGlobalScope) = (context.CurFunc, context.CurFunc.GetVariables(), context.bGlobalScope);
+            context.bGlobalScope = false;
+
             if (forStmt.Initializer != null)
                 AnalyzeForStmtInitializer(forStmt.Initializer, context);
 
@@ -94,6 +97,10 @@ namespace QuickSC.StaticAnalyzer
                 analyzer.AnalyzeExp(forStmt.ContinueExp, context, out var _);
 
             analyzer.AnalyzeStmt(forStmt.Body, context);
+            
+            Debug.Assert(prevFunc == context.CurFunc);
+            context.bGlobalScope = bPrevGlobalScope;
+            context.CurFunc.SetVariables(prevVarTypeValues);
         }
 
         void AnalyzeContinueStmt(QsContinueStmt continueStmt, QsAnalyzerContext context)

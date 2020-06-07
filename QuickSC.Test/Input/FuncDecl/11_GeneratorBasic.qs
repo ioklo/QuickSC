@@ -1,4 +1,6 @@
-﻿seq int Func()
+﻿// 123
+
+seq int Func()
 {
     yield 1;
     yield 2;
