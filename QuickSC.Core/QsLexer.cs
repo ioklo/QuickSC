@@ -411,6 +411,10 @@ namespace QuickSC
 
                 // 코멘트 처리
                 var commentBeginPos = await ConsumeAsync("//", context.Pos);
+
+                if (!commentBeginPos.HasValue)
+                    commentBeginPos = await ConsumeAsync("#", context.Pos);
+
                 if (commentBeginPos.HasValue)
                 {
                     context = context.UpdatePos(commentBeginPos.Value);
