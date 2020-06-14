@@ -320,6 +320,7 @@ namespace QuickSC.StaticAnalyzer
                 case QsBreakStmt breakStmt: AnalyzeBreakStmt(breakStmt, context); break;
                 case QsReturnStmt returnStmt: AnalyzeReturnStmt(returnStmt, context); break;
                 case QsBlockStmt blockStmt: AnalyzeBlockStmt(blockStmt, context); break;
+                case QsBlankStmt _: break;
                 case QsExpStmt expStmt: AnalyzeExpStmt(expStmt, context); break;
                 case QsTaskStmt taskStmt: AnalyzeTaskStmt(taskStmt, context); break;
                 case QsAwaitStmt awaitStmt: AnalyzeAwaitStmt(awaitStmt, context); break;

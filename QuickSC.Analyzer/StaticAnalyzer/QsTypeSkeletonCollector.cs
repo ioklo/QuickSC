@@ -11,21 +11,17 @@ namespace QuickSC.StaticAnalyzer
 {
     public class QsTypeSkeletonCollectorContext
     {
-        public string ModuleName { get; }
-        public Dictionary<QsNameElem, QsTypeSkeleton> GlobalTypeSkeletons { get; }
-        public Dictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
-        public Dictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
-        public Dictionary<QsTypeId, QsTypeSkeleton> TypeSkeletonsByTypeId { get; }
+        public Dictionary<QsMetadataIdLocation, QsMetaItemId> TypeIdsByLocation { get; }
+        public Dictionary<QsMetadataIdLocation, QsMetaItemId> FuncIdsByLocation { get; }
+        public Dictionary<QsMetaItemId, QsTypeSkeleton> TypeSkeletonsByTypeId { get; }
 
         public QsTypeSkeleton? ScopeSkeleton { get; set; }
 
-        public QsTypeSkeletonCollectorContext(string moduleName)
-        {
-            ModuleName = moduleName;
-            GlobalTypeSkeletons = new Dictionary<QsNameElem, QsTypeSkeleton>();
-            TypeIdsByLocation = new Dictionary<QsTypeIdLocation, QsTypeId>();
-            FuncIdsByLocation = new Dictionary<QsFuncIdLocation, QsFuncId>();
-            TypeSkeletonsByTypeId = new Dictionary<QsTypeId, QsTypeSkeleton>();
+        public QsTypeSkeletonCollectorContext()
+        {            
+            TypeIdsByLocation = new Dictionary<QsMetadataIdLocation, QsMetaItemId>();
+            FuncIdsByLocation = new Dictionary<QsMetadataIdLocation, QsMetaItemId>();
+            TypeSkeletonsByTypeId = new Dictionary<QsMetaItemId, QsTypeSkeleton>();
             ScopeSkeleton = null;
         }
 
@@ -47,23 +43,20 @@ namespace QuickSC.StaticAnalyzer
         // X, Y, Y.P
 
         // 각종 Decl -> TypeId        
-        // (QsTypeId parentTypeId, 
+        // (QsMetaItemId parentTypeId, 
     }
 
     public class QsTypeSkelCollectResult
     {
-        public ImmutableDictionary<QsNameElem, QsTypeSkeleton> GlobalTypeSkeletons { get; }
-        public ImmutableDictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
-        public ImmutableDictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
-        public ImmutableDictionary<QsTypeId, QsTypeSkeleton> TypeSkeletonsByTypeId { get; }
+        public ImmutableDictionary<QsMetadataIdLocation, QsMetaItemId> TypeIdsByLocation { get; }
+        public ImmutableDictionary<QsMetadataIdLocation, QsMetaItemId> FuncIdsByLocation { get; }
+        public ImmutableDictionary<QsMetaItemId, QsTypeSkeleton> TypeSkeletonsByTypeId { get; }
 
         public QsTypeSkelCollectResult(
-            ImmutableDictionary<QsNameElem, QsTypeSkeleton> globalTypeSkeletons,
-            ImmutableDictionary<QsTypeIdLocation, QsTypeId> typeIdsByLocation,
-            ImmutableDictionary<QsFuncIdLocation, QsFuncId> funcIdsByLocation,
-            ImmutableDictionary<QsTypeId, QsTypeSkeleton> typeSkeletonsByTypeId)
+            ImmutableDictionary<QsMetadataIdLocation, QsMetaItemId> typeIdsByLocation,
+            ImmutableDictionary<QsMetadataIdLocation, QsMetaItemId> funcIdsByLocation,
+            ImmutableDictionary<QsMetaItemId, QsTypeSkeleton> typeSkeletonsByTypeId)
         {
-            GlobalTypeSkeletons = globalTypeSkeletons;
             TypeIdsByLocation = typeIdsByLocation;
             FuncIdsByLocation = funcIdsByLocation;
             TypeSkeletonsByTypeId = typeSkeletonsByTypeId;
@@ -76,15 +69,15 @@ namespace QuickSC.StaticAnalyzer
         {
         }
         
-        QsTypeSkeleton MakeSkeleton(QsTypeIdLocation loc, string name, int typeParamCount, QsTypeSkeletonCollectorContext context)
+        QsTypeSkeleton MakeSkeleton(QsMetadataIdLocation loc, string name, int typeParamCount, QsTypeSkeletonCollectorContext context)
         {
-            var nameElem = new QsNameElem(name, typeParamCount);
+            var nameElem = new QsMetaItemIdElem(name, typeParamCount);
 
-            QsTypeId typeId;
+            QsMetaItemId typeId;
             if (context.ScopeSkeleton != null)
-                typeId = new QsTypeId(context.ModuleName, context.ScopeSkeleton.TypeId.Elems.Add(nameElem));
+                typeId = context.ScopeSkeleton.TypeId.Append(nameElem);
             else
-                typeId = new QsTypeId(context.ModuleName, nameElem);
+                typeId = new QsMetaItemId(nameElem);
 
             context.TypeIdsByLocation.Add(loc, typeId);
 
@@ -93,15 +86,13 @@ namespace QuickSC.StaticAnalyzer
 
             if (context.ScopeSkeleton != null)
                 context.ScopeSkeleton.MemberSkeletons.Add(nameElem, skeleton);
-            else
-                context.GlobalTypeSkeletons.Add(nameElem, skeleton);
 
             return skeleton;
         }
 
         bool CollectEnumDecl(QsEnumDecl enumDecl, QsTypeSkeletonCollectorContext context)
         {            
-            var skeleton = MakeSkeleton(QsTypeIdLocation.Make(enumDecl), enumDecl.Name, enumDecl.TypeParams.Length, context);
+            var skeleton = MakeSkeleton(QsMetadataIdLocation.Make(enumDecl), enumDecl.Name, enumDecl.TypeParams.Length, context);
 
             // 여기서는 직접 
             var prevScopeSkeleton = context.ScopeSkeleton;
@@ -109,12 +100,12 @@ namespace QuickSC.StaticAnalyzer
 
             foreach (var elem in enumDecl.Elems)
             {
-                MakeSkeleton(QsTypeIdLocation.Make(elem), elem.Name, 0, context); // memberType은 타입파라미터가 없어야 한다
+                MakeSkeleton(QsMetadataIdLocation.Make(elem), elem.Name, 0, context); // memberType은 타입파라미터가 없어야 한다
 
                 if (0 < elem.Params.Length)
                 {
-                    var funcId = new QsFuncId(context.ModuleName, skeleton.TypeId.Elems.Add(new QsNameElem(elem.Name, 0)));
-                    context.FuncIdsByLocation[QsFuncIdLocation.Make(elem)] = funcId;
+                    var funcId = skeleton.TypeId.Append(elem.Name, 0);
+                    context.FuncIdsByLocation[QsMetadataIdLocation.Make(elem)] = funcId;
                 }
             }
 
@@ -128,8 +119,8 @@ namespace QuickSC.StaticAnalyzer
             // TODO: 현재는 최상위만
             Debug.Assert(context.ScopeSkeleton == null);
 
-            var funcId = new QsFuncId(context.ModuleName, new QsNameElem(funcDecl.Name, funcDecl.TypeParams.Length));
-            context.FuncIdsByLocation[QsFuncIdLocation.Make(funcDecl)] = funcId;
+            var funcId = new QsMetaItemId(new QsMetaItemIdElem(funcDecl.Name, funcDecl.TypeParams.Length));
+            context.FuncIdsByLocation[QsMetadataIdLocation.Make(funcDecl)] = funcId;
             return true;
         }
 
@@ -154,9 +145,9 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public bool CollectScript(string moduleName, QsScript script, IQsErrorCollector errorCollector, [NotNullWhen(returnValue: true)] out QsTypeSkelCollectResult? outResult)
+        public bool CollectScript(QsScript script, IQsErrorCollector errorCollector, [NotNullWhen(returnValue: true)] out QsTypeSkelCollectResult? outResult)
         {
-            var context = new QsTypeSkeletonCollectorContext(moduleName);
+            var context = new QsTypeSkeletonCollectorContext();
             if (!CollectScript(script, context))
             {
                 errorCollector.Add(script, $"타입 정보 모으기에 실패했습니다");
@@ -165,7 +156,6 @@ namespace QuickSC.StaticAnalyzer
             }
 
             outResult = new QsTypeSkelCollectResult(
-                context.GlobalTypeSkeletons.ToImmutableDictionary(),
                 context.TypeIdsByLocation.ToImmutableDictionary(),
                 context.FuncIdsByLocation.ToImmutableDictionary(),
                 context.TypeSkeletonsByTypeId.ToImmutableDictionary());

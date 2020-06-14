@@ -14,8 +14,8 @@ namespace QuickSC.StaticAnalyzer
     {
         public string ModuleName { get; }
 
-        public ImmutableDictionary<QsTypeIdLocation, QsTypeId> TypeIdsByLocation { get; }
-        public ImmutableDictionary<QsFuncIdLocation, QsFuncId> FuncIdsByLocation { get; }
+        public ImmutableDictionary<QsMetadataIdLocation, QsMetaItemId> TypeIdsByLocation { get; }
+        public ImmutableDictionary<QsMetadataIdLocation, QsMetaItemId> FuncIdsByLocation { get; }
         public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
 
         public QsTypeBuilder? TypeBuilder { get; set; }
@@ -66,21 +66,21 @@ namespace QuickSC.StaticAnalyzer
     class QsTypeBuilder
     {
         public QsTypeValue ThisTypeValue { get; }
-        public Dictionary<string, QsTypeId> MemberTypeIds { get; }
-        public Dictionary<string, QsFuncId> StaticMemberFuncIds { get; }
-        public Dictionary<string, QsVarId> StaticMemberVarIds { get; }
-        public Dictionary<QsName, QsFuncId> MemberFuncIds { get; }
-        public Dictionary<string, QsVarId> MemberVarIds { get; }
+        public Dictionary<QsName, QsMetaItemId> MemberTypeIds { get; }
+        public Dictionary<QsName, QsMetaItemId> StaticMemberFuncIds { get; }
+        public Dictionary<QsName, QsMetaItemId> StaticMemberVarIds { get; }
+        public Dictionary<QsName, QsMetaItemId> MemberFuncIds { get; }
+        public Dictionary<QsName, QsMetaItemId> MemberVarIds { get; }
 
         public QsTypeBuilder(QsTypeValue thisTypeValue)
         {
             ThisTypeValue = thisTypeValue;
 
-            MemberTypeIds = new Dictionary<string, QsTypeId>();
-            StaticMemberFuncIds = new Dictionary<string, QsFuncId>();
-            StaticMemberVarIds = new Dictionary<string, QsVarId>();
-            MemberFuncIds = new Dictionary<QsName, QsFuncId>();
-            MemberVarIds = new Dictionary<string, QsVarId>();
+            MemberTypeIds = new Dictionary<QsName, QsMetaItemId>();
+            StaticMemberFuncIds = new Dictionary<QsName, QsMetaItemId>();
+            StaticMemberVarIds = new Dictionary<QsName, QsMetaItemId>();
+            MemberFuncIds = new Dictionary<QsName, QsMetaItemId>();
+            MemberVarIds = new Dictionary<QsName, QsMetaItemId>();
         }
     }
 
@@ -97,16 +97,16 @@ namespace QuickSC.StaticAnalyzer
 
             // 타입 추가
             var elemType = new QsDefaultType(
-                context.TypeIdsByLocation[QsTypeIdLocation.Make(elem)], 
+                context.TypeIdsByLocation[QsMetadataIdLocation.Make(elem)], 
                 ImmutableArray<string>.Empty,                
                 thisTypeValue, // enum E<T>{ First } => E<T>.First : E<T>
-                ImmutableDictionary<string, QsTypeId>.Empty,
-                ImmutableDictionary<string, QsFuncId>.Empty,
-                ImmutableDictionary<string, QsVarId>.Empty,
-                ImmutableDictionary<QsName, QsFuncId>.Empty,
-                ImmutableDictionary<string, QsVarId>.Empty);
+                ImmutableArray<QsMetaItemId>.Empty,
+                ImmutableArray<QsMetaItemId>.Empty,
+                ImmutableArray<QsMetaItemId>.Empty,
+                ImmutableArray<QsMetaItemId>.Empty,
+                ImmutableArray<QsMetaItemId>.Empty);
 
-            context.TypeBuilder.MemberTypeIds.Add(elem.Name, elemType.TypeId);
+            context.TypeBuilder.MemberTypeIds.Add(QsName.Text(elem.Name), elemType.TypeId);
 
             if (0 < elem.Params.Length)
             {
@@ -120,38 +120,40 @@ namespace QuickSC.StaticAnalyzer
                 // Func를 만들까 FuncSkeleton을 만들까
                 var func = MakeFunc(
                     null,
-                    context.FuncIdsByLocation[QsFuncIdLocation.Make(elem)], 
+                    context.FuncIdsByLocation[QsMetadataIdLocation.Make(elem)],
+                    false,
                     false, 
                     ImmutableArray<string>.Empty, 
                     thisTypeValue, 
                     argTypes.MoveToImmutable(), 
                     context);
 
-                context.TypeBuilder.StaticMemberFuncIds.Add(elem.Name, func.FuncId);
+                context.TypeBuilder.StaticMemberFuncIds.Add(QsName.Text(elem.Name), func.FuncId);
             }
             else
             {
                 // NOTICE : E.First 타입이 아니라 E 타입이다 var x = E.First; 에서 x는 E여야 하기 떄문
                 var variable = MakeVar(
-                    new QsVarId(context.ModuleName, new QsNameElem(elem.Name, 0)),
+                    new QsMetaItemId(new QsMetaItemIdElem(elem.Name, 0)),
                     bStatic: true,
                     thisTypeValue,
                     context);
 
-                context.TypeBuilder.StaticMemberVarIds.Add(elem.Name, variable.VarId); 
+                context.TypeBuilder.StaticMemberVarIds.Add(QsName.Text(elem.Name), variable.VarId); 
             }
         }
 
         private QsFunc MakeFunc(
             QsFuncDecl? funcDecl,
-            QsFuncId funcId,
+            QsMetaItemId funcId,
+            bool bSeqCall,
             bool bThisCall,            
             ImmutableArray<string> typeParams,
             QsTypeValue retTypeValue,
             ImmutableArray<QsTypeValue> argTypeValues,
             QsTypeAndFuncBuilderContext context)
         {   
-            var func = new QsFunc(funcId, bThisCall, typeParams, retTypeValue, argTypeValues);
+            var func = new QsFunc(funcId, bSeqCall, bThisCall, typeParams, retTypeValue, argTypeValues);
             context.Funcs.Add(func);
 
             if (funcDecl != null)
@@ -161,7 +163,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         private QsVariable MakeVar(
-            QsVarId varId,
+            QsMetaItemId varId,
             bool bStatic,
             QsTypeValue typeValue,
             QsTypeAndFuncBuilderContext context)
@@ -174,7 +176,7 @@ namespace QuickSC.StaticAnalyzer
 
         void BuildEnumDecl(QsEnumDecl enumDecl, QsTypeAndFuncBuilderContext context)
         {
-            var typeId = context.TypeIdsByLocation[QsTypeIdLocation.Make(enumDecl)];
+            var typeId = context.TypeIdsByLocation[QsMetadataIdLocation.Make(enumDecl)];
             
             var thisTypeValue = new QsNormalTypeValue(
                 context.TypeBuilder?.ThisTypeValue,
@@ -191,11 +193,11 @@ namespace QuickSC.StaticAnalyzer
                 typeId,
                 enumDecl.TypeParams,
                 null, // TODO: Enum이던가 Object여야 한다,
-                context.TypeBuilder.MemberTypeIds.ToImmutableDictionary(),
-                context.TypeBuilder.StaticMemberFuncIds.ToImmutableDictionary(),
-                context.TypeBuilder.StaticMemberVarIds.ToImmutableDictionary(),
-                context.TypeBuilder.MemberFuncIds.ToImmutableDictionary(),
-                context.TypeBuilder.MemberVarIds.ToImmutableDictionary());
+                context.TypeBuilder.MemberTypeIds.Values.ToImmutableArray(),
+                context.TypeBuilder.StaticMemberFuncIds.Values.ToImmutableArray(),
+                context.TypeBuilder.StaticMemberVarIds.Values.ToImmutableArray(),
+                context.TypeBuilder.MemberFuncIds.Values.ToImmutableArray(),
+                context.TypeBuilder.MemberVarIds.Values.ToImmutableArray());
 
             context.TypeBuilder = prevTypeBuilder;
 
@@ -208,7 +210,8 @@ namespace QuickSC.StaticAnalyzer
 
             var func = MakeFunc(
                 funcDecl,
-                context.FuncIdsByLocation[QsFuncIdLocation.Make(funcDecl)],
+                context.FuncIdsByLocation[QsMetadataIdLocation.Make(funcDecl)],
+                funcDecl.FuncKind == QsFuncKind.Sequence,
                 bThisCall,
                 funcDecl.TypeParams,
                 context.TypeValuesByTypeExp[funcDecl.RetType],

@@ -54,11 +54,12 @@ namespace QuickSC
             {
                 // 분석기가 미리 계산해 놓은 TypeValue를 가져온다
                 var ifStmtInfo = (QsIfStmtInfo)context.AnalyzeInfo.InfosByNode[stmt];
-                var testTypeInst = context.DomainService.GetTypeInst(ifStmtInfo.TestTypeValue);
 
-                var condValueTypeInst = condValue.GetTypeInst();
+                var condValueTypeValue = condValue.GetTypeInst().TypeValue;
 
-                bTestPassed = evaluator.IsType(condValueTypeInst, testTypeInst, context);
+                Debug.Assert(condValueTypeValue is QsNormalTypeValue);
+                Debug.Assert(ifStmtInfo.TestTypeValue is QsNormalTypeValue);
+                bTestPassed = evaluator.IsType((QsNormalTypeValue)condValueTypeValue, (QsNormalTypeValue)ifStmtInfo.TestTypeValue, context);
             }
 
             if (bTestPassed)
@@ -315,6 +316,8 @@ namespace QuickSC
                     await foreach (var result in EvaluateBlockStmtAsync(blockStmt, context))
                         yield return result;
                     break;
+
+                case QsBlankStmt blankStmt: break;
 
                 case QsExpStmt expStmt: await EvaluateExpStmtAsync(expStmt, context); break;
                 case QsTaskStmt taskStmt: EvaluateTaskStmt(taskStmt, context); break;

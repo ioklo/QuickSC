@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace QuickSC.Shell
@@ -156,14 +157,14 @@ namespace QuickSC.Shell
 
                 // code
                 var app = new QsDefaultApplication(cmdProvider);
-                var runtimeModule = new QsRuntimeModule();
+                var runtimeModuleInfo = new QsRuntimeModuleInfo();
                 var errorCollector = new QsDemoErrorCollector();
 
                 using (var stream = new StreamReader(args[0]))
                 {
                     var input = await stream.ReadToEndAsync();
                     var moduleName = Path.GetFileNameWithoutExtension(args[0]);
-                    var runResult = await app.RunAsync(moduleName, input, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
+                    var runResult = await app.RunAsync(moduleName, input, runtimeModuleInfo, ImmutableArray<IQsModule>.Empty, errorCollector);
                     
                     if (errorCollector.HasError)
                     {
@@ -172,7 +173,7 @@ namespace QuickSC.Shell
                             Console.WriteLine($"{obj}: {msg}");
                         }
                     }
-                    else if (!runResult)
+                    else if (runResult == null)
                     {
                         Console.WriteLine("실행 에러");
                     }

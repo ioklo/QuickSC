@@ -3,73 +3,122 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace QuickSC
-{    
+{   
+    // TODO: Infra 로 옮긴다
+    public class MultiDictionary<TKey, TValue> where TValue : notnull
+    {
+        Dictionary<TKey, List<TValue>> dict;
+
+        public MultiDictionary()
+        {
+            dict = new Dictionary<TKey, List<TValue>>();
+        }
+
+        public void Add(TKey key, TValue value)
+        {
+            if (!dict.TryGetValue(key, out var list))
+            {
+                list = new List<TValue>();                
+                dict.Add(key, list);
+            }
+
+            list.Add(value);
+        }
+
+        public bool GetSingleValue(TKey key, [MaybeNullWhen(returnValue: false)] out TValue outValue)
+        {
+            if (!dict.TryGetValue(key, out var list))
+            {
+                outValue = default;
+                return false;
+            }
+
+            if (list.Count != 1)
+            {
+                outValue = default;
+                return false;
+            }
+
+            outValue = list[0];
+            return true;
+        }
+
+        public IEnumerable<TValue> GetMultiValues(TKey key)
+        {
+            if (!dict.TryGetValue(key, out var list))
+                yield break;
+
+            foreach (var elem in list)
+                yield return elem;
+        }
+    }
+
     public class QsMetadataService
     {
-        string moduleName;
-        ImmutableDictionary<QsTypeId, QsType> typesById;
-        ImmutableDictionary<QsFuncId, QsFunc> funcsById;
-        ImmutableDictionary<QsVarId, QsVariable> varsById;
+        MultiDictionary<QsMetaItemId, QsType> typesById;
+        MultiDictionary<QsMetaItemId, QsFunc> funcsById;
+        MultiDictionary<QsMetaItemId, QsVariable> varsById;
 
-        ImmutableArray<IQsMetadata> metadatas;
-
-        public QsMetadataService(
-            string moduleName,
-            ImmutableDictionary<QsTypeId, QsType> typesById,
-            ImmutableDictionary<QsFuncId, QsFunc> funcsById,
-            ImmutableDictionary<QsVarId, QsVariable> varsById,
-            ImmutableArray<IQsMetadata> metadatas)
+        public QsMetadataService(            
+            IEnumerable<QsType> scriptTypes,
+            IEnumerable<QsFunc> scriptFuncs,
+            IEnumerable<QsVariable> scriptVars,
+            IEnumerable<IQsMetadata> metadatas)
         {
-            this.moduleName = moduleName;
-            this.typesById = typesById;
-            this.funcsById = funcsById;
-            this.varsById = varsById;
+            typesById = new MultiDictionary<QsMetaItemId, QsType>();
+            funcsById = new MultiDictionary<QsMetaItemId, QsFunc>();
+            varsById = new MultiDictionary<QsMetaItemId, QsVariable>();
 
-            this.metadatas = metadatas;
-        }
-        
+            foreach (var scriptType in scriptTypes)
+                typesById.Add(scriptType.TypeId, scriptType);
 
-        public bool GetTypeById(QsTypeId typeId, [NotNullWhen(returnValue: true)] out QsType? outType)
-        {
-            if (typeId.ModuleName == moduleName)
-                return typesById.TryGetValue(typeId, out outType);
+            foreach (var scriptFunc in scriptFuncs)
+                funcsById.Add(scriptFunc.FuncId, scriptFunc);
+
+            foreach (var scriptVar in scriptVars)
+                varsById.Add(scriptVar.VarId, scriptVar);
             
             foreach (var metadata in metadatas)
-                if (typeId.ModuleName == metadata.ModuleName)
-                    return metadata.GetTypeById(typeId, out outType);
+            {
+                foreach(var type in metadata.Types)
+                    typesById.Add(type.TypeId, type);
 
-            outType = null;
-            return false;
+                foreach (var func in metadata.Funcs)
+                    funcsById.Add(func.FuncId, func);
+
+                foreach (var variable in metadata.Vars)
+                    varsById.Add(variable.VarId, variable);
+            }
         }
 
-        public bool GetFuncById(QsFuncId funcId, [NotNullWhen(returnValue: true)] out QsFunc? outFunc)
+        public bool GetTypeById(QsMetaItemId typeId, [NotNullWhen(returnValue: true)] out QsType? outType)
         {
-            if (funcId.ModuleName == moduleName)
-                return funcsById.TryGetValue(funcId, out outFunc);
-
-            foreach (var metadata in metadatas)
-                if (funcId.ModuleName == metadata.ModuleName)
-                    return metadata.GetFuncById(funcId, out outFunc);
-
-            outFunc = null;
-            return false;
+            return typesById.GetSingleValue(typeId, out outType);
+        }
+        
+        public IEnumerable<QsType> GetTypesById(QsMetaItemId typeId)
+        {
+            return typesById.GetMultiValues(typeId);
         }
 
-        public bool GetVarById(QsVarId varId, [NotNullWhen(returnValue: true)] out QsVariable? outVar)
+        public bool GetFuncById(QsMetaItemId funcId, [NotNullWhen(returnValue: true)] out QsFunc? outFunc)
         {
-            if (varId.ModuleName == moduleName)
-                return varsById.TryGetValue(varId, out outVar);
+            return funcsById.GetSingleValue(funcId, out outFunc);
+        }
 
-            foreach (var metadata in metadatas)
-                if (varId.ModuleName == metadata.ModuleName)
-                    return metadata.GetVarById(varId, out outVar);
+        public IEnumerable<QsFunc> GetFuncsById(QsMetaItemId funcId)
+        {
+            return funcsById.GetMultiValues(funcId);
+        }
 
-            outVar = null;
-            return false;
+        public bool GetVarById(QsMetaItemId varId, [NotNullWhen(returnValue: true)] out QsVariable? outVar)
+        {
+            return varsById.GetSingleValue(varId, out outVar);
         }
 
         public bool GetMemberTypeValue_NormalTypeValue(
@@ -119,7 +168,8 @@ namespace QuickSC
             if (!type.GetMemberVarId(memberName, out var memberVar))
                 return false;
 
-            var variable = varsById[memberVar.Value.VarId];
+            if (!varsById.GetSingleValue(memberVar.Value.VarId, out var variable))
+                return false;
 
             var typeEnv = new Dictionary<QsTypeVarTypeValue, QsTypeValue>();
             MakeTypeEnv(typeValue, typeEnv);
@@ -127,7 +177,7 @@ namespace QuickSC
             return true;
         }
 
-        public bool GetMemberFunc(QsTypeId typeId, QsName name, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFunc Func)? outValue)
+        public bool GetMemberFunc(QsMetaItemId typeId, QsName name, [NotNullWhen(returnValue: true)] out (bool bStatic, QsFunc Func)? outValue)
         {
             if (!GetTypeById(typeId, out var type))
             {
@@ -151,7 +201,7 @@ namespace QuickSC
             return true;
         }
 
-        public bool GetMemberVar(QsTypeId typeId, string name, [NotNullWhen(returnValue: true)] out (bool bStatic, QsVariable Var)? outValue)
+        public bool GetMemberVar(QsMetaItemId typeId, string name, [NotNullWhen(returnValue: true)] out (bool bStatic, QsVariable Var)? outValue)
         {
             if (!GetTypeById(typeId, out var type))
             {
@@ -191,40 +241,15 @@ namespace QuickSC
         public bool GetGlobalFuncs(string name, int typeParamCount, out ImmutableArray<QsFunc> outGlobalFunc)
         {
             // 전역 변수와는 달리 전역 함수는 다른 모듈들과 동등하게 검색한다
-            var funcsBuilder = ImmutableArray.CreateBuilder<QsFunc>();
-            var nameElem = new QsNameElem(name, typeParamCount);
-
-            if (funcsById.TryGetValue(new QsFuncId(moduleName, nameElem), out var outFunc))
-                funcsBuilder.Add(outFunc);
-
-            foreach (var refMetadata in metadatas)
-            {
-                var funcId = new QsFuncId(refMetadata.ModuleName, nameElem);
-                if (refMetadata.GetFuncById(funcId, out var outRefFunc))
-                    funcsBuilder.Add(outRefFunc);
-            }
-
-            outGlobalFunc = funcsBuilder.ToImmutable();
+            var metaItemId = new QsMetaItemId(new QsMetaItemIdElem(name, typeParamCount));
+            outGlobalFunc = funcsById.GetMultiValues(metaItemId).ToImmutableArray();
             return outGlobalFunc.Length != 0;
         }
 
         public bool GetGlobalVars(string name, out ImmutableArray<QsVariable> outGlobalVars)
         {
-            var nameElem = new QsNameElem(name, 0);
-
-            // 내 스크립트에 있는 전역 변수가 우선한다
-            if (varsById.TryGetValue(new QsVarId(moduleName, nameElem), out var scriptGlobalVar))
-            {
-                outGlobalVars = ImmutableArray.Create(scriptGlobalVar);
-                return true;
-            }
-
-            var varsBuilder = ImmutableArray.CreateBuilder<QsVariable>();
-            foreach (var refMetadata in metadatas)
-                if (refMetadata.GetVarById(new QsVarId(refMetadata.ModuleName, nameElem), out var refGlobalVar))
-                    varsBuilder.Add(refGlobalVar);
-
-            outGlobalVars = varsBuilder.ToImmutable();
+            var metaItemId = new QsMetaItemId(new QsMetaItemIdElem(name, 0));
+            outGlobalVars = varsById.GetMultiValues(metaItemId).ToImmutableArray();
             return outGlobalVars.Length != 0;
         }
 
@@ -247,20 +272,12 @@ namespace QuickSC
             ImmutableArray<QsTypeValue> typeArgs,             
             out ImmutableArray<QsTypeValue> outTypeValues)
         {
-            var nameElem = new QsNameElem(name, typeArgs.Length);
-            var typeValuesBuilder = ImmutableArray.CreateBuilder<QsTypeValue>();
+            var metaItemId = new QsMetaItemId(new QsMetaItemIdElem(name, typeArgs.Length));
 
-            // TODO: 추후 namespace 검색도 해야 한다
-            if (typesById.TryGetValue(new QsTypeId(moduleName, nameElem), out var globalType))
-                typeValuesBuilder.Add(new QsNormalTypeValue(null, globalType.TypeId, typeArgs));
-
-            foreach (var refMetadata in metadatas)
-            {
-                if (refMetadata.GetTypeById(new QsTypeId(refMetadata.ModuleName, nameElem), out var type))
-                    typeValuesBuilder.Add(new QsNormalTypeValue(null, type.TypeId, typeArgs));
-            }
-
-            outTypeValues = typeValuesBuilder.ToImmutableArray();
+            outTypeValues = typesById.GetMultiValues(metaItemId)
+                .Select(type => new QsNormalTypeValue(null, type.TypeId, typeArgs))
+                .ToImmutableArray<QsTypeValue>();
+            
             return outTypeValues.Length != 0;
         }
 
@@ -286,7 +303,20 @@ namespace QuickSC
             for (int i = 0; i < func.TypeParams.Length; i++)
                 typeEnv[new QsTypeVarTypeValue(func.FuncId, func.TypeParams[i])] = typeArgs[i];
 
-            return ApplyTypeEnv_FuncTypeValue(new QsFuncTypeValue(func.RetTypeValue, func.ParamTypeValues), typeEnv);
+            // 
+            QsTypeValue retTypeValue;
+
+            if (func.bSeqCall)
+            {
+                var enumerableId = new QsMetaItemId(new QsMetaItemIdElem("Enumerable", 1));
+                retTypeValue = new QsNormalTypeValue(null, enumerableId, func.RetTypeValue);
+            }
+            else
+            {
+                retTypeValue = func.RetTypeValue;
+            }
+
+            return ApplyTypeEnv_FuncTypeValue(new QsFuncTypeValue(retTypeValue, func.ParamTypeValues), typeEnv);
         }
 
         // 
@@ -462,7 +492,7 @@ namespace QuickSC
 
         public void AddVar(QsVariable variable)
         {
-            varsById = varsById.Add(variable.VarId, variable);
+            varsById.Add(variable.VarId, variable);
         }
 
         public bool GetMemberFuncValue(bool bStaticOnly, QsTypeValue objTypeValue, QsName memberName, ImmutableArray<QsTypeValue> typeArgs, 
@@ -546,7 +576,7 @@ namespace QuickSC
             return ApplyTypeEnv(variable.TypeValue, typeEnv);
         }
 
-        public bool IsVarStatic(QsVarId varId)
+        public bool IsVarStatic(QsMetaItemId varId)
         {
             if (!GetVarById(varId, out var variable))
                 throw new InvalidOperationException();
@@ -554,7 +584,7 @@ namespace QuickSC
             return variable.bStatic;
         }
 
-        public bool IsFuncStatic(QsFuncId funcId)
+        public bool IsFuncStatic(QsMetaItemId funcId)
         {
             if (!GetFuncById(funcId, out var func))
                 throw new InvalidOperationException();

@@ -7,10 +7,10 @@ namespace QuickSC
     public class QsVariable
     {
         public bool bStatic { get; }
-        public QsVarId VarId { get; }
+        public QsMetaItemId VarId { get; }
         public QsTypeValue TypeValue { get; }
 
-        public QsVariable(bool bStatic, QsVarId varId, QsTypeValue typeValue)
+        public QsVariable(bool bStatic, QsMetaItemId varId, QsTypeValue typeValue)
         {
             this.bStatic = bStatic;
             VarId = varId;

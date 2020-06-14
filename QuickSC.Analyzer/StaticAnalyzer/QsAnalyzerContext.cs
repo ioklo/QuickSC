@@ -13,7 +13,7 @@ namespace QuickSC.StaticAnalyzer
     // 현재 함수 정보
     public class QsAnalyzerFuncContext
     {
-        public QsFuncId FuncId { get; }
+        public QsMetaItemId FuncId { get; }
         public QsTypeValue? RetTypeValue { get; set; } // 리턴 타입이 미리 정해져 있다면 이걸 쓴다
         public bool bSequence { get; } // 시퀀스 여부
         public int LambdaCount { get; set; }
@@ -23,7 +23,7 @@ namespace QuickSC.StaticAnalyzer
         // 현재 변수의 타입
         private QsLocalVarInfoDict localVarInfos;
 
-        public QsAnalyzerFuncContext(QsFuncId funcId, QsTypeValue? retTypeValue, bool bSequence)
+        public QsAnalyzerFuncContext(QsMetaItemId funcId, QsTypeValue? retTypeValue, bool bSequence)
         {
             this.FuncId = funcId;
             RetTypeValue = retTypeValue;
@@ -74,7 +74,7 @@ namespace QuickSC.StaticAnalyzer
         public bool bGlobalScope { get; set; }
 
         public Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo> InfosByNode { get; }
-        public Dictionary<QsFuncId, QsScriptFuncTemplate> FuncTemplatesById { get; }        
+        public Dictionary<QsMetaItemId, QsScriptFuncTemplate> FuncTemplatesById { get; }        
 
         public QsAnalyzerContext(
             string moduleName,
@@ -91,12 +91,12 @@ namespace QuickSC.StaticAnalyzer
 
             ErrorCollector = errorCollector;
 
-            CurFunc = new QsAnalyzerFuncContext(new QsFuncId(moduleName), null, false);
+            CurFunc = new QsAnalyzerFuncContext(new QsMetaItemId(), null, false);
             bGlobalScope = true;
             
 
             InfosByNode = new Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo>(QsRefEqComparer<IQsSyntaxNode>.Instance);
-            FuncTemplatesById = new Dictionary<QsFuncId, QsScriptFuncTemplate>();
+            FuncTemplatesById = new Dictionary<QsMetaItemId, QsScriptFuncTemplate>();
         }       
 
         // 1. exp가 무슨 타입을 가지는지

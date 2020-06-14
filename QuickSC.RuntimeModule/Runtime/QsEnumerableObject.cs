@@ -10,40 +10,46 @@ namespace QuickSC.Runtime
 {
     using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
 
-    class QsEnumerableObject : QsObject
+    class QsEnumerableObjectInfo : QsNativeObjectInfo
     {
-        QsTypeInst typeInst;
-        IAsyncEnumerable<QsValue> enumerable;
-
-        public static QsType AddType(QsTypeBuilder typeBuilder, QsTypeId enumeratorId)
+        public QsEnumerableObjectInfo()
         {
-            // T
-            var typeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("Enumerable", 1));
+            var enumeratorId = QsRuntimeModuleInfo.EnumeratorId;
 
-            var elemTypeValue = new QsTypeVarTypeValue(typeId, "T");
+            // T
+            var enumerableId = QsRuntimeModuleInfo.EnumerableId;
+            var elemTypeValue = new QsTypeVarTypeValue(enumerableId, "T");
 
             // Enumerator<T>
             var enumeratorTypeValue = new QsNormalTypeValue(null, enumeratorId, elemTypeValue);
 
-            var funcBuilder = ImmutableDictionary.CreateBuilder<QsName, QsFuncId>();
+            var funcIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
 
-            Invoker wrappedGetEnumerator = (domainService, typeArgs, thisValue, args) => NativeGetEnumerator(domainService, enumeratorId, typeArgs, thisValue, args);
+            Invoker wrappedGetEnumerator = (domainService, typeArgs, thisValue, args) => QsEnumerableObject.NativeGetEnumerator(domainService, enumeratorId, typeArgs, thisValue, args);
 
-            var func = typeBuilder.AddFunc(wrappedGetEnumerator, new QsFunc(
-                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("Enumerable", 1), new QsNameElem("GetEnumerator", 0)),
-                true, ImmutableArray<string>.Empty, enumeratorTypeValue));
-            funcBuilder.Add(QsName.Text("GetEnumerator"), func.FuncId);
+            var nativeFunc = new QsNativeFunc(
+                enumerableId.Append("GetEnumerator", 0),
+                false, true, ImmutableArray<string>.Empty, enumeratorTypeValue, ImmutableArray<QsTypeValue>.Empty, new QsNativeFuncInstantiator(true, wrappedGetEnumerator));
 
-            var type = new QsDefaultType(
-                typeId, ImmutableArray.Create("T"), null,
-                ImmutableDictionary<string, QsTypeId>.Empty,
-                ImmutableDictionary<string, QsFuncId>.Empty,
-                ImmutableDictionary<string, QsVarId>.Empty,
-                funcBuilder.ToImmutable(),
-                ImmutableDictionary<string, QsVarId>.Empty);
+            AddNativeFunc(nativeFunc);
+            funcIdsBuilder.Add(nativeFunc.FuncId);
 
-            return typeBuilder.AddType(type, new QsObjectValue(null));
+            AddNativeType(new QsNativeType(
+                enumerableId, ImmutableArray.Create("T"), null,
+                ImmutableArray<QsMetaItemId>.Empty,
+                ImmutableArray<QsMetaItemId>.Empty,
+                ImmutableArray<QsMetaItemId>.Empty,
+                funcIdsBuilder.ToImmutable(),
+                ImmutableArray<QsMetaItemId>.Empty, 
+                new QsNativeTypeInstantiator(() => new QsObjectValue(null))));
         }
+        
+    }
+
+    class QsEnumerableObject : QsObject
+    {
+        QsTypeInst typeInst;
+        IAsyncEnumerable<QsValue> enumerable;
 
         public QsEnumerableObject(QsTypeInst typeInst, IAsyncEnumerable<QsValue> enumerable)
         {
@@ -52,7 +58,7 @@ namespace QuickSC.Runtime
         }
         
         // Enumerator<T> Enumerable<T>.GetEnumerator()
-        static ValueTask<QsValue> NativeGetEnumerator(QsDomainService domainService, QsTypeId enumeratorId, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
+        internal static ValueTask<QsValue> NativeGetEnumerator(QsDomainService domainService, QsMetaItemId enumeratorId, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
 

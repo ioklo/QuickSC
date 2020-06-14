@@ -13,21 +13,31 @@ namespace QuickSC.Runtime
     public class QsDomainService
     {
         QsMetadataService metadataService;
-        ImmutableDictionary<string, IQsModule> modulesByName;
+        Dictionary<QsMetaItemId, IQsModuleTypeInfo> typeInfos;
+        Dictionary<QsMetaItemId, IQsModuleFuncInfo> funcInfos;
 
-        public QsDomainService(QsMetadataService metadataService, IQsRuntimeModule runtimeModule, IEnumerable<IQsModule> modules)
+        public QsDomainService(QsMetadataService metadataService)
         {
+            // TODO: metadataService와 LoadModule사이에 연관이 없다 실수하기 쉽다
             this.metadataService = metadataService;
+            
+            typeInfos = new Dictionary<QsMetaItemId, IQsModuleTypeInfo>();
+            funcInfos = new Dictionary<QsMetaItemId, IQsModuleFuncInfo>();
+        }
 
-            var builder = ImmutableDictionary.CreateBuilder<string, IQsModule>();
-            builder.Add(runtimeModule.ModuleName, runtimeModule);
-            builder.AddRange(modules.Select(module => KeyValuePair.Create(module.ModuleName, module)));
-            modulesByName = builder.ToImmutable();        
+        public void LoadModule(IQsModule module)
+        {
+            foreach (var typeInfo in module.TypeInfos)
+                typeInfos.Add(typeInfo.TypeId, typeInfo);
+
+            foreach (var funcInfo in module.FuncInfos)
+                funcInfos.Add(funcInfo.FuncId, funcInfo);
         }
 
         public QsFuncInst GetFuncInst(QsFuncValue funcValue)
         {
-            return modulesByName[funcValue.FuncId.ModuleName].GetFuncInst(this, funcValue);
+            // TODO: caching
+            return funcInfos[funcValue.FuncId].GetFuncInst(this, funcValue);
         }
         
         // 실행중 TypeValue는 모두 Apply된 상태이다
@@ -41,10 +51,8 @@ namespace QuickSC.Runtime
                     Debug.Fail("실행중에 바인드 되지 않은 타입 인자가 나왔습니다");
                     throw new InvalidOperationException();
 
-                case QsNormalTypeValue ntv:
-                    {
-                        return modulesByName[ntv.TypeId.ModuleName].GetTypeInst(this, ntv);
-                    }
+                case QsNormalTypeValue ntv:                    
+                    return typeInfos[ntv.TypeId].GetTypeInst(this, ntv);
 
                 case QsVoidTypeValue vtv:
                     throw new NotImplementedException(); // TODO: void는 따로 처리

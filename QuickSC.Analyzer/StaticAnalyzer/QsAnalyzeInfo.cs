@@ -6,11 +6,11 @@ namespace QuickSC.StaticAnalyzer
     public class QsAnalyzeInfo
     {
         public ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> InfosByNode { get; }
-        public ImmutableDictionary<QsFuncId, QsScriptFuncTemplate> FuncTemplatesById { get; }
+        public ImmutableDictionary<QsMetaItemId, QsScriptFuncTemplate> FuncTemplatesById { get; }
 
         public QsAnalyzeInfo(
             ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> infosByNode,
-            ImmutableDictionary<QsFuncId, QsScriptFuncTemplate> funcTemplatesById)
+            ImmutableDictionary<QsMetaItemId, QsScriptFuncTemplate> funcTemplatesById)
         {
             this.InfosByNode = infosByNode;
             this.FuncTemplatesById = funcTemplatesById;

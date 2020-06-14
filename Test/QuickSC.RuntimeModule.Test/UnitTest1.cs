@@ -26,19 +26,20 @@ namespace QuickSC.RuntimeModule.Test
         {
             var errorCollector = new QsTestErrorCollector();
 
-            var runtimeModule = new QsRuntimeModule();
+            var runtimeModuleInfo = new QsRuntimeModuleInfo();
 
             QsMetadataService metadataService = new QsMetadataService(
-                "Temp", 
-                ImmutableDictionary<QsTypeId, QsType>.Empty, 
-                ImmutableDictionary<QsFuncId, QsFunc>.Empty, 
-                ImmutableDictionary<QsVarId, QsVariable>.Empty,
-                ImmutableArray.Create<IQsMetadata>(runtimeModule));
+                ImmutableArray<QsType>.Empty, 
+                ImmutableArray<QsFunc>.Empty, 
+                ImmutableArray<QsVariable>.Empty,
+                ImmutableArray.Create<IQsMetadata>(runtimeModuleInfo.GetMetadata()));
 
-            QsDomainService domainService = new QsDomainService(metadataService, runtimeModule, Enumerable.Empty<IQsModule>());            
+            QsDomainService domainService = new QsDomainService(metadataService);
 
-            var intTypeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("int", 0));
-            var listTypeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1));
+            var runtimeModule = runtimeModuleInfo.MakeRuntimeModule(domainService);
+
+            var intTypeId = QsRuntimeModuleInfo.IntId;
+            var listTypeId = QsRuntimeModuleInfo.ListId;
 
             // int
             var intTypeValue = new QsNormalTypeValue(null, intTypeId);
@@ -47,8 +48,9 @@ namespace QuickSC.RuntimeModule.Test
             var listTypeValue = new QsNormalTypeValue(null, listTypeId, intTypeValue);
 
             // List<int>.Add
-            var listAddFuncId = new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("List", 1), new QsNameElem("Add", 0));
+            var listAddFuncId = listTypeId.Append(new QsMetaItemIdElem("Add", 0));
             var funcInst = domainService.GetFuncInst(new QsFuncValue(listTypeValue, listAddFuncId));
+            
 
             // list = [1, 2]
             var list = runtimeModule.MakeList(domainService, intTypeValue, new List<QsValue> { runtimeModule.MakeInt(1), runtimeModule.MakeInt(2) });

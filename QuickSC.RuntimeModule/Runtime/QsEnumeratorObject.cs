@@ -7,42 +7,54 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
+    class QsEnumeratorObjectInfo : QsNativeObjectInfo
+    {
+        public QsEnumeratorObjectInfo()
+        {
+            var enumeratorId = QsRuntimeModuleInfo.EnumeratorId;
+
+            var funcIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
+            var elemTypeValue = new QsTypeVarTypeValue(enumeratorId, "T");
+            var boolTypeValue = new QsNormalTypeValue(null, QsRuntimeModuleInfo.BoolId);
+
+            // bool Enumerator<T>.MoveNext()
+            var moveNext = new QsNativeFunc(
+                enumeratorId.Append("MoveNext", 0),
+                false, true,
+                ImmutableArray<string>.Empty, boolTypeValue, ImmutableArray<QsTypeValue>.Empty,
+                new QsNativeFuncInstantiator(true, QsEnumeratorObject.NativeMoveNext));
+
+            AddNativeFunc(moveNext);
+            funcIdsBuilder.Add(moveNext.FuncId);
+
+            // T Enumerator<T>.GetCurrent()
+            var getCurrent = new QsNativeFunc(
+                enumeratorId.Append("GetCurrent", 0),
+                false, true,
+                ImmutableArray<string>.Empty, elemTypeValue, ImmutableArray<QsTypeValue>.Empty,
+                new QsNativeFuncInstantiator(true, QsEnumeratorObject.NativeGetCurrent));
+            AddNativeFunc(getCurrent);
+            funcIdsBuilder.Add(getCurrent.FuncId);
+
+            var type = new QsNativeType(
+                enumeratorId,
+                ImmutableArray.Create("T"),
+                null, // no base
+                ImmutableArray<QsMetaItemId>.Empty,
+                ImmutableArray<QsMetaItemId>.Empty,
+                ImmutableArray<QsMetaItemId>.Empty,
+                funcIdsBuilder.ToImmutable(),
+                ImmutableArray<QsMetaItemId>.Empty,
+                new QsNativeTypeInstantiator(() => new QsObjectValue(null)));
+
+            AddNativeType(type);
+        }
+    }
+
     class QsEnumeratorObject : QsObject
     {
         QsTypeInst typeInst;
         IAsyncEnumerator<QsValue> enumerator;
-
-        public static QsType AddType(QsTypeBuilder typeBuilder, QsTypeValue boolTypeValue)
-        {
-            var typeId = new QsTypeId(QsRuntimeModule.MODULE_NAME, new QsNameElem("Enumerator", 1));
-
-            var funcIdsBuilder = ImmutableDictionary.CreateBuilder<QsName, QsFuncId>();
-            var elemTypeValue = new QsTypeVarTypeValue(typeId, "T");
-
-            // bool MoveNext()
-            var moveNext = typeBuilder.AddFunc(NativeMoveNext, new QsFunc(
-                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("Enumerator", 1), new QsNameElem("MoveNext", 0)),
-                true, ImmutableArray<string>.Empty, boolTypeValue));
-            funcIdsBuilder.Add(QsName.Text("MoveNext"), moveNext.FuncId);
-
-            // T GetCurrent()
-            var getCurrent = typeBuilder.AddFunc(NativeGetCurrent, new QsFunc(
-                new QsFuncId(QsRuntimeModule.MODULE_NAME, new QsNameElem("Enumerator", 1), new QsNameElem("GetCurrent", 0)),
-                true, ImmutableArray<string>.Empty, elemTypeValue));
-            funcIdsBuilder.Add(QsName.Text("GetCurrent"), getCurrent.FuncId);
-
-            var type = new QsDefaultType(
-                typeId,
-                ImmutableArray.Create("T"),
-                null, // no base
-                ImmutableDictionary<string, QsTypeId>.Empty,
-                ImmutableDictionary<string, QsFuncId>.Empty,
-                ImmutableDictionary<string, QsVarId>.Empty,
-                funcIdsBuilder.ToImmutable(),
-                ImmutableDictionary<string, QsVarId>.Empty);
-
-            return typeBuilder.AddType(type, new QsObjectValue(null));
-        }
 
         public QsEnumeratorObject(QsTypeInst typeInst, IAsyncEnumerator<QsValue> enumerator)
         {
@@ -50,7 +62,7 @@ namespace QuickSC.Runtime
             this.enumerator = enumerator;
         }
 
-        static async ValueTask<QsValue> NativeMoveNext(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
+        internal static async ValueTask<QsValue> NativeMoveNext(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
 
@@ -60,7 +72,7 @@ namespace QuickSC.Runtime
             return new QsValue<bool>(bResult);
         }
 
-        static ValueTask<QsValue> NativeGetCurrent(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
+        internal static ValueTask<QsValue> NativeGetCurrent(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args)
         {
             Debug.Assert(thisValue != null);
 

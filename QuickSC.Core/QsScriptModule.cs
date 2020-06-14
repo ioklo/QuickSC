@@ -4,16 +4,37 @@ using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 
 namespace QuickSC
-{   
+{
+    class QsScriptModuleFuncInfo : IQsModuleFuncInfo
+    {
+        public QsMetaItemId FuncId { get; }
+        QsScriptFuncTemplate.FuncDecl funcDecl;
+
+        public QsScriptModuleFuncInfo(QsMetaItemId funcId, QsScriptFuncTemplate.FuncDecl funcDecl)
+        {
+            FuncId = funcId;
+            this.funcDecl = funcDecl;
+        }
+
+        public QsFuncInst GetFuncInst(QsDomainService domainService, QsFuncValue funcValue)
+        {
+            if (funcValue.TypeArgs.Length != 0)
+                throw new NotImplementedException();            
+
+            return new QsScriptFuncInst(funcDecl.SeqElemTypeValue, funcDecl.bThisCall, null, ImmutableArray<QsValue>.Empty, funcDecl.LocalVarCount, funcDecl.Body);
+        }
+    }
+
     class QsScriptModule : IQsModule
     {
         public string ModuleName { get; }
-        ImmutableDictionary<QsFuncId, QsScriptFuncTemplate> funcTemplates;
+        ImmutableDictionary<QsMetaItemId, QsScriptFuncTemplate> funcTemplates;
 
-        public QsScriptModule(string moduleName, ImmutableDictionary<QsFuncId, QsScriptFuncTemplate> funcTemplates)
+        public QsScriptModule(string moduleName, ImmutableDictionary<QsMetaItemId, QsScriptFuncTemplate> funcTemplates)
         {
             ModuleName = moduleName;
             this.funcTemplates = funcTemplates;
@@ -38,31 +59,26 @@ namespace QuickSC
 
         //    return new ValueTask<QsEvalResult<QsValue>>(new QsEvalResult<QsValue>(new QsEnumValue(elemType, values.ToImmutable()), context));
         //}
-
-        public QsTypeInst GetTypeInst(QsDomainService domainService, QsNormalTypeValue typeValue)
+        
+        public IEnumerable<IQsModuleTypeInfo> TypeInfos
         {
-            throw new NotImplementedException();
+            get => Enumerable.Empty<IQsModuleTypeInfo>();
         }
 
-        public QsFuncInst GetFuncInst(QsDomainService domainService, QsFuncValue funcValue)
+        public IEnumerable<IQsModuleFuncInfo> FuncInfos
         {
-            if (funcValue.TypeArgs.Length != 0)
-                throw new NotImplementedException();
-
-            var template = funcTemplates[funcValue.FuncId];
-
-            if (template is QsScriptFuncTemplate.FuncDecl fd)
+            get
             {
-                return new QsScriptFuncInst(fd.SeqElemTypeValue, fd.bThisCall, null, ImmutableArray<QsValue>.Empty, fd.LocalVarCount, fd.Body);
+                foreach (var (id, funcTemplate) in funcTemplates)
+                {
+                    if (funcTemplate is QsScriptFuncTemplate.FuncDecl funcDecl)
+                        yield return new QsScriptModuleFuncInfo(id, funcDecl);
+                    //else if (template is QsEnumDeclElemFuncTemplate enumTemplate)
+                    //{
+                    //    return new QsEnumElemFuncInst();
+                    //}
+                }
             }
-            //else if (template is QsEnumDeclElemFuncTemplate enumTemplate)
-            //{
-            //    return new QsEnumElemFuncInst();
-            //}
-
-            throw new NotImplementedException();
-
-
         }
     }
 }

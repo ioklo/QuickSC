@@ -8,9 +8,9 @@ namespace QuickSC
     public class QsVarValue
     {
         public QsTypeValue? Outer { get; }
-        public QsVarId VarId { get; }
+        public QsMetaItemId VarId { get; }
 
-        public QsVarValue(QsTypeValue? outer, QsVarId varId)
+        public QsVarValue(QsTypeValue? outer, QsMetaItemId varId)
         {
             Outer = outer;
             VarId = varId;

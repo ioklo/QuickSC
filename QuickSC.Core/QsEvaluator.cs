@@ -60,14 +60,18 @@ namespace QuickSC
             }            
         }
 
-        public bool IsType(QsTypeInst subTypeInst, QsTypeInst typeInst, QsEvalContext context)
+        public bool IsType(QsNormalTypeValue subTypeValue, QsNormalTypeValue typeValue, QsEvalContext context)
         {
-            QsTypeInst? curTypeInst = subTypeInst;
+            QsNormalTypeValue? curTypeValue = subTypeValue;
 
-            while (curTypeInst != null)
+            while (curTypeValue != null)
             {
-                if (EqualityComparer<QsTypeInst?>.Default.Equals(curTypeInst, typeInst)) return true;
-                curTypeInst = curTypeInst.GetBaseTypeInst();
+                if (EqualityComparer<QsTypeValue?>.Default.Equals(curTypeValue, typeValue)) return true;
+
+                if (!context.DomainService.GetBaseTypeValue(curTypeValue, out var baseTypeValue))
+                    throw new InvalidOperationException();
+
+                curTypeValue = baseTypeValue;
             }
 
             return false;
@@ -86,9 +90,7 @@ namespace QuickSC
             foreach (var captureElem in captureElems)
             {
                 QsValue origValue;
-                if (captureElem.Storage is QsGlobalStorage globalVar)
-                    origValue = context.GlobalVars[globalVar.VarId];
-                else if (captureElem.Storage is QsLocalStorage localVar)
+                if (captureElem.Storage is QsLocalStorage localVar)
                     origValue = context.LocalVars[localVar.LocalIndex]!;
                 else
                     throw new NotImplementedException();
@@ -239,7 +241,7 @@ namespace QuickSC
             return stmtEvaluator.EvaluateStmtAsync(stmt, context);
         }
         
-        async ValueTask EvaluateScriptAsync(QsScript script, QsEvalContext context)
+        async ValueTask<int> EvaluateScriptAsync(QsScript script, QsEvalContext context)
         {
             var info = (QsScriptInfo)context.AnalyzeInfo.InfosByNode[script];
 
@@ -253,19 +255,24 @@ namespace QuickSC
                     {
                     }
                 }
+
+                if (context.FlowControl is QsReturnEvalFlowControl returnFlowControl)
+                {
+                    return context.RuntimeModule.GetInt(returnFlowControl.Value);
+                }
             }
+
+            return 0;
         }
 
-        public async ValueTask<bool> EvaluateScriptAsync(
+        public async ValueTask<int> EvaluateScriptAsync(
             QsScript script, 
             IQsRuntimeModule runtimeModule, 
             QsDomainService domainService, 
             QsStaticValueService staticValueService, QsAnalyzeInfo analyzeInfo)
         {
             var context = new QsEvalContext(runtimeModule, domainService, staticValueService, analyzeInfo);
-            await EvaluateScriptAsync(script, context);
-
-            return true;
+            return await EvaluateScriptAsync(script, context);
         }
 
         public QsValue GetStaticValue(QsVarValue varValue, QsEvalContext context)

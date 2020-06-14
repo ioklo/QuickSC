@@ -2,16 +2,17 @@
 using System;
 using System.Collections.Generic;
 
-// Decl Syntax -> TypeId 맵을 만들때 사용하는 자료구조
+// Decl Syntax -> MetadataId 맵을 만들때 사용하는 자료구조
 namespace QuickSC.StaticAnalyzer
 {
-    public abstract class QsTypeIdLocation
+    public abstract class QsMetadataIdLocation
     {
-        public static QsTypeIdLocation Make(QsEnumDecl enumDecl) => new QsEnumTypeDeclLocation(enumDecl);
-        public static QsTypeIdLocation Make(QsEnumDeclElement elem) => new QsEnumElemTypeDeclLocation(elem);
+        public static QsMetadataIdLocation Make(QsFuncDecl funcDecl) => new QsFuncDeclFuncDeclLocation(funcDecl);
+        public static QsMetadataIdLocation Make(QsEnumDecl enumDecl) => new QsEnumTypeDeclLocation(enumDecl);        
+        public static QsMetadataIdLocation Make(QsEnumDeclElement elem) => new QsEnumElemTypeDeclLocation(elem);
     }
 
-    public class QsEnumTypeDeclLocation : QsTypeIdLocation
+    public class QsEnumTypeDeclLocation : QsMetadataIdLocation
     {
         public QsEnumDecl EnumDecl { get; }
         public QsEnumTypeDeclLocation(QsEnumDecl enumDecl) { EnumDecl = enumDecl; }
@@ -38,7 +39,7 @@ namespace QuickSC.StaticAnalyzer
         }
     }
 
-    public class QsEnumElemTypeDeclLocation : QsTypeIdLocation
+    public class QsEnumElemTypeDeclLocation : QsMetadataIdLocation
     {
         public QsEnumDeclElement EnumDeclElem { get; }
         public QsEnumElemTypeDeclLocation(QsEnumDeclElement enumDeclElem) { EnumDeclElem = enumDeclElem; }
@@ -64,5 +65,33 @@ namespace QuickSC.StaticAnalyzer
             return !(left == right);
         }
     }
+
+    public class QsFuncDeclFuncDeclLocation : QsMetadataIdLocation
+    {
+        public QsFuncDecl FuncDecl { get; }
+        public QsFuncDeclFuncDeclLocation(QsFuncDecl funcDecl) { FuncDecl = funcDecl; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is QsFuncDeclFuncDeclLocation decl &&
+                   ReferenceEquals(FuncDecl, decl.FuncDecl); // 둘이 같은 레퍼런스이기만 하면 된다
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(FuncDecl);
+        }
+
+        public static bool operator ==(QsFuncDeclFuncDeclLocation? left, QsFuncDeclFuncDeclLocation? right)
+        {
+            return EqualityComparer<QsFuncDeclFuncDeclLocation?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsFuncDeclFuncDeclLocation? left, QsFuncDeclFuncDeclLocation? right)
+        {
+            return !(left == right);
+        }
+    }
+
 
 }

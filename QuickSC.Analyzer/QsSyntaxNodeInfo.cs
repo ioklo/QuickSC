@@ -42,8 +42,8 @@ namespace QuickSC
         {
             public class Instance : ExpKind
             {
-                public QsVarId VarId { get; }
-                public Instance(QsVarId varId)
+                public QsMetaItemId VarId { get; }
+                public Instance(QsMetaItemId varId)
                 {
                     VarId = varId;
                 }
@@ -63,7 +63,7 @@ namespace QuickSC
 
         public ExpKind Kind { get; }
 
-        public static QsMemberExpInfo MakeInstance(QsVarId varId) => new QsMemberExpInfo(new ExpKind.Instance(varId));
+        public static QsMemberExpInfo MakeInstance(QsMetaItemId varId) => new QsMemberExpInfo(new ExpKind.Instance(varId));
         public static QsMemberExpInfo MakeStatic(bool bEvaluateObject, QsVarValue varValue) => 
             new QsMemberExpInfo(new ExpKind.Static(bEvaluateObject, varValue));
 
@@ -120,8 +120,8 @@ namespace QuickSC
             // x.f() C.f()
             public class InstanceLambdaCall : CallKind
             {
-                public QsVarId VarId { get; }
-                public InstanceLambdaCall(QsVarId varId)
+                public QsMetaItemId VarId { get; }
+                public InstanceLambdaCall(QsMetaItemId varId)
                 {
                     VarId = varId;
                 }
@@ -151,7 +151,7 @@ namespace QuickSC
         public static QsMemberCallExpInfo MakeStaticLambda(bool bEvaluateObject, QsVarValue varValue)
             => new QsMemberCallExpInfo(new CallKind.StaticLambdaCall(bEvaluateObject, varValue));
 
-        public static QsMemberCallExpInfo MakeInstanceLambda(QsVarId varId)
+        public static QsMemberCallExpInfo MakeInstanceLambda(QsMetaItemId varId)
             => new QsMemberCallExpInfo(new CallKind.InstanceLambdaCall(varId));
 
 

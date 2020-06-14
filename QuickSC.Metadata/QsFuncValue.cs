@@ -8,17 +8,17 @@ namespace QuickSC
     public class QsFuncValue
     {
         public QsTypeValue? Outer { get; }
-        public QsFuncId FuncId { get; }
+        public QsMetaItemId FuncId { get; }
         public ImmutableArray<QsTypeValue> TypeArgs { get; }
 
-        public QsFuncValue(QsTypeValue? outer, QsFuncId funcId, ImmutableArray<QsTypeValue> typeArgs)
+        public QsFuncValue(QsTypeValue? outer, QsMetaItemId funcId, ImmutableArray<QsTypeValue> typeArgs)
         {
             Outer = outer;
             FuncId = funcId;
             TypeArgs = typeArgs;
         }
 
-        public QsFuncValue(QsTypeValue? outer, QsFuncId funcId, params QsTypeValue[] typeArgs)
+        public QsFuncValue(QsTypeValue? outer, QsMetaItemId funcId, params QsTypeValue[] typeArgs)
         {
             Outer = outer;
             FuncId = funcId;

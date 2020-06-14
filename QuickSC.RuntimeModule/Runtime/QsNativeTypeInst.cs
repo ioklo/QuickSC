@@ -7,23 +7,24 @@ namespace QuickSC.Runtime
 {
     class QsNativeTypeInst : QsTypeInst
     {
-        QsTypeInst? baseTypeInst;
+        QsTypeInst? baseTypeInst                                                  ;
 
-        QsTypeId typeId;
-        QsValue defaultValue;
+        QsMetaItemId typeId;
+        Func<QsValue> defaultValueFactory;
         QsTypeEnv typeEnv;
 
-        public QsNativeTypeInst(QsTypeInst? baseTypeInst, QsTypeId typeId, QsValue defaultValue, QsTypeEnv typeEnv)
+        public QsNativeTypeInst(QsTypeValue typeValue, QsTypeInst? baseTypeInst, QsMetaItemId typeId, Func<QsValue> defaultValueFactory, QsTypeEnv typeEnv)
+            : base(typeValue)
         {
             this.baseTypeInst = baseTypeInst;
             this.typeId = typeId;
-            this.defaultValue = defaultValue;
+            this.defaultValueFactory = defaultValueFactory;
             this.typeEnv = typeEnv;
         }
 
         public override QsValue MakeDefaultValue()
         {
-            return defaultValue.MakeCopy();
+            return defaultValueFactory();
         }
 
         public override QsTypeInst? GetBaseTypeInst()
@@ -34,7 +35,7 @@ namespace QuickSC.Runtime
         public override bool Equals(object? obj)
         {
             return obj is QsNativeTypeInst inst &&
-                   EqualityComparer<QsTypeId>.Default.Equals(typeId, inst.typeId) &&
+                   EqualityComparer<QsMetaItemId>.Default.Equals(typeId, inst.typeId) &&
                    typeEnv.Equals(inst.typeEnv);
         }
 

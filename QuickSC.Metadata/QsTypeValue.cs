@@ -18,92 +18,28 @@ namespace QuickSC
         private QsVarTypeValue() { }
     }
 
-    public abstract class QsTypeVarParent 
-    {
-        public class QsTypeIdTypeVarParent : QsTypeVarParent
-        {
-            public QsTypeId TypeId { get; }
-            public QsTypeIdTypeVarParent(QsTypeId typeId) { TypeId = typeId; }
-
-            public override bool Equals(object? obj)
-            {
-                return obj is QsTypeIdTypeVarParent parent &&
-                       EqualityComparer<QsTypeId>.Default.Equals(TypeId, parent.TypeId);
-            }
-
-            public override int GetHashCode()
-            {
-                return HashCode.Combine(TypeId);
-            }
-
-            public static bool operator ==(QsTypeIdTypeVarParent? left, QsTypeIdTypeVarParent? right)
-            {
-                return EqualityComparer<QsTypeIdTypeVarParent?>.Default.Equals(left, right);
-            }
-
-            public static bool operator !=(QsTypeIdTypeVarParent? left, QsTypeIdTypeVarParent? right)
-            {
-                return !(left == right);
-            }
-        }
-
-        public class QsFuncIdTypeVarParent : QsTypeVarParent
-        {
-            public QsFuncId FuncId { get; }
-            public QsFuncIdTypeVarParent(QsFuncId funcId) { FuncId = funcId; }
-
-            public override bool Equals(object? obj)
-            {
-                return obj is QsFuncIdTypeVarParent parent &&
-                       EqualityComparer<QsFuncId>.Default.Equals(FuncId, parent.FuncId);
-            }
-
-            public override int GetHashCode()
-            {
-                return HashCode.Combine(FuncId);
-            }
-
-            public static bool operator ==(QsFuncIdTypeVarParent? left, QsFuncIdTypeVarParent? right)
-            {
-                return EqualityComparer<QsFuncIdTypeVarParent?>.Default.Equals(left, right);
-            }
-
-            public static bool operator !=(QsFuncIdTypeVarParent? left, QsFuncIdTypeVarParent? right)
-            {
-                return !(left == right);
-            }
-        }
-
-    }
-
     // T
     public class QsTypeVarTypeValue : QsTypeValue
     {        
-        public QsTypeVarParent Parent { get; } 
+        public QsMetaItemId ParentId { get; } 
         public string Name { get; }
 
-        public QsTypeVarTypeValue(QsFuncId funcId, string name)
+        public QsTypeVarTypeValue(QsMetaItemId parentId, string name)
         {
-            Parent = new QsTypeVarParent.QsFuncIdTypeVarParent(funcId);
-            Name = name;
-        }
-
-        public QsTypeVarTypeValue(QsTypeId typeId, string name)
-        {
-            Parent = new QsTypeVarParent.QsTypeIdTypeVarParent(typeId);
+            ParentId = parentId;
             Name = name;
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsTypeVarTypeValue value &&
-                   EqualityComparer<QsTypeVarParent>.Default.Equals(Parent, value.Parent) &&
+                   EqualityComparer<QsMetaItemId>.Default.Equals(ParentId, value.ParentId) &&
                    Name == value.Name;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Parent, Name);
+            return HashCode.Combine(ParentId, Name);
         }
 
         public static bool operator ==(QsTypeVarTypeValue? left, QsTypeVarTypeValue? right)
@@ -121,17 +57,17 @@ namespace QuickSC
     {
         // TODO: Outer를 NormalTypeValue로 고쳐보기
         public QsTypeValue? Outer { get; }
-        public QsTypeId TypeId { get; }
+        public QsMetaItemId TypeId { get; }
         public ImmutableArray<QsTypeValue> TypeArgs { get; }
 
-        public QsNormalTypeValue(QsTypeValue? outer, QsTypeId typeId, ImmutableArray<QsTypeValue> typeArgs)
+        public QsNormalTypeValue(QsTypeValue? outer, QsMetaItemId typeId, ImmutableArray<QsTypeValue> typeArgs)
         {
             this.Outer = outer;
             this.TypeId = typeId;
             this.TypeArgs = typeArgs;
         }
 
-        public QsNormalTypeValue(QsTypeValue? outer, QsTypeId TypeId, params QsTypeValue[] typeArgs)
+        public QsNormalTypeValue(QsTypeValue? outer, QsMetaItemId TypeId, params QsTypeValue[] typeArgs)
         {
             this.Outer = outer;
             this.TypeId = TypeId;
@@ -142,7 +78,7 @@ namespace QuickSC
         {
             return obj is QsNormalTypeValue value &&
                    EqualityComparer<QsTypeValue?>.Default.Equals(Outer, value.Outer) &&
-                   EqualityComparer<QsTypeId>.Default.Equals(TypeId, value.TypeId) &&
+                   EqualityComparer<QsMetaItemId>.Default.Equals(TypeId, value.TypeId) &&
                    Enumerable.SequenceEqual(TypeArgs, value.TypeArgs);
         }
 

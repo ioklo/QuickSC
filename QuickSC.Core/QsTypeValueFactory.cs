@@ -11,7 +11,7 @@ namespace QuickSC
     //{
     //    Dictionary<string, QsType> types;
 
-    //    static QsType MakeEmptyType(QsTypeId typeId)
+    //    static QsType MakeEmptyType(QsMetaItemId typeId)
     //    {
     //        return new QsDefaultType(typeId, null, ImmutableArray<string>.Empty, thisTypeValue => new QsDefaultTypeData(
     //            null,
@@ -20,7 +20,7 @@ namespace QuickSC
     //            ImmutableDictionary<string, QsTypeValue>.Empty));
     //    }
 
-    //    QsType MakeListType(QsTypeId typeId, QsTypeValue voidTypeValue, QsTypeValue intTypeValue)
+    //    QsType MakeListType(QsMetaItemId typeId, QsTypeValue voidTypeValue, QsTypeValue intTypeValue)
     //    {
     //        return new QsDefaultType(typeId, null, ImmutableArray.Create("T"), thisTypeValue =>
     //        {

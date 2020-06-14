@@ -71,9 +71,9 @@ namespace QuickSC.EvalTest
 
             var expected = text.Substring(3, firstLineEnd - 3);
 
-            var runtimeModule = new QsRuntimeModule();
+            var runtimeModuleInfo = new QsRuntimeModuleInfo();
             var errorCollector = new QsTestErrorCollector();
-            await app.RunAsync(Path.GetFileNameWithoutExtension(data.Path), text, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
+            await app.RunAsync(Path.GetFileNameWithoutExtension(data.Path), text, runtimeModuleInfo, ImmutableArray<IQsModule>.Empty, errorCollector);
 
             Assert.False(errorCollector.HasError, errorCollector.GetMessages());
             Assert.Equal(expected, cmdProvider.Output);

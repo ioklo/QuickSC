@@ -1,33 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 
 namespace QuickSC
 {
-
     // (System.Runtime, System.X<,>.Y<,,>.T)
-    public struct QsTypeId
+    public struct QsMetaItemId
     {
-        public string ModuleName { get; }                    // 어느 모듈에서 온 것인가
-        public ImmutableArray<QsNameElem> Elems { get; }  // 
+        public ImmutableArray<QsMetaItemIdElem> Elems { get; }  // 
+        public QsName Name => Elems[Elems.Length - 1].Name;
 
-        public QsTypeId(string moduleName, ImmutableArray<QsNameElem> elems)
+        public QsMetaItemId(ImmutableArray<QsMetaItemIdElem> elems)
         {
-            ModuleName = moduleName;
             Elems = elems;
         }
 
-        public QsTypeId(string moduleName, params QsNameElem[] elems)
+        public QsMetaItemId(params QsMetaItemIdElem[] elems)
         {
-            ModuleName = moduleName;
             Elems = ImmutableArray.Create(elems);
         }
 
         public override bool Equals(object? obj)
         {
-            return obj is QsTypeId id &&
-                   ModuleName == id.ModuleName &&
+            return obj is QsMetaItemId id &&
                    QsSeqEqComparer.Equals(Elems, id.Elems);
         }
 
@@ -35,18 +32,17 @@ namespace QuickSC
         {
             var hashCode = new HashCode();
 
-            hashCode.Add(ModuleName);
             QsSeqEqComparer.AddHash(ref hashCode, Elems);
 
             return hashCode.ToHashCode();
         }
 
-        public static bool operator ==(QsTypeId left, QsTypeId right)
+        public static bool operator ==(QsMetaItemId left, QsMetaItemId right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(QsTypeId left, QsTypeId right)
+        public static bool operator !=(QsMetaItemId left, QsMetaItemId right)
         {
             return !(left == right);
         }
@@ -55,11 +51,24 @@ namespace QuickSC
         {
             var sb = new StringBuilder();
 
-            sb.Append($"[{ModuleName}]");
-
             sb.AppendJoin('.', Elems);
 
             return sb.ToString();
+        }
+
+        public QsMetaItemId Append(QsMetaItemIdElem elem)
+        {
+            return new QsMetaItemId(Elems.Add(elem));
+        }
+
+        public QsMetaItemId Append(string name, int typeParamCount)
+        {
+            return new QsMetaItemId(Elems.Add(new QsMetaItemIdElem(QsName.Text(name), 0)));
+        }
+
+        public QsMetaItemId Append(QsSpecialName specialName, int typeParamCount)
+        {
+            return new QsMetaItemId(Elems.Add(new QsMetaItemIdElem(QsName.Special(specialName), 0)));
         }
     }
 }

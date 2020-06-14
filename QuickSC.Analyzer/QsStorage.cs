@@ -10,8 +10,8 @@ namespace QuickSC
 
     public class QsGlobalStorage : QsStorage
     {
-        public QsVarId VarId { get; }
-        public QsGlobalStorage(QsVarId varId) { VarId = varId; }
+        public QsMetaItemId VarId { get; }
+        public QsGlobalStorage(QsMetaItemId varId) { VarId = varId; }
     }
 
     public class QsLocalStorage : QsStorage

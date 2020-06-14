@@ -79,7 +79,7 @@ namespace QuickSC.StaticAnalyzer
             {
                 if (context.bGlobalScope)
                 {
-                    var varId = new QsVarId(context.ModuleName, ImmutableArray.Create(new QsNameElem(name, 0)));
+                    var varId = new QsMetaItemId(ImmutableArray.Create(new QsMetaItemIdElem(name, 0)));
                     var variable = new QsVariable(true, varId, typeValue);
                     context.MetadataService.AddVar(variable);
 
@@ -115,23 +115,19 @@ namespace QuickSC.StaticAnalyzer
             outLocalVarCount = 0;
 
             // capture에 필요한 정보를 가져옵니다
-            if (!capturer.Capture(body, out var captureResult))
+            if (!capturer.Capture(parameters.Select(param => param.Name), body, out var captureResult))
             {
                 context.ErrorCollector.Add(body, "변수 캡쳐에 실패했습니다");
                 return false;
             }
 
             // 람다 함수 컨텍스트를 만든다
-            var lambdaFuncId = new QsFuncId(context.ModuleName, context.CurFunc.FuncId.Elems.Add(
-                    new QsNameElem(QsName.AnonymousLambda(context.CurFunc.LambdaCount.ToString()), 0)));
+            var lambdaFuncId = new QsMetaItemId(context.CurFunc.FuncId.Elems.Add(
+                    new QsMetaItemIdElem(QsName.AnonymousLambda(context.CurFunc.LambdaCount.ToString()), 0)));
             context.CurFunc.LambdaCount++;
 
             // 캡쳐된 variable은 새 VarId를 가져야 한다
             var func = new QsAnalyzerFuncContext(lambdaFuncId, null, false);
-
-            var (prevFunc, bPrevGlobalScope) = (context.CurFunc, context.bGlobalScope);
-            context.bGlobalScope = false;
-            context.CurFunc = func;
 
             // 필요한 변수들을 찾는다
             var elemsBuilder = ImmutableArray.CreateBuilder<QsCaptureInfo.Element>();
@@ -140,13 +136,13 @@ namespace QuickSC.StaticAnalyzer
                 if (context.CurFunc.GetVarInfo(needCapture.VarName, out var localVarInfo))
                 {
                     elemsBuilder.Add(new QsCaptureInfo.Element(needCapture.Kind, new QsLocalStorage(localVarInfo.Index)));
-                    context.CurFunc.AddVarInfo(needCapture.VarName, localVarInfo.TypeValue);
+                    func.AddVarInfo(needCapture.VarName, localVarInfo.TypeValue);
                 }
                 else if (context.MetadataService.GetGlobalVars(needCapture.VarName, out var globalVars))
                 {
                     // globalVars가 한개 인지 검사는 Body 분석 에서 할 것이기 때문에 하지 않는다
                     continue;
-                    
+
                     // TODO: 람다에서 글로벌 변수는 캡쳐하지 않는다 QsLambdaExpInfo.Elem.MakeGlobal 제거
                     // elemsBuilder.Add(QsLambdaExpInfo.Elem.MakeGlobal(needCapture.Kind, globalVar.VarId));
                     // context.CurFunc.AddVarInfo(needCapture.VarName, globalVar.TypeValue);
@@ -158,6 +154,12 @@ namespace QuickSC.StaticAnalyzer
                 }
             }
 
+
+            var (prevFunc, bPrevGlobalScope) = (context.CurFunc, context.bGlobalScope);
+            context.bGlobalScope = false;
+            context.CurFunc = func;
+
+            
             var paramTypeValuesBuilder = ImmutableArray.CreateBuilder<QsTypeValue>(parameters.Length);
             foreach (var param in parameters)
             {

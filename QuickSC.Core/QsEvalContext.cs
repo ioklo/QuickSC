@@ -17,7 +17,7 @@ namespace QuickSC
         public QsAnalyzeInfo AnalyzeInfo { get; }
 
         // 모든 모듈의 전역 변수
-        public Dictionary<QsVarId, QsValue> GlobalVars { get; }
+        public Dictionary<QsMetaItemId, QsValue> GlobalVars { get; }
 
         public QsValue?[] LocalVars { get; private set; }
         public QsEvalFlowControl FlowControl { get; set; }
@@ -35,7 +35,7 @@ namespace QuickSC
             StaticValueService = staticValueService;
 
             AnalyzeInfo = analyzeInfo;
-            GlobalVars = new Dictionary<QsVarId, QsValue>();
+            GlobalVars = new Dictionary<QsMetaItemId, QsValue>();
 
             LocalVars = new QsValue?[0];
             FlowControl = QsNoneEvalFlowControl.Instance;

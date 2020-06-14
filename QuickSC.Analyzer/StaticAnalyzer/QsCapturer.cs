@@ -29,9 +29,9 @@ namespace QuickSC.StaticAnalyzer
         ImmutableHashSet<string> boundVars;
         Dictionary<string, QsCaptureKind> needCaptures { get; } // bool => ref or copy 
 
-        public QsCaptureContext()
+        public QsCaptureContext(IEnumerable<string> initBoundVars)
         {
-            boundVars = ImmutableHashSet<string>.Empty;
+            boundVars = ImmutableHashSet.CreateRange<string>(initBoundVars);
             needCaptures = new Dictionary<string, QsCaptureKind>();
         }
 
@@ -276,6 +276,7 @@ namespace QuickSC.StaticAnalyzer
                 QsBreakStmt breakStmt => CaptureBreakStmt(breakStmt, context),
                 QsReturnStmt returnStmt => CaptureReturnStmt(returnStmt, context),
                 QsBlockStmt blockStmt => CaptureBlockStmt(blockStmt, context),
+                QsBlankStmt blankStmt => true,
                 QsExpStmt expStmt => CaptureExpStmt(expStmt, context),
                 QsTaskStmt taskStmt => CaptureTaskStmt(taskStmt, context),
                 QsAwaitStmt awaitStmt => CaptureAwaitStmt(awaitStmt, context),
@@ -443,9 +444,9 @@ namespace QuickSC.StaticAnalyzer
         }
 
         // entry
-        public bool Capture(QsStmt stmt, [NotNullWhen(returnValue: true)] out QsCaptureResult? outCaptureResult)
+        public bool Capture(IEnumerable<string> initBoundVars, QsStmt stmt, [NotNullWhen(returnValue: true)] out QsCaptureResult? outCaptureResult)
         {
-            var context = new QsCaptureContext();
+            var context = new QsCaptureContext(initBoundVars);
 
             if (!CaptureStmt(stmt, context))
             {

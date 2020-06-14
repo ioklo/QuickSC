@@ -90,10 +90,10 @@ namespace QuickSC.Blazor
             {
                 var demoCmdProvider = new QsDemoCommandProvider();
                 var app = new QsDefaultApplication(demoCmdProvider);
-                var runtimeModule = new QsRuntimeModule();
+                var runtimeModuleInfo = new QsRuntimeModuleInfo();
                 var errorCollector = new QsDemoErrorCollector();
 
-                var runResult = await app.RunAsync("Demo", input, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
+                var runResult = await app.RunAsync("Demo", input, runtimeModuleInfo, ImmutableArray<IQsModule>.Empty, errorCollector);
                 
                 if (errorCollector.HasError)
                 {
@@ -105,10 +105,16 @@ namespace QuickSC.Blazor
                     return false;
                 }
 
-                if (!runResult)
+                if (runResult == null)
+                {
                     await WriteAsync("실행 실패");
-
-                return runResult;
+                    return false;
+                }
+                else
+                {
+                    await WriteAsync($"exit code: {runResult}");
+                    return true;
+                }
             }
             catch (Exception e)
             {
