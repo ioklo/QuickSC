@@ -36,6 +36,11 @@ namespace QuickSC.Runtime
             typesBuilder.Add(new QsDefaultType(typeId, typeParams, baseTypeValue, memberTypeIds, staticMemberFuncIds, staticMemberVarIds, memberFuncIds, memberVarIds));
         }
 
+        public void AddType(QsDotnetType dotnetType)
+        {
+            typesBuilder.Add(dotnetType);
+        }
+
         public void AddFunc(QsMetaItemId funcId, bool bSeqCall, bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retTypeValue, ImmutableArray<QsTypeValue> paramTypeValues)
         {
             funcsBuilder.Add(new QsFunc(funcId, bSeqCall, bThisCall, typeParams, retTypeValue, paramTypeValues));

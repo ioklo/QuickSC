@@ -25,13 +25,22 @@ namespace QuickSC.Runtime
             funcInfos = new Dictionary<QsMetaItemId, IQsModuleFuncInfo>();
         }
 
+        public void AddTypeInfos(IEnumerable<IQsModuleTypeInfo> typeInfos)
+        {
+            foreach (var typeInfo in typeInfos)
+                this.typeInfos.Add(typeInfo.TypeId, typeInfo);
+        }
+
+        public void AddFuncInfos(IEnumerable<IQsModuleFuncInfo> funcInfos)
+        {
+            foreach (var funcInfo in funcInfos)
+                this.funcInfos.Add(funcInfo.FuncId, funcInfo);
+        }
+
         public void LoadModule(IQsModule module)
         {
-            foreach (var typeInfo in module.TypeInfos)
-                typeInfos.Add(typeInfo.TypeId, typeInfo);
-
-            foreach (var funcInfo in module.FuncInfos)
-                funcInfos.Add(funcInfo.FuncId, funcInfo);
+            AddTypeInfos(module.TypeInfos);
+            AddFuncInfos(module.FuncInfos);
         }
 
         public QsFuncInst GetFuncInst(QsFuncValue funcValue)

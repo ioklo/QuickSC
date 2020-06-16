@@ -6,6 +6,6 @@ namespace QuickSC.Runtime
 {
     public interface IQsRuntimeModuleInfo : IQsModuleInfo
     {
-        IQsRuntimeModule MakeRuntimeModule(QsDomainService domainService /*, IQsGlobalVarRepo globalVarRepo*/);
+        IQsRuntimeModule MakeRuntimeModule(/*IQsGlobalVarRepo globalVarRepo*/);
     }
 }

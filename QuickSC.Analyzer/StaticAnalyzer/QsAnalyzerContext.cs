@@ -91,7 +91,7 @@ namespace QuickSC.StaticAnalyzer
 
             ErrorCollector = errorCollector;
 
-            CurFunc = new QsAnalyzerFuncContext(new QsMetaItemId(), null, false);
+            CurFunc = new QsAnalyzerFuncContext(new QsMetaItemId(ImmutableArray<QsMetaItemIdElem>.Empty), null, false);
             bGlobalScope = true;
             
 

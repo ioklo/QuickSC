@@ -62,9 +62,9 @@ namespace QuickSC.Runtime
             objInfos.Add(new QsEmptyObjectInfo(IntId, () => new QsValue<int>(0)));
             objInfos.Add(new QsEmptyObjectInfo(StringId, () => new QsObjectValue(null)));
             objInfos.Add(new QsEnumerableObjectInfo());
+            objInfos.Add(new QsEnumeratorObjectInfo());
             objInfos.Add(new QsListObjectInfo());
-            // objInfos.Add(new QsDotnetObjectInfo(envTypeId, typeof(QsEnvironment)));
-
+            objInfos.Add(new QsDotnetObjectInfo(envTypeId, typeof(QsEnvironment)));
             //             
             // typeBuilder.AddType(new QsDotnetType(envTypeId, typeof(QsEnvironment)), new QsObjectValue(null));            
 
@@ -84,11 +84,11 @@ namespace QuickSC.Runtime
             return builder.ToMetadata();
         }
 
-        public IQsModule MakeModule(QsDomainService domainService/*, IQsGlobalVarRepo globalVarRepo*/)
-            => MakeRuntimeModule(domainService);
+        public IQsModule MakeModule(/*IQsGlobalVarRepo globalVarRepo*/)
+            => MakeRuntimeModule();
 
 
-        public IQsRuntimeModule MakeRuntimeModule(QsDomainService domainService /*, IQsGlobalVarRepo globalVarRepo*/)
+        public IQsRuntimeModule MakeRuntimeModule(/*IQsGlobalVarRepo globalVarRepo*/)
         {
             var builder = new QsRuntimeModuleBuilder(ModuleName);
 

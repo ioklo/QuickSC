@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -76,13 +77,21 @@ namespace QuickSC
             if (!analyzer.AnalyzeScript(moduleName, script, metadataService, typeEvalResult, typeAndFuncBuildResult, errorCollector, out var analyzeInfo))
                 return null;
 
-            var scriptModule = new QsScriptModule(moduleName, analyzeInfo.FuncTemplatesById);
-
             var domainService = new QsDomainService(metadataService);
-
             var staticValueService = new QsStaticValueService();
 
-            var runtimeModule = runtimeModuleInfo.MakeRuntimeModule(domainService);
+            var runtimeModule = runtimeModuleInfo.MakeRuntimeModule();
+
+            domainService.LoadModule(runtimeModule);
+
+            // 스크립트는 수동 로드
+            domainService.AddFuncInfos(analyzeInfo.FuncTemplatesById.Select( kv =>
+            {
+                if (kv.Value is QsScriptFuncTemplate.FuncDecl funcDecl)
+                    return new QsScriptModuleFuncInfo(kv.Key, funcDecl);
+                else
+                    throw new NotImplementedException();
+            }));
 
             return await evaluator.EvaluateScriptAsync(script, runtimeModule, domainService, staticValueService, analyzeInfo);
         }

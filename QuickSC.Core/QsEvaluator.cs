@@ -267,9 +267,10 @@ namespace QuickSC
 
         public async ValueTask<int> EvaluateScriptAsync(
             QsScript script, 
-            IQsRuntimeModule runtimeModule, 
+            IQsRuntimeModule runtimeModule,
             QsDomainService domainService, 
-            QsStaticValueService staticValueService, QsAnalyzeInfo analyzeInfo)
+            QsStaticValueService staticValueService, 
+            QsAnalyzeInfo analyzeInfo)
         {
             var context = new QsEvalContext(runtimeModule, domainService, staticValueService, analyzeInfo);
             return await EvaluateScriptAsync(script, context);

@@ -10,22 +10,9 @@ namespace QuickSC.RuntimeModule.Test
 {
     public class UnitTest1
     {
-        class QsTestErrorCollector : IQsErrorCollector
-        {
-            public bool HasError => throw new NotImplementedException();
-
-            public void Add(object obj, string msg)
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-
         [Fact]
         static void Temp()
         {
-            var errorCollector = new QsTestErrorCollector();
-
             var runtimeModuleInfo = new QsRuntimeModuleInfo();
 
             QsMetadataService metadataService = new QsMetadataService(
@@ -36,7 +23,9 @@ namespace QuickSC.RuntimeModule.Test
 
             QsDomainService domainService = new QsDomainService(metadataService);
 
-            var runtimeModule = runtimeModuleInfo.MakeRuntimeModule(domainService);
+            var runtimeModule = runtimeModuleInfo.MakeRuntimeModule();
+
+            domainService.LoadModule(runtimeModule);
 
             var intTypeId = QsRuntimeModuleInfo.IntId;
             var listTypeId = QsRuntimeModuleInfo.ListId;

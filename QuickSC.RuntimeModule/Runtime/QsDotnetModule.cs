@@ -8,7 +8,29 @@ using System.Text;
 
 namespace QuickSC.Runtime
 {
-    class QsDotnetType : QsType
+    class QsDotnetObjectInfo : IQsNativeObjectInfo
+    {
+        QsMetaItemId typeId;
+        Type dotnetType;
+
+        public QsDotnetObjectInfo(QsMetaItemId typeId, Type dotnetType)
+        {
+            this.typeId = typeId;
+            this.dotnetType = dotnetType;
+        }
+
+        public void BuildMeta(QsNativeMetaBuilder builder)
+        {
+            builder.AddType(new QsDotnetType(typeId, dotnetType));
+        }
+
+        public void BuildModule(QsNativeModuleBuilder builder)
+        {
+            builder.AddTypeInstantiator(typeId, new QsNativeTypeInstantiator(() => new QsObjectValue(null)));
+        }
+    }   
+
+    public class QsDotnetType : QsType
     {
         // it must be open type
         Type type;

@@ -7,6 +7,6 @@ namespace QuickSC.Runtime
     public interface IQsModuleInfo
     {
         IQsMetadata GetMetadata();
-        IQsModule MakeModule(QsDomainService domainService/*, IQsGlobalVarRepo globalVarRepo*/);
+        IQsModule MakeModule(/*IQsGlobalVarRepo globalVarRepo*/);
     }
 }
