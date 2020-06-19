@@ -64,17 +64,26 @@ namespace QuickSC.EvalTest
                 text = reader.ReadToEnd();
             }
 
-            Assert.StartsWith("// ", text);
+            string expected;
+            if (data.OverriddenResult != null)
+            {
+                expected = data.OverriddenResult;
+            }
+            else
+            {
+                Assert.StartsWith("// ", text);
 
-            int firstLineEnd = text.IndexOfAny(new char[] { '\r', '\n' });
-            Assert.True(firstLineEnd != -1);
+                int firstLineEnd = text.IndexOfAny(new char[] { '\r', '\n' });
+                Assert.True(firstLineEnd != -1);
 
-            var expected = text.Substring(3, firstLineEnd - 3);
+                expected = text.Substring(3, firstLineEnd - 3);
+            }
 
-            var runtimeModuleInfo = new QsRuntimeModuleInfo();
+            var runtimeModule = new QsRuntimeModule(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Directory.GetCurrentDirectory());
             var errorCollector = new QsTestErrorCollector();
-            await app.RunAsync(Path.GetFileNameWithoutExtension(data.Path), text, runtimeModuleInfo, ImmutableArray<IQsModule>.Empty, errorCollector);
+            var runResult = await app.RunAsync(Path.GetFileNameWithoutExtension(data.Path), text, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
 
+            Assert.True((runResult == null) == (errorCollector.HasError), "실행은 중간에 멈췄는데 에러로그가 남지 않았습니다");
             Assert.False(errorCollector.HasError, errorCollector.GetMessages());
             Assert.Equal(expected, cmdProvider.Output);
         }
@@ -83,15 +92,18 @@ namespace QuickSC.EvalTest
     public class QsEvalTestData : IXunitSerializable
     {
         public string Path { get; private set; }
+        public string? OverriddenResult { get; private set; }
 
         public QsEvalTestData()
         {
             Path = string.Empty;
+            OverriddenResult = null;
         }
 
-        public QsEvalTestData(string path)
+        public QsEvalTestData(string path, string? overridenResult = null)
         {
             Path = path;
+            OverriddenResult = overridenResult;
         }
 
         public override string ToString()
@@ -102,16 +114,23 @@ namespace QuickSC.EvalTest
         public void Deserialize(IXunitSerializationInfo info)
         {
             Path = info.GetValue<string>("Path");
+            OverriddenResult = info.GetValue<string?>("OverriddenResult");
         }
 
         public void Serialize(IXunitSerializationInfo info)
         {
             info.AddValue("Path", Path);
+            info.AddValue("OverriddenResult", OverriddenResult);
         }
     }
 
     class QsEvalTestDataFactory : IEnumerable<object[]>
     {
+        Dictionary<string, string> overriddenResults = new Dictionary<string, string>
+        {
+            [Path.Combine("Input", "Env", "01_Env.qs")] = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+        };
+
         public IEnumerator<object[]> GetEnumerator()
         {
             var curDir = Directory.GetCurrentDirectory();
@@ -119,7 +138,9 @@ namespace QuickSC.EvalTest
             foreach (var path in Directory.EnumerateFiles(curDir, "*.qs", SearchOption.AllDirectories))
             {
                 var relPath = Path.GetRelativePath(curDir, path);
-                yield return new object[] { new QsEvalTestData(relPath) };
+
+                var result = overriddenResults.GetValueOrDefault(relPath);
+                yield return new object[] { new QsEvalTestData(relPath, result) };                
             }
         }
 

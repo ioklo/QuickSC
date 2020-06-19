@@ -35,13 +35,13 @@ namespace QuickSC
         }
         
         public async ValueTask<int?> RunAsync(
-            string moduleName, string input, IQsRuntimeModuleInfo runtimeModuleInfo, ImmutableArray<IQsModule> modulesExceptRuntimeModule, IQsErrorCollector errorCollector) // 레퍼런스를 포함
+            string moduleName, string input, IQsRuntimeModule runtimeModule, ImmutableArray<IQsModule> modulesExceptRuntimeModule, IQsErrorCollector errorCollector) // 레퍼런스를 포함
         {
             var metadatasBuilder = ImmutableArray.CreateBuilder<IQsMetadata>(modulesExceptRuntimeModule.Length + 1);
 
-            metadatasBuilder.Add(runtimeModuleInfo.GetMetadata());
+            metadatasBuilder.Add(runtimeModule);
             foreach(var module in modulesExceptRuntimeModule)
-                metadatasBuilder.Add((IQsMetadata)module);
+                metadatasBuilder.Add(module);
 
             var metadatas = metadatasBuilder.MoveToImmutable();
 
@@ -79,8 +79,6 @@ namespace QuickSC
 
             var domainService = new QsDomainService(metadataService);
             var staticValueService = new QsStaticValueService();
-
-            var runtimeModule = runtimeModuleInfo.MakeRuntimeModule();
 
             domainService.LoadModule(runtimeModule);
 

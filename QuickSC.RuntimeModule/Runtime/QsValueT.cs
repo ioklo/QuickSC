@@ -22,7 +22,7 @@ namespace QuickSC.Runtime
             return new QsValue<T>(Value);
         }        
         
-        public override QsValue GetMemberValue(QsMetaItemId varId)
+        public override QsValue GetMemberValue(QsName varName)
         {
             throw new InvalidOperationException();
         }

@@ -7,15 +7,15 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    class QsEnumeratorObjectInfo : QsNativeObjectInfo
+    class QsEnumeratorObjectInfo : QsRuntimeModuleObjectInfo
     {
         public QsEnumeratorObjectInfo()
         {
-            var enumeratorId = QsRuntimeModuleInfo.EnumeratorId;
+            var enumeratorId = QsRuntimeModule.EnumeratorId;
 
             var funcIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
             var elemTypeValue = new QsTypeVarTypeValue(enumeratorId, "T");
-            var boolTypeValue = new QsNormalTypeValue(null, QsRuntimeModuleInfo.BoolId);
+            var boolTypeValue = new QsNormalTypeValue(null, QsRuntimeModule.BoolId);
 
             // bool Enumerator<T>.MoveNext()
             var moveNext = new QsNativeFunc(

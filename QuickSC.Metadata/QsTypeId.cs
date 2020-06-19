@@ -61,14 +61,14 @@ namespace QuickSC
             return new QsMetaItemId(Elems.Add(elem));
         }
 
-        public QsMetaItemId Append(string name, int typeParamCount)
+        public QsMetaItemId Append(string name, int typeParamCount = 0)
         {
-            return new QsMetaItemId(Elems.Add(new QsMetaItemIdElem(QsName.Text(name), 0)));
+            return new QsMetaItemId(Elems.Add(new QsMetaItemIdElem(QsName.Text(name), typeParamCount)));
         }
 
         public QsMetaItemId Append(QsSpecialName specialName, int typeParamCount)
         {
-            return new QsMetaItemId(Elems.Add(new QsMetaItemIdElem(QsName.Special(specialName), 0)));
+            return new QsMetaItemId(Elems.Add(new QsMetaItemIdElem(QsName.Special(specialName), typeParamCount)));
         }
     }
 }

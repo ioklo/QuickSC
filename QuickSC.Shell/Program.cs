@@ -156,15 +156,20 @@ namespace QuickSC.Shell
                 }
 
                 // code
-                var app = new QsDefaultApplication(cmdProvider);
-                var runtimeModuleInfo = new QsRuntimeModuleInfo();
+                var app = new QsDefaultApplication(cmdProvider);                
                 var errorCollector = new QsDemoErrorCollector();
 
                 using (var stream = new StreamReader(args[0]))
                 {
+                    var fullPath = Path.GetFullPath(args[0]);
+                    var scriptDir = Path.GetDirectoryName(fullPath);
+                    if (scriptDir == null) return;
+
+                    var runtimeModule = new QsRuntimeModule(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), scriptDir);
+
                     var input = await stream.ReadToEndAsync();
-                    var moduleName = Path.GetFileNameWithoutExtension(args[0]);
-                    var runResult = await app.RunAsync(moduleName, input, runtimeModuleInfo, ImmutableArray<IQsModule>.Empty, errorCollector);
+                    var moduleName = Path.GetFileNameWithoutExtension(fullPath);
+                    var runResult = await app.RunAsync(moduleName, input, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
                     
                     if (errorCollector.HasError)
                     {

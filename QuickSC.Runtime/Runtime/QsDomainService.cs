@@ -16,6 +16,9 @@ namespace QuickSC.Runtime
         Dictionary<QsMetaItemId, IQsModuleTypeInfo> typeInfos;
         Dictionary<QsMetaItemId, IQsModuleFuncInfo> funcInfos;
 
+        // 모든 모듈의 전역 변수
+        public Dictionary<QsMetaItemId, QsValue> globalValues { get; }
+
         public QsDomainService(QsMetadataService metadataService)
         {
             // TODO: metadataService와 LoadModule사이에 연관이 없다 실수하기 쉽다
@@ -23,6 +26,12 @@ namespace QuickSC.Runtime
             
             typeInfos = new Dictionary<QsMetaItemId, IQsModuleTypeInfo>();
             funcInfos = new Dictionary<QsMetaItemId, IQsModuleFuncInfo>();
+            globalValues = new Dictionary<QsMetaItemId, QsValue>();
+        }
+
+        public QsValue GetGlobalValue(QsMetaItemId varId)
+        {
+            return globalValues[varId];
         }
 
         public void AddTypeInfos(IEnumerable<IQsModuleTypeInfo> typeInfos)
@@ -41,6 +50,8 @@ namespace QuickSC.Runtime
         {
             AddTypeInfos(module.TypeInfos);
             AddFuncInfos(module.FuncInfos);
+
+            module.OnLoad(this);
         }
 
         public QsFuncInst GetFuncInst(QsFuncValue funcValue)
@@ -129,6 +140,12 @@ namespace QuickSC.Runtime
             }
 
             return new QsTypeEnv(builder.ToImmutable());
-        }        
+        }
+
+        public void SetGlobalValue(QsMetaItemId varId, QsValue value)
+        {
+            Debug.Assert(!globalValues.ContainsKey(varId));
+            globalValues[varId] = value;
+        }
     }
 }

@@ -116,7 +116,7 @@ namespace QuickSC.StaticAnalyzer
             }
 
             outValue = null;
-            context.ErrorCollector.Add(idExp, $"이름이 {idExp.Value} 인 함수, 람다, 타입이 가 없습니다");
+            context.ErrorCollector.Add(idExp, $"이름이 {idExp.Value} 인 함수, 람다, 타입이 없습니다");
             return false;
         }
 
@@ -586,7 +586,7 @@ namespace QuickSC.StaticAnalyzer
 
                 context.InfosByNode[exp] = bStaticVar
                     ? QsMemberCallExpInfo.MakeStaticLambda(bEvaluateObject: !bStaticObject, varValue)
-                    : QsMemberCallExpInfo.MakeInstanceLambda(varValue.VarId);
+                    : QsMemberCallExpInfo.MakeInstanceLambda(varValue.VarId.Name);
 
                 typeValue = varFuncTypeValue.Return;
                 return true;
@@ -619,6 +619,7 @@ namespace QuickSC.StaticAnalyzer
 
                 if (!context.MetadataService.GetMemberVar(objNormalTypeValue.TypeId, memberExp.MemberName, out var memberVar))
                 {
+                    context.ErrorCollector.Add(memberExp, $"{memberExp.MemberName}은 {objNormalTypeValue}의 멤버가 아닙니다");
                     outTypeValue = null;
                     return false;
                 }
@@ -636,7 +637,7 @@ namespace QuickSC.StaticAnalyzer
                 }
                 else
                 {
-                    context.InfosByNode[memberExp] = QsMemberExpInfo.MakeInstance(memberVar.Value.Var.VarId);
+                    context.InfosByNode[memberExp] = QsMemberExpInfo.MakeInstance(memberVar.Value.Var.VarId.Name);
                     return true;
                 }
             }

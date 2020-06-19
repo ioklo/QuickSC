@@ -25,7 +25,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         
-        internal void AnalyzeVarDecl(QsVarDecl varDecl, QsAnalyzerContext context)
+        internal bool AnalyzeVarDecl(QsVarDecl varDecl, QsAnalyzerContext context)
         {
             // 1. int x  // x를 추가
             // 2. int x = initExp // x 추가, initExp가 int인지 검사
@@ -42,7 +42,7 @@ namespace QuickSC.StaticAnalyzer
                     if (declTypeValue is QsVarTypeValue)
                     {
                         context.ErrorCollector.Add(elem, $"{elem.VarName}의 타입을 추론할 수 없습니다");
-                        return;
+                        return false;
                     }
                     else
                     {
@@ -52,7 +52,7 @@ namespace QuickSC.StaticAnalyzer
                 else
                 {
                     if (!AnalyzeExp(elem.InitExp, context, out var initExpTypeValue))
-                        return;
+                        return false;
 
                     // var 처리
                     QsTypeValue typeValue;
@@ -73,7 +73,7 @@ namespace QuickSC.StaticAnalyzer
             }
 
             context.InfosByNode[varDecl] = new QsVarDeclInfo(elemsBuilder.MoveToImmutable());
-            return;
+            return true;
 
             void AddElement(string name, QsTypeValue typeValue, QsAnalyzerContext context)
             {
@@ -93,13 +93,17 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        public void AnalyzeStringExpElement(QsStringExpElement elem, QsAnalyzerContext context)
+        public bool AnalyzeStringExpElement(QsStringExpElement elem, QsAnalyzerContext context)
         {
+            bool bResult = true;
+
             if (elem is QsExpStringExpElement expElem)
             {
                 // TODO: exp의 결과 string으로 변환 가능해야 하는 조건도 고려해야 한다
-                AnalyzeExp(expElem.Exp, context, out var _);
+                bResult &= AnalyzeExp(expElem.Exp, context, out var _);
             }
+
+            return bResult;
         }
 
         public bool AnalyzeLambda(
@@ -175,7 +179,7 @@ namespace QuickSC.StaticAnalyzer
                 context.CurFunc.AddVarInfo(param.Name, paramTypeValue);
             }
 
-            AnalyzeStmt(body, context);
+            bool bResult = AnalyzeStmt(body, context);
 
             context.bGlobalScope = bPrevGlobalScope;
             context.CurFunc = prevFunc;
@@ -185,7 +189,7 @@ namespace QuickSC.StaticAnalyzer
                 func.RetTypeValue ?? QsVoidTypeValue.Instance,
                 paramTypeValuesBuilder.MoveToImmutable());
             outLocalVarCount = func.LocalVarCount;
-            return true;
+            return bResult;
         }
 
         internal bool AnalyzeExp(QsExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
@@ -193,12 +197,12 @@ namespace QuickSC.StaticAnalyzer
             return expAnalyzer.AnalyzeExp(exp, context, out typeValue);
         }
 
-        public void AnalyzeStmt(QsStmt stmt, QsAnalyzerContext context)
+        public bool AnalyzeStmt(QsStmt stmt, QsAnalyzerContext context)
         {
-            stmtAnalyzer.AnalyzeStmt(stmt, context);
+            return stmtAnalyzer.AnalyzeStmt(stmt, context);
         }
         
-        public void AnalyzeFuncDecl(QsFuncDecl funcDecl, QsAnalyzerContext context)
+        public bool AnalyzeFuncDecl(QsFuncDecl funcDecl, QsAnalyzerContext context)
         {
             var func = context.FuncsByFuncDecl[funcDecl];
 
@@ -218,13 +222,15 @@ namespace QuickSC.StaticAnalyzer
                     funcContext.AddVarInfo(param.Name, paramTypeValue);
                 }
 
-                AnalyzeStmt(funcDecl.Body, context);
+                bool bResult = AnalyzeStmt(funcDecl.Body, context);
 
                 // TODO: Body가 실제로 리턴을 제대로 하는지 확인해야 할 필요가 있다
 
                 context.FuncTemplatesById[func.FuncId] = new QsScriptFuncTemplate.FuncDecl(
                     funcDecl.FuncKind == QsFuncKind.Sequence ? func.RetTypeValue : null,
                     func.bThisCall, funcContext.LocalVarCount, funcDecl.Body);
+
+                return bResult;
             }
             finally
             {
@@ -232,15 +238,17 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        QsAnalyzeInfo AnalyzeScript(QsScript script, QsAnalyzerContext context)
-        {   
+        bool AnalyzeScript(QsScript script, QsAnalyzerContext context)
+        {
+            bool bResult = true;
+
             // 4. 최상위 script를 분석한다
             foreach (var elem in script.Elements)
             {
                 switch (elem)
                 {
                     case QsStmtScriptElement stmtElem: 
-                        AnalyzeStmt(stmtElem.Stmt, context); 
+                        bResult &= AnalyzeStmt(stmtElem.Stmt, context); 
                         break;
                 }
             }
@@ -252,16 +260,14 @@ namespace QuickSC.StaticAnalyzer
                 {
                     // TODO: classDecl
                     case QsFuncDeclScriptElement funcElem: 
-                        AnalyzeFuncDecl(funcElem.FuncDecl, context);
+                        bResult &= AnalyzeFuncDecl(funcElem.FuncDecl, context);
                         break;
                 }
             }
 
             context.InfosByNode[script] = new QsScriptInfo(context.CurFunc.LocalVarCount);
 
-            return new QsAnalyzeInfo(
-                context.InfosByNode.ToImmutableWithComparer(),
-                context.FuncTemplatesById.ToImmutableDictionary());
+            return bResult;
         }
 
         public bool AnalyzeScript(
@@ -280,9 +286,9 @@ namespace QuickSC.StaticAnalyzer
                 buildResult,
                 errorCollector);
 
-            AnalyzeScript(script, context);
+            bool bResult = AnalyzeScript(script, context);
 
-            if (errorCollector.HasError)
+            if (!bResult || errorCollector.HasError)
             {
                 outInfo = null;
                 return false;

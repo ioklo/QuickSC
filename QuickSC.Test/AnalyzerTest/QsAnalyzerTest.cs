@@ -50,7 +50,7 @@ namespace QuickSC
 
             Assert.True(scriptResult.HasValue);
 
-            var runtimeModuleInfo = new QsRuntimeModuleInfo();
+            var runtimeModule = new QsRuntimeModule("/", "/");
             var errors = new List<(object obj, string Message)>();
 
             // var app = new QsDefaultApplication(new QsTestCmdProvider(), runtimeModule);            

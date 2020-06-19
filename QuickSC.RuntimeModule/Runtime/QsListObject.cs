@@ -9,19 +9,24 @@ using System.Threading.Tasks;
 namespace QuickSC.Runtime
 {
     using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
-
-    // RuntimeModule은 NativeObjectInfo를 들고 있다가, Metadata가 필요하면 metadata를, Inst정보가 필요하면 inst정보를.. 인데.. 
-    public class QsNativeMetaBuilder
+    
+    public class QsRuntimeModuleBuilder
     {
-        string moduleName;
         ImmutableArray<QsType>.Builder typesBuilder;
         ImmutableArray<QsFunc>.Builder funcsBuilder;
+        ImmutableArray<QsVariable>.Builder varsBuilder;
 
-        public QsNativeMetaBuilder(string moduleName)
+        public ImmutableArray<IQsModuleTypeInfo>.Builder ModuleTypeInfosBuilder { get; }
+        public ImmutableArray<IQsModuleFuncInfo>.Builder ModuleFuncInfosBuilder { get; }
+
+        public QsRuntimeModuleBuilder()
         {
-            this.moduleName = moduleName;
             typesBuilder = ImmutableArray.CreateBuilder<QsType>();
             funcsBuilder = ImmutableArray.CreateBuilder<QsFunc>();
+            varsBuilder = ImmutableArray.CreateBuilder<QsVariable>();
+
+            ModuleTypeInfosBuilder = ImmutableArray.CreateBuilder<IQsModuleTypeInfo>();
+            ModuleFuncInfosBuilder = ImmutableArray.CreateBuilder<IQsModuleFuncInfo>();            
         }
 
         public void AddType(QsMetaItemId typeId,
@@ -41,26 +46,14 @@ namespace QuickSC.Runtime
             typesBuilder.Add(dotnetType);
         }
 
+        public void AddVar(QsMetaItemId varId, QsTypeValue typeValue)
+        {
+            varsBuilder.Add(new QsVariable(false, varId, typeValue));
+        }
+
         public void AddFunc(QsMetaItemId funcId, bool bSeqCall, bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retTypeValue, ImmutableArray<QsTypeValue> paramTypeValues)
         {
             funcsBuilder.Add(new QsFunc(funcId, bSeqCall, bThisCall, typeParams, retTypeValue, paramTypeValues));
-        }
-
-        public QsMetadata ToMetadata()
-        {
-            return new QsMetadata(moduleName, typesBuilder.ToImmutable(), funcsBuilder.ToImmutable(), ImmutableArray<QsVariable>.Empty);
-        }
-    }
-
-    public class QsNativeModuleBuilder
-    {
-        public ImmutableArray<IQsModuleTypeInfo>.Builder ModuleTypeInfosBuilder { get; }
-        public ImmutableArray<IQsModuleFuncInfo>.Builder ModuleFuncInfosBuilder { get; }
-
-        public QsNativeModuleBuilder()
-        {
-            ModuleTypeInfosBuilder = ImmutableArray.CreateBuilder<IQsModuleTypeInfo>();
-            ModuleFuncInfosBuilder = ImmutableArray.CreateBuilder<IQsModuleFuncInfo>();
         }
 
         public void AddTypeInstantiator(QsMetaItemId typeId, QsNativeTypeInstantiator instantiator)
@@ -72,32 +65,28 @@ namespace QuickSC.Runtime
         {
             ModuleFuncInfosBuilder.Add(new QsNativeModuleFuncInfo(funcId, instantiator));
         }
+
+        public IEnumerable<QsType> GetTypes() { return typesBuilder; }
+        public IEnumerable<QsFunc> GetFuncs() { return funcsBuilder; }
+        public IEnumerable<QsVariable> GetVars() { return varsBuilder; }        
     }
 
-    public class QsRuntimeModuleBuilder : QsNativeModuleBuilder
-    {
-        string moduleName;
-
-        public QsRuntimeModuleBuilder(string moduleName)
-        {
-            this.moduleName = moduleName;
-        }
-
-        public QsRuntimeModule ToRuntimeModule()
-        {
-            return new QsRuntimeModule(moduleName, ModuleTypeInfosBuilder.ToImmutable(), ModuleFuncInfosBuilder.ToImmutable());
-        }
-    }
-
-    public class QsNativeObjectInfo : IQsNativeObjectInfo
+    public class QsRuntimeModuleObjectInfo : IQsRuntimeModuleObjectInfo
     {
         List<QsNativeType> nativeTypes;
         List<QsNativeFunc> nativeFuncs;
+        List<QsNativeVar> nativeVars;
 
-        public QsNativeObjectInfo()
+        public QsRuntimeModuleObjectInfo()
         {
             nativeTypes = new List<QsNativeType>();
             nativeFuncs = new List<QsNativeFunc>();
+            nativeVars = new List<QsNativeVar>();
+        }
+
+        protected void AddNativeVar(QsNativeVar nativeVar)
+        {
+            nativeVars.Add(nativeVar);
         }
 
         protected void AddNativeFunc(QsNativeFunc nativeFunc)
@@ -109,10 +98,11 @@ namespace QuickSC.Runtime
         {
             nativeTypes.Add(nativeType);
         }
-
-        public void BuildMeta(QsNativeMetaBuilder builder)
+        
+        public void BuildModule(QsRuntimeModuleBuilder builder)
         {
             foreach (var nativeType in nativeTypes)
+            {
                 builder.AddType(
                     nativeType.TypeId,
                     nativeType.TypeParams,
@@ -123,54 +113,56 @@ namespace QuickSC.Runtime
                     nativeType.MemberFuncIds,
                     nativeType.MemberVarIds);
 
-            foreach (var nativeFunc in nativeFuncs)
-                builder.AddFunc(nativeFunc.FuncId, nativeFunc.bSeqCall, nativeFunc.bThisCall, nativeFunc.TypeParams, nativeFunc.RetTypeValue, nativeFunc.ParamTypeValues);
-        }
-
-        public void BuildModule(QsNativeModuleBuilder builder)
-        {
-            foreach (var nativeType in nativeTypes)
                 builder.AddTypeInstantiator(nativeType.TypeId, nativeType.Instantiator);
+            }
 
             foreach (var nativeFunc in nativeFuncs)
+            {
+                builder.AddFunc(nativeFunc.FuncId, nativeFunc.bSeqCall, nativeFunc.bThisCall, nativeFunc.TypeParams, nativeFunc.RetTypeValue, nativeFunc.ParamTypeValues);
                 builder.AddFuncInstantiator(nativeFunc.FuncId, nativeFunc.Instantiator);
+            }
+
+            foreach(var nativeVar in nativeVars)
+            {
+                builder.AddVar(nativeVar.VarId, nativeVar.TypeValue);
+            }
         }
     }
 
-    public class QsListObjectInfo : QsNativeObjectInfo
+    public class QsListObjectInfo : QsRuntimeModuleObjectInfo
     {   
         public QsListObjectInfo()
         {
-            QsTypeValue intTypeValue = new QsNormalTypeValue(null, QsRuntimeModuleInfo.IntId);
-            QsTypeValue listElemTypeValue = new QsTypeVarTypeValue(QsRuntimeModuleInfo.ListId, "T");
+            QsTypeValue intTypeValue = new QsNormalTypeValue(null, QsRuntimeModule.IntId);
+            QsTypeValue listElemTypeValue = new QsTypeVarTypeValue(QsRuntimeModule.ListId, "T");
 
             var memberFuncIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
 
             // List<T>.Add
-            AddFunc(QsRuntimeModuleInfo.ListId.Append("Add", 0),
+            AddFunc(QsRuntimeModule.ListId.Append("Add", 0),
                 bSeqCall: false, bThisCall: true, ImmutableArray<string>.Empty,
                 QsVoidTypeValue.Instance, ImmutableArray.Create(listElemTypeValue), QsListObject.NativeAdd);
 
             // List<T>.RemoveAt(int index)     
-            AddFunc(QsRuntimeModuleInfo.ListId.Append("RemoveAt", 0),
+            AddFunc(QsRuntimeModule.ListId.Append("RemoveAt", 0),
                 bSeqCall: false, bThisCall: true, ImmutableArray<string>.Empty,
                 QsVoidTypeValue.Instance, ImmutableArray.Create(intTypeValue), QsListObject.NativeRemoveAt);
 
             // Enumerator<T> List<T>.GetEnumerator()
             Invoker wrappedGetEnumerator =
-                (domainService, typeArgs, thisValue, args) => QsListObject.NativeGetEnumerator(domainService, QsRuntimeModuleInfo.EnumeratorId, typeArgs, thisValue, args);
+                (domainService, typeArgs, thisValue, args) => QsListObject.NativeGetEnumerator(domainService, QsRuntimeModule.EnumeratorId, typeArgs, thisValue, args);
 
-            AddFunc(QsRuntimeModuleInfo.ListId.Append("GetEnumerator", 0),
+            AddFunc(QsRuntimeModule.ListId.Append("GetEnumerator", 0),
                 bSeqCall: false, bThisCall: true, ImmutableArray<string>.Empty,
-                new QsNormalTypeValue(null, QsRuntimeModuleInfo.EnumeratorId, listElemTypeValue), ImmutableArray<QsTypeValue>.Empty, wrappedGetEnumerator);
+                new QsNormalTypeValue(null, QsRuntimeModule.EnumeratorId, listElemTypeValue), ImmutableArray<QsTypeValue>.Empty, wrappedGetEnumerator);
 
             // T List<T>.Indexer(int index)
-            AddFunc(QsRuntimeModuleInfo.ListId.Append(QsSpecialName.Indexer, 0),
+            AddFunc(QsRuntimeModule.ListId.Append(QsSpecialName.Indexer, 0),
                 bSeqCall: false, bThisCall: true, ImmutableArray<string>.Empty,
                 listElemTypeValue, ImmutableArray.Create(intTypeValue), QsListObject.NativeIndexer);
 
             AddNativeType(new QsNativeType(
-                QsRuntimeModuleInfo.ListId,
+                QsRuntimeModule.ListId,
                 ImmutableArray.Create("T"), // typeParams
                 null,
                 ImmutableArray<QsMetaItemId>.Empty,

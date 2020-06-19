@@ -153,8 +153,7 @@ namespace QuickSC
                 switch(varDeclInfoElem.Storage)
                 {
                     case QsGlobalStorage storage:
-                        Debug.Assert(!context.GlobalVars.ContainsKey(storage.VarId));
-                        context.GlobalVars[storage.VarId] = value.MakeCopy();
+                        context.DomainService.SetGlobalValue(storage.VarId, value.MakeCopy());
                         break;
 
                     case QsLocalStorage storage: 

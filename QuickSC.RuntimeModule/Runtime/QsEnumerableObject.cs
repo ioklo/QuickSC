@@ -10,14 +10,14 @@ namespace QuickSC.Runtime
 {
     using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>>;
 
-    class QsEnumerableObjectInfo : QsNativeObjectInfo
+    class QsEnumerableObjectInfo : QsRuntimeModuleObjectInfo
     {
         public QsEnumerableObjectInfo()
         {
-            var enumeratorId = QsRuntimeModuleInfo.EnumeratorId;
+            var enumeratorId = QsRuntimeModule.EnumeratorId;
 
             // T
-            var enumerableId = QsRuntimeModuleInfo.EnumerableId;
+            var enumerableId = QsRuntimeModule.EnumerableId;
             var elemTypeValue = new QsTypeVarTypeValue(enumerableId, "T");
 
             // Enumerator<T>

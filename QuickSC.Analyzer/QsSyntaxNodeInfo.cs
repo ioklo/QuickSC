@@ -42,10 +42,10 @@ namespace QuickSC
         {
             public class Instance : ExpKind
             {
-                public QsMetaItemId VarId { get; }
-                public Instance(QsMetaItemId varId)
+                public QsName VarName { get; }
+                public Instance(QsName varName)
                 {
-                    VarId = varId;
+                    VarName = varName;
                 }
             }
 
@@ -63,7 +63,7 @@ namespace QuickSC
 
         public ExpKind Kind { get; }
 
-        public static QsMemberExpInfo MakeInstance(QsMetaItemId varId) => new QsMemberExpInfo(new ExpKind.Instance(varId));
+        public static QsMemberExpInfo MakeInstance(QsName varName) => new QsMemberExpInfo(new ExpKind.Instance(varName));
         public static QsMemberExpInfo MakeStatic(bool bEvaluateObject, QsVarValue varValue) => 
             new QsMemberExpInfo(new ExpKind.Static(bEvaluateObject, varValue));
 
@@ -120,10 +120,10 @@ namespace QuickSC
             // x.f() C.f()
             public class InstanceLambdaCall : CallKind
             {
-                public QsMetaItemId VarId { get; }
-                public InstanceLambdaCall(QsMetaItemId varId)
+                public QsName VarName { get; }
+                public InstanceLambdaCall(QsName varName)
                 {
-                    VarId = varId;
+                    VarName = varName;
                 }
             }
 
@@ -151,8 +151,8 @@ namespace QuickSC
         public static QsMemberCallExpInfo MakeStaticLambda(bool bEvaluateObject, QsVarValue varValue)
             => new QsMemberCallExpInfo(new CallKind.StaticLambdaCall(bEvaluateObject, varValue));
 
-        public static QsMemberCallExpInfo MakeInstanceLambda(QsMetaItemId varId)
-            => new QsMemberCallExpInfo(new CallKind.InstanceLambdaCall(varId));
+        public static QsMemberCallExpInfo MakeInstanceLambda(QsName varName)
+            => new QsMemberCallExpInfo(new CallKind.InstanceLambdaCall(varName));
 
 
         private QsMemberCallExpInfo(CallKind kind)

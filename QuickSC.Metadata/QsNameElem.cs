@@ -9,13 +9,13 @@ namespace QuickSC
         public QsName Name { get; }
         public int TypeParamCount { get; }
         
-        public QsMetaItemIdElem(QsName name, int typeParamCount)
+        public QsMetaItemIdElem(QsName name, int typeParamCount = 0)
         {
             Name = name;
             TypeParamCount = typeParamCount;
         }
 
-        public QsMetaItemIdElem(string name, int typeParamCount)
+        public QsMetaItemIdElem(string name, int typeParamCount = 0)
         {
             Name = QsName.Text(name);
             TypeParamCount = typeParamCount;

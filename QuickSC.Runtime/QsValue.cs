@@ -25,29 +25,29 @@ namespace QuickSC
         public abstract QsValue MakeCopy();
 
         // 뭘 리턴해야 하는거냐
-        public abstract QsValue GetMemberValue(QsMetaItemId varId);
+        public abstract QsValue GetMemberValue(QsName varName);
         public abstract QsTypeInst GetTypeInst();
     }
     
     public class QsEnumValue : QsValue
     {
         public QsTypeInst TypeInst { get; }
-        ImmutableDictionary<QsMetaItemId, QsValue> values;
+        ImmutableDictionary<QsName, QsValue> values;
 
-        public QsEnumValue(QsTypeInst typeInst, ImmutableDictionary<QsMetaItemId, QsValue> values)
+        public QsEnumValue(QsTypeInst typeInst, ImmutableDictionary<QsName, QsValue> values)
         {
             TypeInst = typeInst;
             this.values = values;
         }
         
-        public override QsValue GetMemberValue(QsMetaItemId varId)
+        public override QsValue GetMemberValue(QsName varName)
         {
-            return values[varId];
+            return values[varName];
         }
 
         public override QsValue MakeCopy()
         {
-            var newValues = ImmutableDictionary.CreateBuilder<QsMetaItemId, QsValue>();
+            var newValues = ImmutableDictionary.CreateBuilder<QsName, QsValue>();
 
             foreach (var v in values)
                 newValues.Add(v.Key, v.Value.MakeCopy());
@@ -86,7 +86,7 @@ namespace QuickSC
             return new QsFuncInstValue(FuncInst);
         }
         
-        public override QsValue GetMemberValue(QsMetaItemId varId)
+        public override QsValue GetMemberValue(QsName varName)
         {
             throw new NotImplementedException();
         }
@@ -113,7 +113,7 @@ namespace QuickSC
             return Instance;
         }
         
-        public override QsValue GetMemberValue(QsMetaItemId varId)
+        public override QsValue GetMemberValue(QsName varName)
         {
             throw new InvalidOperationException();
         }
@@ -130,7 +130,7 @@ namespace QuickSC
         public static QsVoidValue Instance { get; } = new QsVoidValue();
         private QsVoidValue() { }
         
-        public override QsValue GetMemberValue(QsMetaItemId varId)
+        public override QsValue GetMemberValue(QsName varName)
         {
             throw new InvalidOperationException();
         }
@@ -158,7 +158,7 @@ namespace QuickSC
             throw new NotImplementedException();
         }
 
-        public virtual QsValue GetMemberValue(QsMetaItemId varId)
+        public virtual QsValue GetMemberValue(QsName varName)
         {
             throw new NotImplementedException();
         }
@@ -178,9 +178,9 @@ namespace QuickSC
             Object = obj;
         }
         
-        public override QsValue GetMemberValue(QsMetaItemId varId)
+        public override QsValue GetMemberValue(QsName varName)
         {
-            return Object!.GetMemberValue(varId);
+            return Object!.GetMemberValue(varName);
         }
 
         public override QsValue MakeCopy()

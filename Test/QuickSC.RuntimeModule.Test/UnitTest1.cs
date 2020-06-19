@@ -3,6 +3,7 @@ using QuickSC.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using Xunit;
 
@@ -13,22 +14,20 @@ namespace QuickSC.RuntimeModule.Test
         [Fact]
         static void Temp()
         {
-            var runtimeModuleInfo = new QsRuntimeModuleInfo();
+            var runtimeModule = new QsRuntimeModule(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Directory.GetCurrentDirectory());
 
             QsMetadataService metadataService = new QsMetadataService(
                 ImmutableArray<QsType>.Empty, 
                 ImmutableArray<QsFunc>.Empty, 
                 ImmutableArray<QsVariable>.Empty,
-                ImmutableArray.Create<IQsMetadata>(runtimeModuleInfo.GetMetadata()));
+                ImmutableArray.Create<IQsMetadata>(runtimeModule));
 
             QsDomainService domainService = new QsDomainService(metadataService);
 
-            var runtimeModule = runtimeModuleInfo.MakeRuntimeModule();
-
             domainService.LoadModule(runtimeModule);
 
-            var intTypeId = QsRuntimeModuleInfo.IntId;
-            var listTypeId = QsRuntimeModuleInfo.ListId;
+            var intTypeId = QsRuntimeModule.IntId;
+            var listTypeId = QsRuntimeModule.ListId;
 
             // int
             var intTypeValue = new QsNormalTypeValue(null, intTypeId);

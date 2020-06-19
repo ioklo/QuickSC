@@ -27,7 +27,7 @@ namespace QuickSC
 
             return info.Storage switch
             {
-                QsGlobalStorage globalStorage => context.GlobalVars[globalStorage.VarId],
+                QsGlobalStorage globalStorage => context.DomainService.GetGlobalValue(globalStorage.VarId),
                 QsLocalStorage localStorage => context.LocalVars[localStorage.LocalIndex]!,
                 _ => throw new NotImplementedException()
             };
@@ -394,7 +394,7 @@ namespace QuickSC
                     {
                         QsValue thisValue = await EvaluateExpAsync(exp.Object, context);
                         var args = await EvaluateArgsAsync(exp.Args);
-                        var memberValue = thisValue.GetMemberValue(instanceLambdaCall.VarId);
+                        var memberValue = thisValue.GetMemberValue(instanceLambdaCall.VarName);
                         var funcInst = ((QsFuncInstValue)memberValue).FuncInst;
                         return await evaluator.EvaluateFuncInstAsync(thisValue, funcInst, args, context);
                     }
@@ -435,7 +435,7 @@ namespace QuickSC
             if (info.Kind is QsMemberExpInfo.ExpKind.Instance instanceKind)
             {
                 var objValue = await EvaluateExpAsync(exp.Object, context);
-                return objValue.GetMemberValue(instanceKind.VarId);
+                return objValue.GetMemberValue(instanceKind.VarName);
             }
             else if (info.Kind is QsMemberExpInfo.ExpKind.Static staticKind)
             {

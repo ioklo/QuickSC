@@ -8,28 +8,6 @@ using System.Text;
 
 namespace QuickSC.Runtime
 {
-    class QsDotnetObjectInfo : IQsNativeObjectInfo
-    {
-        QsMetaItemId typeId;
-        Type dotnetType;
-
-        public QsDotnetObjectInfo(QsMetaItemId typeId, Type dotnetType)
-        {
-            this.typeId = typeId;
-            this.dotnetType = dotnetType;
-        }
-
-        public void BuildMeta(QsNativeMetaBuilder builder)
-        {
-            builder.AddType(new QsDotnetType(typeId, dotnetType));
-        }
-
-        public void BuildModule(QsNativeModuleBuilder builder)
-        {
-            builder.AddTypeInstantiator(typeId, new QsNativeTypeInstantiator(() => new QsObjectValue(null)));
-        }
-    }   
-
     public class QsDotnetType : QsType
     {
         // it must be open type
@@ -111,7 +89,7 @@ namespace QuickSC.Runtime
             this.fieldInfo = fieldInfo;
         }
 
-        public override QsValue GetMemberValue(QsMetaItemId varId)
+        public override QsValue GetMemberValue(QsName varName)
         {
             throw new NotImplementedException();
         }
@@ -152,9 +130,9 @@ namespace QuickSC.Runtime
             return typeInst;
         }
 
-        public override QsValue GetMemberValue(QsMetaItemId varId)
+        public override QsValue GetMemberValue(QsName varName)
         {
-            var fieldInfo = obj.GetType().GetField(varId.Elems[varId.Elems.Length - 1].Name.Name!);
+            var fieldInfo = obj.GetType().GetField(varName.Name!);
             return new QsDotnetValue(obj, fieldInfo);
         }
     }

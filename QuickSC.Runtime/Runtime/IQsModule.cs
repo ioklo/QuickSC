@@ -17,11 +17,11 @@ namespace QuickSC.Runtime
         QsFuncInst GetFuncInst(QsDomainService domainService, QsFuncValue funcValue);
     }
 
-    public interface IQsModule
+    public interface IQsModule : IQsMetadata
     {
-        string ModuleName { get; }
-
         IEnumerable<IQsModuleTypeInfo> TypeInfos { get; }
         IEnumerable<IQsModuleFuncInfo> FuncInfos { get; }
+
+        void OnLoad(QsDomainService domainService);
     }
 }
