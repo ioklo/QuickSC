@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace QuickSC.Shell
 {
@@ -33,7 +34,13 @@ namespace QuickSC.Shell
             {
                 var tcs = new TaskCompletionSource<int>();
 
-                var psi = new ProcessStartInfo(cmdText);
+                var match = Regex.Match(cmdText, @"^\s*([^\s]+)\s*(.*)$");
+                if (!match.Success) return Task.CompletedTask;
+
+                var fileName = match.Groups[1].Value;
+                var arguments = match.Groups[2].Value;
+
+                var psi = new ProcessStartInfo(fileName, arguments);
                 psi.UseShellExecute = false;
 
                 var process = new Process();
