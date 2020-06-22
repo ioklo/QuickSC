@@ -84,7 +84,6 @@ namespace QuickSC.StaticAnalyzer
         }
     }
 
-    // TODO: 이름을 TypeAndFuncBuilder로..
     public class QsTypeAndFuncBuilder
     {
         public QsTypeAndFuncBuilder()
@@ -178,10 +177,10 @@ namespace QuickSC.StaticAnalyzer
         {
             var typeId = context.TypeIdsByLocation[QsMetadataIdLocation.Make(enumDecl)];
             
-            var thisTypeValue = new QsNormalTypeValue(
+            var thisTypeValue = new QsTypeValue_Normal(
                 context.TypeBuilder?.ThisTypeValue,
                 typeId,
-                enumDecl.TypeParams.Select(typeParam => (QsTypeValue)new QsTypeVarTypeValue(typeId, typeParam)).ToImmutableArray());
+                enumDecl.TypeParams.Select(typeParam => (QsTypeValue)new QsTypeValue_TypeVar(typeId, typeParam)).ToImmutableArray());
 
             var prevTypeBuilder = context.TypeBuilder;
             context.TypeBuilder = new QsTypeBuilder(thisTypeValue);

@@ -153,7 +153,7 @@ namespace QuickSC.StaticAnalyzer
             }
             else
             {
-                if (!context.CurFunc.bSequence && context.CurFunc.RetTypeValue != QsVoidTypeValue.Instance)
+                if (!context.CurFunc.bSequence && context.CurFunc.RetTypeValue != QsTypeValue_Void.Instance)
                     context.ErrorCollector.Add(returnStmt.Value!, $"이 함수는 {context.CurFunc.RetTypeValue}을 반환해야 합니다");
             }
 
@@ -283,13 +283,13 @@ namespace QuickSC.StaticAnalyzer
             }
 
             var getCurrentTypeValue = context.MetadataService.GetFuncTypeValue(getCurrentValue);
-            if (getCurrentTypeValue.Return == QsVoidTypeValue.Instance)
+            if (getCurrentTypeValue.Return == QsTypeValue_Void.Instance)
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "'GetCurrent()' function cannot return void");
                 return false;
             }
 
-            if (elemTypeValue == QsVarTypeValue.Instance)
+            if (elemTypeValue == QsTypeValue_Var.Instance)
             {   
                 elemTypeValue = getCurrentTypeValue.Return;
 

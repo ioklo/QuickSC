@@ -7,24 +7,25 @@ using System.Text;
 
 namespace QuickSC
 {
+    // enum류 naming을 바꿔볼까
     public abstract class QsTypeValue
-    {
+    {        
     }
 
     // "var"
-    public class QsVarTypeValue : QsTypeValue
+    public class QsTypeValue_Var : QsTypeValue
     {
-        public static QsVarTypeValue Instance { get; } = new QsVarTypeValue();
-        private QsVarTypeValue() { }
+        public static QsTypeValue_Var Instance { get; } = new QsTypeValue_Var();
+        private QsTypeValue_Var() { }
     }
 
     // T
-    public class QsTypeVarTypeValue : QsTypeValue
+    public class QsTypeValue_TypeVar : QsTypeValue
     {        
         public QsMetaItemId ParentId { get; } 
         public string Name { get; }
 
-        public QsTypeVarTypeValue(QsMetaItemId parentId, string name)
+        public QsTypeValue_TypeVar(QsMetaItemId parentId, string name)
         {
             ParentId = parentId;
             Name = name;
@@ -32,7 +33,7 @@ namespace QuickSC
 
         public override bool Equals(object? obj)
         {
-            return obj is QsTypeVarTypeValue value &&
+            return obj is QsTypeValue_TypeVar value &&
                    EqualityComparer<QsMetaItemId>.Default.Equals(ParentId, value.ParentId) &&
                    Name == value.Name;
         }
@@ -42,32 +43,32 @@ namespace QuickSC
             return HashCode.Combine(ParentId, Name);
         }
 
-        public static bool operator ==(QsTypeVarTypeValue? left, QsTypeVarTypeValue? right)
+        public static bool operator ==(QsTypeValue_TypeVar? left, QsTypeValue_TypeVar? right)
         {
-            return EqualityComparer<QsTypeVarTypeValue?>.Default.Equals(left, right);
+            return EqualityComparer<QsTypeValue_TypeVar?>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(QsTypeVarTypeValue? left, QsTypeVarTypeValue? right)
+        public static bool operator !=(QsTypeValue_TypeVar? left, QsTypeValue_TypeVar? right)
         {
             return !(left == right);
         }
     }
 
-    public class QsNormalTypeValue : QsTypeValue
+    public class QsTypeValue_Normal : QsTypeValue
     {
         // TODO: Outer를 NormalTypeValue로 고쳐보기
         public QsTypeValue? Outer { get; }
         public QsMetaItemId TypeId { get; }
         public ImmutableArray<QsTypeValue> TypeArgs { get; }
 
-        public QsNormalTypeValue(QsTypeValue? outer, QsMetaItemId typeId, ImmutableArray<QsTypeValue> typeArgs)
+        public QsTypeValue_Normal(QsTypeValue? outer, QsMetaItemId typeId, ImmutableArray<QsTypeValue> typeArgs)
         {
             this.Outer = outer;
             this.TypeId = typeId;
             this.TypeArgs = typeArgs;
         }
 
-        public QsNormalTypeValue(QsTypeValue? outer, QsMetaItemId TypeId, params QsTypeValue[] typeArgs)
+        public QsTypeValue_Normal(QsTypeValue? outer, QsMetaItemId TypeId, params QsTypeValue[] typeArgs)
         {
             this.Outer = outer;
             this.TypeId = TypeId;
@@ -76,7 +77,7 @@ namespace QuickSC
 
         public override bool Equals(object? obj)
         {
-            return obj is QsNormalTypeValue value &&
+            return obj is QsTypeValue_Normal value &&
                    EqualityComparer<QsTypeValue?>.Default.Equals(Outer, value.Outer) &&
                    EqualityComparer<QsMetaItemId>.Default.Equals(TypeId, value.TypeId) &&
                    Enumerable.SequenceEqual(TypeArgs, value.TypeArgs);
@@ -87,31 +88,31 @@ namespace QuickSC
             return HashCode.Combine(Outer, TypeId, TypeArgs);
         }
 
-        public static bool operator ==(QsNormalTypeValue? left, QsNormalTypeValue? right)
+        public static bool operator ==(QsTypeValue_Normal? left, QsTypeValue_Normal? right)
         {
-            return EqualityComparer<QsNormalTypeValue?>.Default.Equals(left, right);
+            return EqualityComparer<QsTypeValue_Normal?>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(QsNormalTypeValue? left, QsNormalTypeValue? right)
+        public static bool operator !=(QsTypeValue_Normal? left, QsTypeValue_Normal? right)
         {
             return !(left == right);
         }
     }
 
     // "void"
-    public class QsVoidTypeValue : QsTypeValue
+    public class QsTypeValue_Void : QsTypeValue
     {
-        public static QsVoidTypeValue Instance { get; } = new QsVoidTypeValue();
-        private QsVoidTypeValue() { }
+        public static QsTypeValue_Void Instance { get; } = new QsTypeValue_Void();
+        private QsTypeValue_Void() { }
     }
 
     // ArgTypeValues => RetValueTypes
-    public class QsFuncTypeValue : QsTypeValue
+    public class QsTypeValue_Func : QsTypeValue
     {
         public QsTypeValue Return { get; }
         public ImmutableArray<QsTypeValue> Params { get; }
 
-        public QsFuncTypeValue(QsTypeValue ret, ImmutableArray<QsTypeValue> parameters)
+        public QsTypeValue_Func(QsTypeValue ret, ImmutableArray<QsTypeValue> parameters)
         {
             Return = ret;
             Params = parameters;
@@ -119,7 +120,7 @@ namespace QuickSC
 
         public override bool Equals(object? obj)
         {
-            return obj is QsFuncTypeValue value &&
+            return obj is QsTypeValue_Func value &&
                    EqualityComparer<QsTypeValue>.Default.Equals(Return, value.Return) &&
                    Enumerable.SequenceEqual(Params, value.Params);
         }
@@ -129,12 +130,12 @@ namespace QuickSC
             return HashCode.Combine(Return, Params);
         }
 
-        public static bool operator ==(QsFuncTypeValue? left, QsFuncTypeValue? right)
+        public static bool operator ==(QsTypeValue_Func? left, QsTypeValue_Func? right)
         {
-            return EqualityComparer<QsFuncTypeValue?>.Default.Equals(left, right);
+            return EqualityComparer<QsTypeValue_Func?>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(QsFuncTypeValue? left, QsFuncTypeValue? right)
+        public static bool operator !=(QsTypeValue_Func? left, QsTypeValue_Func? right)
         {
             return !(left == right);
         }

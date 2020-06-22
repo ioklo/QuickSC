@@ -11,7 +11,7 @@ namespace QuickSC.Runtime
             this.defaultValueFactory = defaultValueFactory;
         }
 
-        public QsTypeInst Instantiate(QsDomainService domainService, QsNormalTypeValue ntv)
+        public QsTypeInst Instantiate(QsDomainService domainService, QsTypeValue_Normal ntv)
         {
             // class X<T> { class Y<U> : B<U, T> { } }
             // 

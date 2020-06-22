@@ -29,30 +29,30 @@ namespace QuickSC
             return expEvaluator.EvaluateStringExpAsync(command, context);
         }
 
-        QsTypeValue ApplyTypeValue(QsTypeValue typeValue, ImmutableDictionary<QsTypeVarTypeValue, QsTypeValue> typeEnv)
+        QsTypeValue ApplyTypeValue(QsTypeValue typeValue, ImmutableDictionary<QsTypeValue_TypeVar, QsTypeValue> typeEnv)
         {
             switch(typeValue)
             {
-                case QsTypeVarTypeValue typeVar: 
+                case QsTypeValue_TypeVar typeVar: 
                     return typeEnv[typeVar];
 
-                case QsNormalTypeValue ntv:
+                case QsTypeValue_Normal ntv:
                     {
                         var appliedOuter = (ntv.Outer != null) ? ApplyTypeValue(ntv.Outer, typeEnv) : null;
                         var appliedTypeArgs = ImmutableArray.CreateRange(ntv.TypeArgs, typeArg => ApplyTypeValue(typeArg, typeEnv));
 
-                        return new QsNormalTypeValue(appliedOuter, ntv.TypeId, appliedTypeArgs);
+                        return new QsTypeValue_Normal(appliedOuter, ntv.TypeId, appliedTypeArgs);
                     }
 
-                case QsVoidTypeValue vtv: 
+                case QsTypeValue_Void vtv: 
                     return typeValue;
 
-                case QsFuncTypeValue ftv:
+                case QsTypeValue_Func ftv:
                     {
                         var appliedReturn = ApplyTypeValue(ftv.Return, typeEnv);
                         var appliedParams = ImmutableArray.CreateRange(ftv.Params, param => ApplyTypeValue(param, typeEnv));
 
-                        return new QsFuncTypeValue(appliedReturn, appliedParams);
+                        return new QsTypeValue_Func(appliedReturn, appliedParams);
                     }
 
                 default:
@@ -60,9 +60,9 @@ namespace QuickSC
             }            
         }
 
-        public bool IsType(QsNormalTypeValue subTypeValue, QsNormalTypeValue typeValue, QsEvalContext context)
+        public bool IsType(QsTypeValue_Normal subTypeValue, QsTypeValue_Normal typeValue, QsEvalContext context)
         {
-            QsNormalTypeValue? curTypeValue = subTypeValue;
+            QsTypeValue_Normal? curTypeValue = subTypeValue;
 
             while (curTypeValue != null)
             {
@@ -198,7 +198,7 @@ namespace QuickSC
                         thisValue);
 
                     var asyncEnum = EvaluateScriptFuncInstSeqAsync(scriptFuncInst, args, newContext);
-                    return context.RuntimeModule.MakeEnumerable(context.DomainService, (QsNormalTypeValue)scriptFuncInst.SeqElemTypeValue, asyncEnum);
+                    return context.RuntimeModule.MakeEnumerable(context.DomainService, (QsTypeValue_Normal)scriptFuncInst.SeqElemTypeValue, asyncEnum);
                 }
 
                 var (prevLocalVars, prevFlowControl, prevTasks, prevThisValue) = 

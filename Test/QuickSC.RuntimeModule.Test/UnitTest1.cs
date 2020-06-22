@@ -30,10 +30,10 @@ namespace QuickSC.RuntimeModule.Test
             var listTypeId = QsRuntimeModule.ListId;
 
             // int
-            var intTypeValue = new QsNormalTypeValue(null, intTypeId);
+            var intTypeValue = new QsTypeValue_Normal(null, intTypeId);
 
             // List<int>
-            var listTypeValue = new QsNormalTypeValue(null, listTypeId, intTypeValue);
+            var listTypeValue = new QsTypeValue_Normal(null, listTypeId, intTypeValue);
 
             // List<int>.Add
             var listAddFuncId = listTypeId.Append(new QsMetaItemIdElem("Add", 0));
@@ -55,7 +55,7 @@ namespace QuickSC.RuntimeModule.Test
                 runtimeModule.GetInt(lstObj.Elems[2]) == 3);
 
             // List<int>
-            //var listIntTypeValue = new QsNormalTypeValue(null, listType.TypeId, new QsNormalTypeValue(null, intType.TypeId));
+            //var listIntTypeValue = new QsTypeValue_Normal(null, listType.TypeId, new QsTypeValue_Normal(null, intType.TypeId));
             //var listIntAddFuncValue = new QsFuncValue(listIntTypeValue, funcInfo.Value.FuncId);
 
             //// List<T>.Add

@@ -67,17 +67,17 @@ namespace QuickSC.Runtime
             // X<int>.Y<short> => Tx -> int, Ty -> short
             switch (typeValue)
             {
-                case QsTypeVarTypeValue tvtv:
+                case QsTypeValue_TypeVar tvtv:
                     Debug.Fail("실행중에 바인드 되지 않은 타입 인자가 나왔습니다");
                     throw new InvalidOperationException();
 
-                case QsNormalTypeValue ntv:                    
+                case QsTypeValue_Normal ntv:                    
                     return typeInfos[ntv.TypeId].GetTypeInst(this, ntv);
 
-                case QsVoidTypeValue vtv:
+                case QsTypeValue_Void vtv:
                     throw new NotImplementedException(); // TODO: void는 따로 처리
 
-                case QsFuncTypeValue ftv:
+                case QsTypeValue_Func ftv:
                     throw new NotImplementedException(); // TODO: 함수는 따로 처리
 
                 default:
@@ -85,11 +85,11 @@ namespace QuickSC.Runtime
             }
         }
         
-        public bool GetBaseTypeValue(QsNormalTypeValue ntv, out QsNormalTypeValue? outBaseTypeValue)
+        public bool GetBaseTypeValue(QsTypeValue_Normal ntv, out QsTypeValue_Normal? outBaseTypeValue)
         {
             if (metadataService.GetBaseTypeValue(ntv, out var baseTypeValue))
             {
-                outBaseTypeValue = (QsNormalTypeValue?)baseTypeValue;
+                outBaseTypeValue = (QsTypeValue_Normal?)baseTypeValue;
                 return true;
             }
 
@@ -97,11 +97,11 @@ namespace QuickSC.Runtime
             return false;
         }
 
-        void MakeTypeEnv(QsNormalTypeValue ntv, ImmutableArray<QsTypeValue>.Builder builder)
+        void MakeTypeEnv(QsTypeValue_Normal ntv, ImmutableArray<QsTypeValue>.Builder builder)
         {
             if (ntv.Outer != null)
             {
-                if (ntv.Outer is QsNormalTypeValue outerNTV)
+                if (ntv.Outer is QsTypeValue_Normal outerNTV)
                     MakeTypeEnv(outerNTV, builder);
                 else
                     throw new InvalidOperationException(); // TODO: ntv.Outer를 normaltypeValue로 바꿔야 하지 않을까
@@ -113,7 +113,7 @@ namespace QuickSC.Runtime
             }
         }
 
-        public QsTypeEnv MakeTypeEnv(QsNormalTypeValue ntv)
+        public QsTypeEnv MakeTypeEnv(QsTypeValue_Normal ntv)
         {
             var builder = ImmutableArray.CreateBuilder<QsTypeValue>();
 
@@ -128,7 +128,7 @@ namespace QuickSC.Runtime
 
             if (fv.Outer != null)
             {
-                if (fv.Outer is QsNormalTypeValue outerNTV)
+                if (fv.Outer is QsTypeValue_Normal outerNTV)
                     MakeTypeEnv(outerNTV, builder);
                 else
                     throw new InvalidOperationException(); // TODO: ntv.Outer를 normaltypeValue로 바꿔야 하지 않을까

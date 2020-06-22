@@ -70,7 +70,7 @@ namespace QuickSC.StaticAnalyzer
                     return false;
                 }
 
-                typeValue = QsVarTypeValue.Instance;
+                typeValue = QsTypeValue_Var.Instance;
                 context.TypeValuesByTypeExp.Add(exp, typeValue);
                 return true;
             }
@@ -82,7 +82,7 @@ namespace QuickSC.StaticAnalyzer
                     return false;
                 }
 
-                typeValue = QsVoidTypeValue.Instance;
+                typeValue = QsTypeValue_Void.Instance;
                 context.TypeValuesByTypeExp.Add(exp, typeValue);
                 return true;
             }
@@ -114,12 +114,12 @@ namespace QuickSC.StaticAnalyzer
             if (context.TypeSkeletonsByTypeId.TryGetValue(metaItemId, out var skeleton))
             {
                 // global이니까 outer는 null
-                candidates.Add(new QsNormalTypeValue(null, skeleton.TypeId, typeArgs));
+                candidates.Add(new QsTypeValue_Normal(null, skeleton.TypeId, typeArgs));
             }
 
             // 3-2. Reference에서 검색, GlobalTypeSkeletons에 이름이 겹치지 않아야 한다.. RefMetadata들 끼리도 이름이 겹칠 수 있다
             foreach (var type in context.MetadataService.GetTypesById(metaItemId))
-                candidates.Add(new QsNormalTypeValue(null, type.TypeId, typeArgs));
+                candidates.Add(new QsTypeValue_Normal(null, type.TypeId, typeArgs));
 
             if (candidates.Count == 1)
             {
@@ -177,7 +177,7 @@ namespace QuickSC.StaticAnalyzer
             typeValue = null;
 
             QsTypeSkeleton childSkeleton;
-            if (!(parent is QsNormalTypeValue normalParent))
+            if (!(parent is QsTypeValue_Normal normalParent))
                 return false;
             
             if (!context.TypeSkeletonsByTypeId.TryGetValue(normalParent.TypeId, out var parentSkeleton))
@@ -186,7 +186,7 @@ namespace QuickSC.StaticAnalyzer
             if (!parentSkeleton.MemberSkeletons.TryGetValue(new QsMetaItemIdElem(memberName, typeArgs.Length), out childSkeleton))
                 return false;
         
-            typeValue = new QsNormalTypeValue(parent, childSkeleton.TypeId, typeArgs);
+            typeValue = new QsTypeValue_Normal(parent, childSkeleton.TypeId, typeArgs);
             return true;
         }
 
@@ -207,7 +207,7 @@ namespace QuickSC.StaticAnalyzer
             var typeId = context.TypeIdsByLocation[QsMetadataIdLocation.Make(enumDecl)];
             foreach (var typeParam in enumDecl.TypeParams)
             {
-                context.UpdateTypeVar(typeParam, new QsTypeVarTypeValue(typeId, typeParam));
+                context.UpdateTypeVar(typeParam, new QsTypeValue_TypeVar(typeId, typeParam));
             }
 
             // 
@@ -234,7 +234,7 @@ namespace QuickSC.StaticAnalyzer
 
             var funcId = context.FuncIdsByLocation[QsMetadataIdLocation.Make(funcDecl)];
             foreach (var param in funcDecl.TypeParams)
-                context.UpdateTypeVar(param, new QsTypeVarTypeValue(funcId, param));
+                context.UpdateTypeVar(param, new QsTypeValue_TypeVar(funcId, param));
 
             EvaluateStmt(funcDecl.Body, context);
 

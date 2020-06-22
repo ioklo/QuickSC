@@ -142,15 +142,30 @@ namespace QuickSC.Runtime
     // 
     // QsIntValue = QsValueT<int>
     // 
-    
-    //public class QsDotnetModule : IQsModule, IQsMetadata
+
+    //public class QsDotnetModule : IQsModule
     //{
     //    Assembly assembly;
     //    public string ModuleName => assembly.FullName;
 
+    //    public IEnumerable<QsType> Types { get; }
+    //    public IEnumerable<QsFunc> Funcs => Enumerable.Empty<QsFunc>();
+    //    public IEnumerable<QsVariable> Vars => Enumerable.Empty<QsVariable>();
+
+    //    public IEnumerable<IQsModuleTypeInfo> TypeInfos => throw new NotImplementedException();
+    //    public IEnumerable<IQsModuleFuncInfo> FuncInfos => Enumerable.Empty<IQsModuleFuncInfo>();
+
     //    public QsDotnetModule(Assembly assembly)
     //    {
     //        this.assembly = assembly;
+
+    //        var types = new List<QsType>();
+    //        foreach(var type in assembly.GetTypes())
+    //        {
+    //            types.Add(new QsDefaultType(typeId, );
+    //        }
+
+    //        Types = types;
     //    }
 
     //    string MakeDotnetName(QsMetaItemId typeId)
@@ -158,7 +173,7 @@ namespace QuickSC.Runtime
     //        var sb = new StringBuilder();
 
     //        bool bFirst = true;
-    //        foreach(var elem in typeId.Elems)
+    //        foreach (var elem in typeId.Elems)
     //        {
     //            if (bFirst) bFirst = false;
     //            else sb.Append('.');
@@ -194,7 +209,7 @@ namespace QuickSC.Runtime
     //        outFunc = null;
     //        return false;
     //    }
-        
+
     //    public bool GetVarById(QsMetaItemId typeId, [NotNullWhen(true)] out QsVariable? outVar)
     //    {
     //        outVar = null;
@@ -206,7 +221,7 @@ namespace QuickSC.Runtime
     //        throw new NotImplementedException();
     //    }
 
-    //    public QsTypeInst GetTypeInst(QsDomainService domainService, QsNormalTypeValue ntv)
+    //    public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue_Normal ntv)
     //    {
     //        if (!domainService.GetBaseTypeValue(ntv, out var baseTypeValue))
     //            throw new InvalidOperationException();
@@ -218,6 +233,11 @@ namespace QuickSC.Runtime
     //        var typeEnv = domainService.MakeTypeEnv(ntv);
 
     //        return new QsNativeTypeInst(baseTypeInst, ntv.TypeId, new QsObjectValue(null), typeEnv);
+    //    }
+
+    //    public void OnLoad(QsDomainService domainService)
+    //    {
+    //        throw new NotImplementedException();
     //    }
     //}
 }

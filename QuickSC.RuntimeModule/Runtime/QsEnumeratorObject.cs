@@ -14,8 +14,8 @@ namespace QuickSC.Runtime
             var enumeratorId = QsRuntimeModule.EnumeratorId;
 
             var funcIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
-            var elemTypeValue = new QsTypeVarTypeValue(enumeratorId, "T");
-            var boolTypeValue = new QsNormalTypeValue(null, QsRuntimeModule.BoolId);
+            var elemTypeValue = new QsTypeValue_TypeVar(enumeratorId, "T");
+            var boolTypeValue = new QsTypeValue_Normal(null, QsRuntimeModule.BoolId);
 
             // bool Enumerator<T>.MoveNext()
             var moveNext = new QsNativeFunc(

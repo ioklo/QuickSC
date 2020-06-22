@@ -348,7 +348,7 @@ namespace QuickSC.StaticAnalyzer
 
         bool AnalyzeCallableIdentifierExp(
             QsIdentifierExp exp, ImmutableArray<QsTypeValue> args, QsAnalyzerContext context,
-            [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsFuncTypeValue TypeValue)? outValue)
+            [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsTypeValue_Func TypeValue)? outValue)
         {
             // 1. this 검색
 
@@ -386,7 +386,7 @@ namespace QuickSC.StaticAnalyzer
 
         bool AnalyzeCallableElseExp(
             QsExp exp, ImmutableArray<QsTypeValue> args, QsAnalyzerContext context,
-            [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsFuncTypeValue TypeValue)? outValue)
+            [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsTypeValue_Func TypeValue)? outValue)
         {
             if (!AnalyzeExp(exp, context, out var typeValue))
             {
@@ -394,7 +394,7 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
 
-            var funcTypeValue = typeValue as QsFuncTypeValue;
+            var funcTypeValue = typeValue as QsTypeValue_Func;
             if (funcTypeValue == null)
             {
                 context.ErrorCollector.Add(exp, $"호출 가능한 타입이 아닙니다");
@@ -439,7 +439,7 @@ namespace QuickSC.StaticAnalyzer
         bool AnalyzeCallableExp(
             QsExp exp, 
             ImmutableArray<QsTypeValue> args, QsAnalyzerContext context, 
-            [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsFuncTypeValue TypeValue)? outValue)
+            [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsTypeValue_Func TypeValue)? outValue)
         {
             if (exp is QsIdentifierExp idExp)
                 return AnalyzeCallableIdentifierExp(idExp, args, context, out outValue);
@@ -576,7 +576,7 @@ namespace QuickSC.StaticAnalyzer
                 context.MetadataService.GetMemberVarValue(bStaticOnly: bStaticObject, objTypeValue, exp.MemberName, out var varValue))
             {
                 bool bStaticVar = context.MetadataService.IsVarStatic(varValue.VarId);
-                var varFuncTypeValue = context.MetadataService.GetVarTypeValue(varValue) as QsFuncTypeValue;
+                var varFuncTypeValue = context.MetadataService.GetVarTypeValue(varValue) as QsTypeValue_Func;
 
                 if (varFuncTypeValue == null)
                 {
@@ -608,7 +608,7 @@ namespace QuickSC.StaticAnalyzer
             // obj.id
             if (!objInfo.Value.bStatic)
             {
-                QsNormalTypeValue? objNormalTypeValue = objInfo.Value.TypeValue as QsNormalTypeValue;
+                QsTypeValue_Normal? objNormalTypeValue = objInfo.Value.TypeValue as QsTypeValue_Normal;
 
                 if (objNormalTypeValue == null)
                 {
@@ -643,7 +643,7 @@ namespace QuickSC.StaticAnalyzer
             }
             else // X.id
             {
-                QsNormalTypeValue? objNormalTypeValue = objInfo.Value.TypeValue as QsNormalTypeValue;
+                QsTypeValue_Normal? objNormalTypeValue = objInfo.Value.TypeValue as QsTypeValue_Normal;
 
                 if (objNormalTypeValue == null)
                 {

@@ -8,7 +8,7 @@ namespace QuickSC.Runtime
     public interface IQsModuleTypeInfo
     {
         QsMetaItemId TypeId { get; }
-        QsTypeInst GetTypeInst(QsDomainService domainService, QsNormalTypeValue typeValue);
+        QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue_Normal typeValue);
     }
 
     public interface IQsModuleFuncInfo

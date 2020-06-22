@@ -57,9 +57,9 @@ namespace QuickSC
 
                 var condValueTypeValue = condValue.GetTypeInst().TypeValue;
 
-                Debug.Assert(condValueTypeValue is QsNormalTypeValue);
-                Debug.Assert(ifStmtInfo.TestTypeValue is QsNormalTypeValue);
-                bTestPassed = evaluator.IsType((QsNormalTypeValue)condValueTypeValue, (QsNormalTypeValue)ifStmtInfo.TestTypeValue, context);
+                Debug.Assert(condValueTypeValue is QsTypeValue_Normal);
+                Debug.Assert(ifStmtInfo.TestTypeValue is QsTypeValue_Normal);
+                bTestPassed = evaluator.IsType((QsTypeValue_Normal)condValueTypeValue, (QsTypeValue_Normal)ifStmtInfo.TestTypeValue, context);
             }
 
             if (bTestPassed)

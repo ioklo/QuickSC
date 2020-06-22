@@ -18,10 +18,10 @@ namespace QuickSC.Runtime
 
             // T
             var enumerableId = QsRuntimeModule.EnumerableId;
-            var elemTypeValue = new QsTypeVarTypeValue(enumerableId, "T");
+            var elemTypeValue = new QsTypeValue_TypeVar(enumerableId, "T");
 
             // Enumerator<T>
-            var enumeratorTypeValue = new QsNormalTypeValue(null, enumeratorId, elemTypeValue);
+            var enumeratorTypeValue = new QsTypeValue_Normal(null, enumeratorId, elemTypeValue);
 
             var funcIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
 
@@ -64,7 +64,7 @@ namespace QuickSC.Runtime
 
             var enumerableObject = GetObject<QsEnumerableObject>(thisValue);
 
-            var enumeratorInst = domainService.GetTypeInst(new QsNormalTypeValue(null, enumeratorId, typeEnv.TypeValues[0]));
+            var enumeratorInst = domainService.GetTypeInst(new QsTypeValue_Normal(null, enumeratorId, typeEnv.TypeValues[0]));
 
             // TODO: 여기 copy 해야 할 것 같음
             return new ValueTask<QsValue>(new QsObjectValue(new QsEnumeratorObject(enumeratorInst, enumerableObject.enumerable.GetAsyncEnumerator())));

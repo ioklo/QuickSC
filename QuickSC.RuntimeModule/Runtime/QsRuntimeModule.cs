@@ -22,7 +22,7 @@ namespace QuickSC.Runtime
             this.instantiator = instantiator;
         }
 
-        public QsTypeInst GetTypeInst(QsDomainService domainService, QsNormalTypeValue typeValue)
+        public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue_Normal typeValue)
             => instantiator.Instantiate(domainService, typeValue);
     }
 
@@ -82,11 +82,11 @@ namespace QuickSC.Runtime
             objInfos.Add(new QsListObjectInfo());
             objInfos.Add(new QsEnvironmentInfo());
 
-            EnvVar = new QsVariable(false, envId, new QsNormalTypeValue(null, envTypeId));
+            EnvVar = new QsVariable(false, envId, new QsTypeValue_Normal(null, envTypeId));
             
             // objectInfo를 돌면서
             var moduleBuilder = new QsRuntimeModuleBuilder();
-            moduleBuilder.AddVar(envId, new QsNormalTypeValue(null, EnvironmentId));
+            moduleBuilder.AddVar(envId, new QsTypeValue_Normal(null, EnvironmentId));
 
             foreach (var objInfo in objInfos)
                 objInfo.BuildModule(moduleBuilder);
@@ -141,7 +141,7 @@ namespace QuickSC.Runtime
 
         public QsValue MakeEnumerable(QsDomainService domainService, QsTypeValue elemTypeValue, IAsyncEnumerable<QsValue> asyncEnumerable)
         {
-            var enumerableInst = domainService.GetTypeInst(new QsNormalTypeValue(null, QsRuntimeModule.EnumerableId, elemTypeValue));
+            var enumerableInst = domainService.GetTypeInst(new QsTypeValue_Normal(null, QsRuntimeModule.EnumerableId, elemTypeValue));
             return new QsObjectValue(new QsEnumerableObject(enumerableInst, asyncEnumerable));
         }        
         
@@ -157,13 +157,13 @@ namespace QuickSC.Runtime
 
         public QsValue MakeString(QsDomainService domainService, string str)
         {
-            var stringInst = domainService.GetTypeInst(new QsNormalTypeValue(null, QsRuntimeModule.StringId));
+            var stringInst = domainService.GetTypeInst(new QsTypeValue_Normal(null, QsRuntimeModule.StringId));
             return new QsObjectValue(new QsStringObject(stringInst, str));
         }
 
         public QsValue MakeList(QsDomainService domainService, QsTypeValue elemTypeValue, List<QsValue> elems)
         {
-            var listInst = domainService.GetTypeInst(new QsNormalTypeValue(null, QsRuntimeModule.ListId, elemTypeValue));
+            var listInst = domainService.GetTypeInst(new QsTypeValue_Normal(null, QsRuntimeModule.ListId, elemTypeValue));
 
             return new QsObjectValue(new QsListObject(listInst, elems));
         }

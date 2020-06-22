@@ -13,7 +13,7 @@ namespace QuickSC.Runtime
 
             var memberVarIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
 
-            var stringTypeValue = new QsNormalTypeValue(null, new QsMetaItemId(new QsMetaItemIdElem("string")));
+            var stringTypeValue = new QsTypeValue_Normal(null, new QsMetaItemId(new QsMetaItemIdElem("string")));
 
             var homeDirId = typeId.Append("HomeDir");
             AddNativeVar(new QsNativeVar(homeDirId, stringTypeValue));

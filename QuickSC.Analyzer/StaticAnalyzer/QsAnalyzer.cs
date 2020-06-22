@@ -39,7 +39,7 @@ namespace QuickSC.StaticAnalyzer
             {
                 if (elem.InitExp == null)
                 {
-                    if (declTypeValue is QsVarTypeValue)
+                    if (declTypeValue is QsTypeValue_Var)
                     {
                         context.ErrorCollector.Add(elem, $"{elem.VarName}의 타입을 추론할 수 없습니다");
                         return false;
@@ -56,7 +56,7 @@ namespace QuickSC.StaticAnalyzer
 
                     // var 처리
                     QsTypeValue typeValue;
-                    if (declTypeValue is QsVarTypeValue)
+                    if (declTypeValue is QsTypeValue_Var)
                     {
                         typeValue = initExpTypeValue;
                     }
@@ -111,7 +111,7 @@ namespace QuickSC.StaticAnalyzer
             ImmutableArray<QsLambdaExpParam> parameters,
             QsAnalyzerContext context,
             [NotNullWhen(returnValue: true)] out QsCaptureInfo? outCaptureInfo,
-            [NotNullWhen(returnValue: true)] out QsFuncTypeValue? outFuncTypeValue,
+            [NotNullWhen(returnValue: true)] out QsTypeValue_Func? outFuncTypeValue,
             out int outLocalVarCount)
         {
             outCaptureInfo = null;
@@ -185,8 +185,8 @@ namespace QuickSC.StaticAnalyzer
             context.CurFunc = prevFunc;
 
             outCaptureInfo = new QsCaptureInfo(false, elemsBuilder.ToImmutable());
-            outFuncTypeValue = new QsFuncTypeValue(
-                func.RetTypeValue ?? QsVoidTypeValue.Instance,
+            outFuncTypeValue = new QsTypeValue_Func(
+                func.RetTypeValue ?? QsTypeValue_Void.Instance,
                 paramTypeValuesBuilder.MoveToImmutable());
             outLocalVarCount = func.LocalVarCount;
             return bResult;

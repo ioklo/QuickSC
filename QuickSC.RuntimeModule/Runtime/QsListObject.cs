@@ -40,12 +40,7 @@ namespace QuickSC.Runtime
         {
             typesBuilder.Add(new QsDefaultType(typeId, typeParams, baseTypeValue, memberTypeIds, staticMemberFuncIds, staticMemberVarIds, memberFuncIds, memberVarIds));
         }
-
-        public void AddType(QsDotnetType dotnetType)
-        {
-            typesBuilder.Add(dotnetType);
-        }
-
+        
         public void AddVar(QsMetaItemId varId, QsTypeValue typeValue)
         {
             varsBuilder.Add(new QsVariable(false, varId, typeValue));
@@ -133,20 +128,20 @@ namespace QuickSC.Runtime
     {   
         public QsListObjectInfo()
         {
-            QsTypeValue intTypeValue = new QsNormalTypeValue(null, QsRuntimeModule.IntId);
-            QsTypeValue listElemTypeValue = new QsTypeVarTypeValue(QsRuntimeModule.ListId, "T");
+            QsTypeValue intTypeValue = new QsTypeValue_Normal(null, QsRuntimeModule.IntId);
+            QsTypeValue listElemTypeValue = new QsTypeValue_TypeVar(QsRuntimeModule.ListId, "T");
 
             var memberFuncIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
 
             // List<T>.Add
             AddFunc(QsRuntimeModule.ListId.Append("Add", 0),
                 bSeqCall: false, bThisCall: true, ImmutableArray<string>.Empty,
-                QsVoidTypeValue.Instance, ImmutableArray.Create(listElemTypeValue), QsListObject.NativeAdd);
+                QsTypeValue_Void.Instance, ImmutableArray.Create(listElemTypeValue), QsListObject.NativeAdd);
 
             // List<T>.RemoveAt(int index)     
             AddFunc(QsRuntimeModule.ListId.Append("RemoveAt", 0),
                 bSeqCall: false, bThisCall: true, ImmutableArray<string>.Empty,
-                QsVoidTypeValue.Instance, ImmutableArray.Create(intTypeValue), QsListObject.NativeRemoveAt);
+                QsTypeValue_Void.Instance, ImmutableArray.Create(intTypeValue), QsListObject.NativeRemoveAt);
 
             // Enumerator<T> List<T>.GetEnumerator()
             Invoker wrappedGetEnumerator =
@@ -154,7 +149,7 @@ namespace QuickSC.Runtime
 
             AddFunc(QsRuntimeModule.ListId.Append("GetEnumerator", 0),
                 bSeqCall: false, bThisCall: true, ImmutableArray<string>.Empty,
-                new QsNormalTypeValue(null, QsRuntimeModule.EnumeratorId, listElemTypeValue), ImmutableArray<QsTypeValue>.Empty, wrappedGetEnumerator);
+                new QsTypeValue_Normal(null, QsRuntimeModule.EnumeratorId, listElemTypeValue), ImmutableArray<QsTypeValue>.Empty, wrappedGetEnumerator);
 
             // T List<T>.Indexer(int index)
             AddFunc(QsRuntimeModule.ListId.Append(QsSpecialName.Indexer, 0),
@@ -208,7 +203,7 @@ namespace QuickSC.Runtime
             var list = GetObject<QsListObject>(thisValue);
 
             // enumerator<T>
-            var enumeratorInst = domainService.GetTypeInst(new QsNormalTypeValue(null, enumeratorId, typeEnv.TypeValues[0]));
+            var enumeratorInst = domainService.GetTypeInst(new QsTypeValue_Normal(null, enumeratorId, typeEnv.TypeValues[0]));
 
             // TODO: Runtime 메모리 관리자한테 new를 요청해야 합니다
             return new ValueTask<QsValue>(new QsObjectValue(new QsEnumeratorObject(enumeratorInst, ToAsyncEnum(list.Elems).GetAsyncEnumerator())));
