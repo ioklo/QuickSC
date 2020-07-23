@@ -5,7 +5,7 @@ using System.Text;
 
 namespace QuickSC.Runtime
 {
-    public class QsNativeType
+    public class QsNativeTypeInfo
     {
         public QsMetaItemId TypeId { get; }
         public ImmutableArray<string> TypeParams { get; }
@@ -16,9 +16,9 @@ namespace QuickSC.Runtime
         public ImmutableArray<QsMetaItemId> MemberFuncIds { get; }
         public ImmutableArray<QsMetaItemId> MemberVarIds { get; }
 
-        public QsNativeTypeInstantiator Instantiator { get; }
+        public Func<QsValue> DefaultValueFactory { get; }
 
-        public QsNativeType(QsMetaItemId typeId,
+        public QsNativeTypeInfo(QsMetaItemId typeId,
             ImmutableArray<string> typeParams,
             QsTypeValue? baseTypeValue,
             ImmutableArray<QsMetaItemId> memberTypeIds,
@@ -26,7 +26,7 @@ namespace QuickSC.Runtime
             ImmutableArray<QsMetaItemId> staticMemberVarIds,
             ImmutableArray<QsMetaItemId> memberFuncIds,
             ImmutableArray<QsMetaItemId> memberVarIds,
-            QsNativeTypeInstantiator instantiator)
+            Func<QsValue> defaultValueFactory)
         {
             TypeId = typeId;
             TypeParams = typeParams;
@@ -35,8 +35,8 @@ namespace QuickSC.Runtime
             StaticMemberFuncIds = staticMemberFuncIds;
             StaticMemberVarIds = staticMemberVarIds;
             MemberFuncIds = memberFuncIds;
-            MemberVarIds = memberVarIds;            
-            Instantiator = instantiator;
+            MemberVarIds = memberVarIds;
+            DefaultValueFactory = defaultValueFactory;
         }
     }
 }

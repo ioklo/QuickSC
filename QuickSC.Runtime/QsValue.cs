@@ -1,7 +1,6 @@
 ﻿using QuickSC;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Threading.Tasks;
 
 namespace QuickSC
@@ -18,63 +17,32 @@ namespace QuickSC
     // { captures..., Invoke: func } 
     // () => { }
 
-    // runtime placeholder
+    // 값
     public abstract class QsValue
     {
         public abstract void SetValue(QsValue fromValue);
         public abstract QsValue MakeCopy();
-
-        // 뭘 리턴해야 하는거냐
-        public abstract QsValue GetMemberValue(QsName varName);
-        public abstract QsTypeInst GetTypeInst();
-    }
-    
-    public class QsEnumValue : QsValue
-    {
-        public QsTypeInst TypeInst { get; }
-        ImmutableDictionary<QsName, QsValue> values;
-
-        public QsEnumValue(QsTypeInst typeInst, ImmutableDictionary<QsName, QsValue> values)
-        {
-            TypeInst = typeInst;
-            this.values = values;
-        }
-        
-        public override QsValue GetMemberValue(QsName varName)
-        {
-            return values[varName];
-        }
-
-        public override QsValue MakeCopy()
-        {
-            var newValues = ImmutableDictionary.CreateBuilder<QsName, QsValue>();
-
-            foreach (var v in values)
-                newValues.Add(v.Key, v.Value.MakeCopy());
-
-            return new QsEnumValue(TypeInst, newValues.ToImmutable());
-        }
-
-        public override void SetValue(QsValue fromValue)
-        {
-            this.values = ((QsEnumValue)fromValue).values;
-        }
-
-        public override QsTypeInst GetTypeInst()
-        {
-            return TypeInst;
-        }
     }
 
     public class QsFuncInstValue : QsValue
     {
-        public QsFuncInst FuncInst { get; private set; }
+        public QsFuncInst? FuncInst { get; private set; }
 
-        public QsFuncInstValue(QsFuncInst funcInst)
+        public QsFuncInstValue()
+        {
+            FuncInst = null;
+        }
+
+        public QsFuncInstValue(QsFuncInst? funcInst)
         {
             FuncInst = funcInst;
         }
 
+        public void SetFuncInst(QsFuncInst funcInst)
+        {
+            FuncInst = funcInst;
+        }
+        
         public override void SetValue(QsValue fromValue)
         {
             FuncInst = ((QsFuncInstValue)fromValue).FuncInst;
@@ -84,16 +52,6 @@ namespace QuickSC
         {
             // ReferenceCopy
             return new QsFuncInstValue(FuncInst);
-        }
-        
-        public override QsValue GetMemberValue(QsName varName)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override QsTypeInst GetTypeInst()
-        {
-            throw new NotImplementedException();
         }
     }
     
@@ -111,35 +69,15 @@ namespace QuickSC
         public override QsValue MakeCopy()
         {
             return Instance;
-        }
-        
-        public override QsValue GetMemberValue(QsName varName)
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override QsTypeInst GetTypeInst()
-        {
-            throw new InvalidOperationException();
-        }
+        }        
     }
 
     // void 
     public class QsVoidValue : QsValue
     {
         public static QsVoidValue Instance { get; } = new QsVoidValue();
-        private QsVoidValue() { }
+        private QsVoidValue() { }        
         
-        public override QsValue GetMemberValue(QsName varName)
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override QsTypeInst GetTypeInst()
-        {
-            throw new NotImplementedException();
-        }
-
         public override QsValue MakeCopy()
         {
             throw new InvalidOperationException();
@@ -178,7 +116,7 @@ namespace QuickSC
             Object = obj;
         }
         
-        public override QsValue GetMemberValue(QsName varName)
+        public QsValue GetMemberValue(QsName varName)
         {
             return Object!.GetMemberValue(varName);
         }
@@ -193,7 +131,12 @@ namespace QuickSC
             Object = ((QsObjectValue)fromValue).Object;
         }
 
-        public override QsTypeInst GetTypeInst()
+        public void SetObject(QsObject obj)
+        {
+            Object = obj;
+        }
+
+        public QsTypeInst GetTypeInst()
         {
             // 초기화 전에는 null일 수 있는데 타입체커를 통과하고 나면 호출하지 않을 것이다
             return Object!.GetTypeInst();

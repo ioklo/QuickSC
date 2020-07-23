@@ -61,11 +61,11 @@ namespace QuickSC
         public QsMetaItemId TypeId { get; }
         public ImmutableArray<QsTypeValue> TypeArgs { get; }
 
-        public QsTypeValue_Normal(QsTypeValue? outer, QsMetaItemId typeId, ImmutableArray<QsTypeValue> typeArgs)
+        public QsTypeValue_Normal(QsTypeValue? outer, QsMetaItemId typeId, IEnumerable<QsTypeValue> typeArgs)
         {
             this.Outer = outer;
             this.TypeId = typeId;
-            this.TypeArgs = typeArgs;
+            this.TypeArgs = typeArgs.ToImmutableArray();
         }
 
         public QsTypeValue_Normal(QsTypeValue? outer, QsMetaItemId TypeId, params QsTypeValue[] typeArgs)

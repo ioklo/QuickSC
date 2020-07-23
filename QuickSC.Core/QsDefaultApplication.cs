@@ -53,11 +53,7 @@ namespace QuickSC
             if (!typeSkeletonCollector.CollectScript(script, errorCollector, out var skelResult))
                 return null;
 
-            var typeEvalMetadataService = new QsMetadataService(
-                ImmutableArray<QsType>.Empty,
-                ImmutableArray<QsFunc>.Empty,
-                ImmutableArray<QsVariable>.Empty,
-                metadatas);
+            var typeEvalMetadataService = new QsMetadataService(metadatas);
 
             // 2. skeleton과 metadata로 트리의 모든 TypeExp들을 TypeValue로 변환하기            
             if (!typeExpEvaluator.EvaluateScript(script, typeEvalMetadataService, skelResult, errorCollector, out var typeEvalResult))
@@ -66,32 +62,32 @@ namespace QuickSC
             // 3. Type, Func만들기, MetadataBuilder
             var typeAndFuncBuildResult = typeBuilder.BuildScript(moduleName, script, skelResult, typeEvalResult);
 
-            var metadataService = new QsMetadataService(
+            var scriptMetadata = new QsScriptMetadata(
+                moduleName, 
                 typeAndFuncBuildResult.Types,
                 typeAndFuncBuildResult.Funcs,
-                typeAndFuncBuildResult.Vars,
-                metadatas);
+                typeAndFuncBuildResult.Vars);
+
+            var metadataService = new QsMetadataService(metadatas.Append(scriptMetadata));
+            var typeValueApplier = new QsTypeValueApplier(metadataService);
+            var typeValueService = new QsTypeValueService(metadataService, typeValueApplier);
 
             // globalVariable이 빠진상태            
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
-            if (!analyzer.AnalyzeScript(moduleName, script, metadataService, typeEvalResult, typeAndFuncBuildResult, errorCollector, out var analyzeInfo))
+            if (!analyzer.AnalyzeScript(script, metadataService, typeValueService, typeEvalResult, typeAndFuncBuildResult, errorCollector, out var analyzeInfo))
                 return null;
 
-            var domainService = new QsDomainService(metadataService);
+            var scriptModule = new QsScriptModule(
+                scriptMetadata,
+                analyzeInfo.FuncTemplatesById);
+
+            var domainService = new QsDomainService();
             var staticValueService = new QsStaticValueService();
 
             domainService.LoadModule(runtimeModule);
+            domainService.LoadModule(scriptModule);
 
-            // 스크립트는 수동 로드
-            domainService.AddFuncInfos(analyzeInfo.FuncTemplatesById.Select( kv =>
-            {
-                if (kv.Value is QsScriptFuncTemplate.FuncDecl funcDecl)
-                    return new QsScriptModuleFuncInfo(kv.Key, funcDecl);
-                else
-                    throw new NotImplementedException();
-            }));
-
-            return await evaluator.EvaluateScriptAsync(script, runtimeModule, domainService, staticValueService, analyzeInfo);
+            return await evaluator.EvaluateScriptAsync(script, runtimeModule, domainService, typeValueService, staticValueService, analyzeInfo);
         }
     }
 

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using Xunit;
@@ -12,12 +13,30 @@ namespace QuickSC.ModuleTest
     {
         public string ModuleName { get => "TestModule"; }
 
-        public IEnumerable<QsType> Types { get; }
-        public IEnumerable<QsFunc> Funcs { get; }
-        public IEnumerable<QsVariable> Vars { get; }
+        public bool GetFuncInfo(QsMetaItemId id, [NotNullWhen(true)] out QsFuncInfo? funcInfo)
+        {
+            throw new NotImplementedException();
+        }
 
-        public IEnumerable<IQsModuleTypeInfo> TypeInfos { get; }
-        public IEnumerable<IQsModuleFuncInfo> FuncInfos { get; }
+        public QsFuncInst GetFuncInst(QsDomainService domainService, QsFuncValue funcValue)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(true)] out QsTypeInfo? typeInfo)
+        {
+            throw new NotImplementedException();
+        }
+
+        public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue_Normal typeValue)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool GetVarInfo(QsMetaItemId id, [NotNullWhen(true)] out QsVarInfo? varInfo)
+        {
+            throw new NotImplementedException();
+        }
 
         public void OnLoad(QsDomainService domainService)
         {
@@ -30,16 +49,8 @@ namespace QuickSC.ModuleTest
         [Fact]
         void TestGetGlobalVariable()
         {
-            var testModule = new QsTestModule();
-
-            // external과 internal을 섞어서 더 복잡하게 보인다
-            var metadataService = new QsMetadataService(
-                Enumerable.Empty<QsType>(), 
-                Enumerable.Empty<QsFunc>(), 
-                Enumerable.Empty<QsVariable>(), 
-                ImmutableArray.Create<IQsMetadata>(testModule));
-
-            var domainService = new QsDomainService(metadataService);
+            var testModule = new QsTestModule();            
+            var domainService = new QsDomainService();
 
             domainService.LoadModule(testModule);
 

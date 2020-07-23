@@ -9,52 +9,60 @@ using System.Threading.Tasks;
 namespace QuickSC
 {
     // Skeleton, StaticVariable은 QsTypeInst에서 얻을 수 있게 된다
-    public abstract class QsType
+    public abstract class QsTypeInfo
     {
         public QsMetaItemId TypeId { get; }
-        public QsType(QsMetaItemId typeId) { TypeId = typeId; }
+        
+        public QsTypeInfo(QsMetaItemId typeId) 
+        { 
+            TypeId = typeId; 
+        }
+
+        public abstract QsMetaItemId? GetOuterTypeId();
         
         public abstract ImmutableArray<string> GetTypeParams();
         public abstract QsTypeValue? GetBaseTypeValue();
 
         // TODO: 셋은 같은 이름공간을 공유한다. 서로 이름이 같은 것이 나오면 안된다 (체크하자)
         public abstract bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsMetaItemId? outTypeId);
-        public abstract bool GetMemberFuncId(QsName memberFuncId, [NotNullWhen(returnValue: true)] out (bool bStatic, QsMetaItemId FuncId)? outValue);
-        public abstract bool GetMemberVarId(string varName, [NotNullWhen(returnValue: true)] out (bool bStatic, QsMetaItemId VarId)? outValue);
+        public abstract bool GetMemberFuncId(QsName memberFuncId, [NotNullWhen(returnValue: true)] out QsMetaItemId? outFuncId);
+        public abstract bool GetMemberVarId(QsName name, [NotNullWhen(returnValue: true)] out QsMetaItemId? outVarId);
     }
 
-    public class QsDefaultType : QsType
+    public class QsDefaultTypeInfo : QsTypeInfo
     {
+        QsMetaItemId? outerTypeId;
+
         ImmutableArray<string> typeParams;
         QsTypeValue? baseTypeValue;
         ImmutableDictionary<QsName, QsMetaItemId> memberTypeIds;
-        ImmutableDictionary<QsName, QsMetaItemId> staticMemberFuncIds;
-        ImmutableDictionary<QsName, QsMetaItemId> staticMemberVarIds;
-
         ImmutableDictionary<QsName, QsMetaItemId> memberFuncIds;
         ImmutableDictionary<QsName, QsMetaItemId> memberVarIds;        
 
         // 거의 모든 TypeValue에서 thisTypeValue를 쓰기 때문에 lazy하게 선언해야 한다
-        public QsDefaultType(QsMetaItemId typeId,            
-            ImmutableArray<string> typeParams,
+        public QsDefaultTypeInfo(
+            QsMetaItemId? outerTypeId,
+            QsMetaItemId typeId,            
+            IEnumerable<string> typeParams,
             QsTypeValue? baseTypeValue,
-            ImmutableArray<QsMetaItemId> memberTypeIds,
-            ImmutableArray<QsMetaItemId> staticMemberFuncIds,
-            ImmutableArray<QsMetaItemId> staticMemberVarIds,
-            ImmutableArray<QsMetaItemId> memberFuncIds,
-            ImmutableArray<QsMetaItemId> memberVarIds)
+            IEnumerable<QsMetaItemId> memberTypeIds,
+            IEnumerable<QsMetaItemId> memberFuncIds,
+            IEnumerable<QsMetaItemId> memberVarIds)
             : base(typeId)
         {
-            this.typeParams = typeParams;
+            this.outerTypeId = outerTypeId;
+            this.typeParams = typeParams.ToImmutableArray();
             this.baseTypeValue = baseTypeValue;
-            this.memberTypeIds = memberTypeIds.ToImmutableDictionary(memberType => memberType.Name);
-            this.staticMemberFuncIds = staticMemberFuncIds.ToImmutableDictionary(staticMemberFuncId => staticMemberFuncId.Name);
-            this.staticMemberVarIds = staticMemberVarIds.ToImmutableDictionary(staticMemberVarId => staticMemberVarId.Name);
-
+            this.memberTypeIds = memberTypeIds.ToImmutableDictionary(memberTypeId => memberTypeId.Name);
             this.memberFuncIds = memberFuncIds.ToImmutableDictionary(memberFuncId => memberFuncId.Name);
             this.memberVarIds = memberVarIds.ToImmutableDictionary(memberVarId => memberVarId.Name);
         }
-        
+
+        public override QsMetaItemId? GetOuterTypeId()
+        {
+            return outerTypeId;
+        }
+
         public override ImmutableArray<string> GetTypeParams()
         {
             return typeParams;
@@ -79,42 +87,30 @@ namespace QuickSC
             }
         }
 
-        public override bool GetMemberFuncId(QsName memberFuncName, [NotNullWhen(returnValue: true)] out (bool bStatic, QsMetaItemId FuncId)? outValue)
-        {   
+        public override bool GetMemberFuncId(QsName memberFuncName, [NotNullWhen(returnValue: true)] out QsMetaItemId? outFuncId)
+        {
             // TODO: 같은 이름 체크?
             if (memberFuncIds.TryGetValue(memberFuncName, out var funcId))
             {
-                outValue = (false, funcId);
+                outFuncId = funcId;
                 return true;
             }
 
-            if (!string.IsNullOrEmpty(memberFuncName.Name) && staticMemberFuncIds.TryGetValue(memberFuncName, out funcId))
-            {
-                outValue = (true, funcId);
-                return true;
-            }            
-            
-            outValue = null;
+            outFuncId = null;
             return false;
         }
 
-        public override bool GetMemberVarId(string varName, [NotNullWhen(returnValue: true)] out (bool bStatic, QsMetaItemId VarId)? outValue)
+        public override bool GetMemberVarId(QsName varName, [NotNullWhen(returnValue: true)] out QsMetaItemId? outVarId)
         {
             // TODO: 같은 이름 체크
-            if (memberVarIds.TryGetValue(QsName.Text(varName), out var varId))
+            if (memberVarIds.TryGetValue(varName, out var varId))
             {
-                outValue = (false, varId);
+                outVarId = varId;
                 return true;
             }
 
-            if (staticMemberVarIds.TryGetValue(QsName.Text(varName), out varId))
-            {
-                outValue = (true, varId);
-                return true;
-            }
-
-            outValue = null;
-            return false;            
+            outVarId = null;
+            return false;
         }
     }
 

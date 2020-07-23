@@ -7,14 +7,7 @@ namespace QuickSC
 {
     public abstract class QsTypeInst
     {
-        public QsTypeValue TypeValue { get; }
-
-        public QsTypeInst(QsTypeValue typeValue)
-        {
-            TypeValue = typeValue;
-        }
-
-        public abstract QsTypeInst? GetBaseTypeInst();
+        public abstract QsTypeValue GetTypeValue();
         public abstract QsValue MakeDefaultValue();
     }
 }

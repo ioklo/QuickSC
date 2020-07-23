@@ -7,19 +7,14 @@ namespace QuickSC.Runtime
 {
     class QsNativeTypeInst : QsTypeInst
     {
-        QsTypeInst? baseTypeInst                                                  ;
-
-        QsMetaItemId typeId;
+        // key
+        QsTypeValue typeValue;
         Func<QsValue> defaultValueFactory;
-        QsTypeEnv typeEnv;
 
-        public QsNativeTypeInst(QsTypeValue typeValue, QsTypeInst? baseTypeInst, QsMetaItemId typeId, Func<QsValue> defaultValueFactory, QsTypeEnv typeEnv)
-            : base(typeValue)
+        public QsNativeTypeInst(QsTypeValue typeValue, Func<QsValue> defaultValueFactory)
         {
-            this.baseTypeInst = baseTypeInst;
-            this.typeId = typeId;
+            this.typeValue = typeValue;
             this.defaultValueFactory = defaultValueFactory;
-            this.typeEnv = typeEnv;
         }
 
         public override QsValue MakeDefaultValue()
@@ -27,21 +22,20 @@ namespace QuickSC.Runtime
             return defaultValueFactory();
         }
 
-        public override QsTypeInst? GetBaseTypeInst()
+        public override QsTypeValue GetTypeValue()
         {
-            return baseTypeInst;
+            return typeValue;
         }
 
         public override bool Equals(object? obj)
         {
             return obj is QsNativeTypeInst inst &&
-                   EqualityComparer<QsMetaItemId>.Default.Equals(typeId, inst.typeId) &&
-                   typeEnv.Equals(inst.typeEnv);
+                   EqualityComparer<QsTypeValue>.Default.Equals(typeValue, inst.typeValue);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(typeId, typeEnv);
+            return HashCode.Combine(typeValue);
         }
 
         public static bool operator ==(QsNativeTypeInst? left, QsNativeTypeInst? right)

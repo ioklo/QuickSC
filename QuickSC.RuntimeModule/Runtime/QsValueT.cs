@@ -22,16 +22,6 @@ namespace QuickSC.Runtime
             return new QsValue<T>(Value);
         }        
         
-        public override QsValue GetMemberValue(QsName varName)
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override QsTypeInst GetTypeInst()
-        {
-            throw new NotImplementedException();
-        }
-
         public override bool Equals(object? obj)
         {
             return obj is QsValue<T> value &&

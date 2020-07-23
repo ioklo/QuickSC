@@ -7,6 +7,7 @@ using System.Text;
 namespace QuickSC
 {
     // (System.Runtime, System.X<,>.Y<,,>.T)
+
     public struct QsMetaItemId
     {
         public ImmutableArray<QsMetaItemIdElem> Elems { get; }  // 

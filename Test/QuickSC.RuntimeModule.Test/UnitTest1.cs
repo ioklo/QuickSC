@@ -16,13 +16,9 @@ namespace QuickSC.RuntimeModule.Test
         {
             var runtimeModule = new QsRuntimeModule(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Directory.GetCurrentDirectory());
 
-            QsMetadataService metadataService = new QsMetadataService(
-                ImmutableArray<QsType>.Empty, 
-                ImmutableArray<QsFunc>.Empty, 
-                ImmutableArray<QsVariable>.Empty,
-                ImmutableArray.Create<IQsMetadata>(runtimeModule));
+            QsMetadataService metadataService = new QsMetadataService(ImmutableArray.Create<IQsMetadata>(runtimeModule));
 
-            QsDomainService domainService = new QsDomainService(metadataService);
+            QsDomainService domainService = new QsDomainService();
 
             domainService.LoadModule(runtimeModule);
 
@@ -45,7 +41,7 @@ namespace QuickSC.RuntimeModule.Test
 
             // List<int>.Add(list, 3)
             if( funcInst is QsNativeFuncInst nativeFuncInst )
-                nativeFuncInst.CallAsync(list, ImmutableArray.Create<QsValue>(runtimeModule.MakeInt(3)));
+                nativeFuncInst.CallAsync(list, ImmutableArray.Create<QsValue>(runtimeModule.MakeInt(3)), QsVoidValue.Instance);
 
             // [1, 2, 3]
             Assert.True(list is QsObjectValue objValue && 

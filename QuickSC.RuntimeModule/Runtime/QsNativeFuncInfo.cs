@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    public class QsNativeFunc
+    using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, ImmutableArray<QsValue>, QsValue, ValueTask>;
+
+    public class QsNativeFuncInfo
     {
         public QsMetaItemId FuncId { get; }
         public bool bSeqCall { get; }
@@ -15,16 +17,16 @@ namespace QuickSC.Runtime
         public QsTypeValue RetTypeValue { get; }
         public ImmutableArray<QsTypeValue> ParamTypeValues { get; }
         
-        public QsNativeFuncInstantiator Instantiator { get; }
+        public Invoker Invoker { get; }
 
-        public QsNativeFunc(
+        public QsNativeFuncInfo(
             QsMetaItemId funcId, 
             bool bSeqCall, 
             bool bThisCall, 
             ImmutableArray<string> typeParams, 
             QsTypeValue retTypeValue, 
             ImmutableArray<QsTypeValue> paramTypeValues,
-            QsNativeFuncInstantiator instantiator)
+            Invoker invoker)
         {
             FuncId = funcId;
             this.bSeqCall = bSeqCall;
@@ -32,7 +34,7 @@ namespace QuickSC.Runtime
             TypeParams = typeParams;
             RetTypeValue = retTypeValue;
             ParamTypeValues = paramTypeValues;
-            Instantiator = instantiator;
+            Invoker = invoker;
         }
     }
 }

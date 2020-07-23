@@ -1,6 +1,5 @@
 ﻿using QuickSC.Syntax;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -10,97 +9,22 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace QuickSC.StaticAnalyzer
 {
-    class QsTypeAndFuncBuilderContext
-    {
-        public string ModuleName { get; }
-
-        public ImmutableDictionary<QsMetadataIdLocation, QsMetaItemId> TypeIdsByLocation { get; }
-        public ImmutableDictionary<QsMetadataIdLocation, QsMetaItemId> FuncIdsByLocation { get; }
-        public ImmutableDictionary<QsTypeExp, QsTypeValue> TypeValuesByTypeExp { get; }
-
-        public QsTypeBuilder? TypeBuilder { get; set; }
-        public List<QsType> Types { get;} // All Types
-        public List<QsFunc> Funcs { get; } // All Funcs
-        public List<QsVariable> Vars { get; } // Type의 Variable
-        public Dictionary<QsFuncDecl, QsFunc> FuncsByFuncDecl { get; }        
-
-        public QsTypeAndFuncBuilderContext(
-            string moduleName,
-            QsTypeSkelCollectResult skelResult,
-            QsTypeEvalResult evalResult)
-        {
-            ModuleName = moduleName;
-            TypeIdsByLocation = skelResult.TypeIdsByLocation;
-            FuncIdsByLocation = skelResult.FuncIdsByLocation;
-            TypeValuesByTypeExp = evalResult.TypeValuesByTypeExp;
-
-            TypeBuilder = null;
-            Types = new List<QsType>();
-            Funcs = new List<QsFunc>();
-            Vars = new List<QsVariable>();
-            FuncsByFuncDecl = new Dictionary<QsFuncDecl, QsFunc>(QsRefEqComparer<QsFuncDecl>.Instance);
-        }
-    }
-
-    public class QsTypeAndFuncBuildResult
-    {
-        public ImmutableArray<QsType> Types { get; }
-        public ImmutableArray<QsFunc> Funcs { get; }
-        public ImmutableArray<QsVariable> Vars { get; }
-        public ImmutableDictionary<QsFuncDecl, QsFunc> FuncsByFuncDecl { get; }
-
-        public QsTypeAndFuncBuildResult(
-            ImmutableArray<QsType> types,
-            ImmutableArray<QsFunc> funcs,
-            ImmutableArray<QsVariable> vars,
-            ImmutableDictionary<QsFuncDecl, QsFunc> funcsByFuncDecl)
-        {
-            Types = types;
-            Funcs = funcs;
-            Vars = vars;
-
-            FuncsByFuncDecl = funcsByFuncDecl;
-        }
-    }
-
-    class QsTypeBuilder
-    {
-        public QsTypeValue ThisTypeValue { get; }
-        public Dictionary<QsName, QsMetaItemId> MemberTypeIds { get; }
-        public Dictionary<QsName, QsMetaItemId> StaticMemberFuncIds { get; }
-        public Dictionary<QsName, QsMetaItemId> StaticMemberVarIds { get; }
-        public Dictionary<QsName, QsMetaItemId> MemberFuncIds { get; }
-        public Dictionary<QsName, QsMetaItemId> MemberVarIds { get; }
-
-        public QsTypeBuilder(QsTypeValue thisTypeValue)
-        {
-            ThisTypeValue = thisTypeValue;
-
-            MemberTypeIds = new Dictionary<QsName, QsMetaItemId>();
-            StaticMemberFuncIds = new Dictionary<QsName, QsMetaItemId>();
-            StaticMemberVarIds = new Dictionary<QsName, QsMetaItemId>();
-            MemberFuncIds = new Dictionary<QsName, QsMetaItemId>();
-            MemberVarIds = new Dictionary<QsName, QsMetaItemId>();
-        }
-    }
-
-    public class QsTypeAndFuncBuilder
+    public partial class QsTypeAndFuncBuilder
     {
         public QsTypeAndFuncBuilder()
         {   
         }
         
-        void BuildEnumDeclElement(QsEnumDeclElement elem, QsTypeAndFuncBuilderContext context)
+        void BuildEnumDeclElement(QsMetaItemId outerTypeId, QsEnumDeclElement elem, Context context)
         {
             var thisTypeValue = context.TypeBuilder!.ThisTypeValue;
 
             // 타입 추가
-            var elemType = new QsDefaultType(
+            var elemType = new QsDefaultTypeInfo(
+                outerTypeId,
                 context.TypeIdsByLocation[QsMetadataIdLocation.Make(elem)], 
                 ImmutableArray<string>.Empty,                
                 thisTypeValue, // enum E<T>{ First } => E<T>.First : E<T>
-                ImmutableArray<QsMetaItemId>.Empty,
-                ImmutableArray<QsMetaItemId>.Empty,
                 ImmutableArray<QsMetaItemId>.Empty,
                 ImmutableArray<QsMetaItemId>.Empty,
                 ImmutableArray<QsMetaItemId>.Empty);
@@ -127,7 +51,7 @@ namespace QuickSC.StaticAnalyzer
                     argTypes.MoveToImmutable(), 
                     context);
 
-                context.TypeBuilder.StaticMemberFuncIds.Add(QsName.Text(elem.Name), func.FuncId);
+                context.TypeBuilder.MemberFuncIds.Add(QsName.Text(elem.Name), func.FuncId);
             }
             else
             {
@@ -138,11 +62,11 @@ namespace QuickSC.StaticAnalyzer
                     thisTypeValue,
                     context);
 
-                context.TypeBuilder.StaticMemberVarIds.Add(QsName.Text(elem.Name), variable.VarId); 
+                context.TypeBuilder.MemberVarIds.Add(QsName.Text(elem.Name), variable.VarId); 
             }
         }
 
-        private QsFunc MakeFunc(
+        private QsFuncInfo MakeFunc(
             QsFuncDecl? funcDecl,
             QsMetaItemId funcId,
             bool bSeqCall,
@@ -150,10 +74,10 @@ namespace QuickSC.StaticAnalyzer
             ImmutableArray<string> typeParams,
             QsTypeValue retTypeValue,
             ImmutableArray<QsTypeValue> argTypeValues,
-            QsTypeAndFuncBuilderContext context)
+            Context context)
         {   
-            var func = new QsFunc(funcId, bSeqCall, bThisCall, typeParams, retTypeValue, argTypeValues);
-            context.Funcs.Add(func);
+            var func = new QsFuncInfo(funcId, bSeqCall, bThisCall, typeParams, retTypeValue, argTypeValues);
+            context.FuncInfos.Add(func);
 
             if (funcDecl != null)
                 context.FuncsByFuncDecl[funcDecl] = func;
@@ -161,19 +85,19 @@ namespace QuickSC.StaticAnalyzer
             return func;
         }
 
-        private QsVariable MakeVar(
+        private QsVarInfo MakeVar(
             QsMetaItemId varId,
             bool bStatic,
             QsTypeValue typeValue,
-            QsTypeAndFuncBuilderContext context)
+            Context context)
         {
-            var variable = new QsVariable(bStatic, varId, typeValue);
-            context.Vars.Add(variable);
+            var variable = new QsVarInfo(varId, bStatic, typeValue);
+            context.VarInfos.Add(variable);
 
             return variable;
         }
 
-        void BuildEnumDecl(QsEnumDecl enumDecl, QsTypeAndFuncBuilderContext context)
+        void BuildEnumDecl(QsEnumDecl enumDecl, Context context)
         {
             var typeId = context.TypeIdsByLocation[QsMetadataIdLocation.Make(enumDecl)];
             
@@ -183,27 +107,26 @@ namespace QuickSC.StaticAnalyzer
                 enumDecl.TypeParams.Select(typeParam => (QsTypeValue)new QsTypeValue_TypeVar(typeId, typeParam)).ToImmutableArray());
 
             var prevTypeBuilder = context.TypeBuilder;
-            context.TypeBuilder = new QsTypeBuilder(thisTypeValue);
+            context.TypeBuilder = new TypeBuilder(thisTypeValue);
 
-            foreach (var elem in enumDecl.Elems)            
-                BuildEnumDeclElement(elem, context);
+            foreach (var elem in enumDecl.Elems)
+                BuildEnumDeclElement(typeId, elem, context);
 
-            var enumType = new QsDefaultType(
+            var enumType = new QsDefaultTypeInfo(
+                null, // TODO: 일단 최상위
                 typeId,
                 enumDecl.TypeParams,
                 null, // TODO: Enum이던가 Object여야 한다,
                 context.TypeBuilder.MemberTypeIds.Values.ToImmutableArray(),
-                context.TypeBuilder.StaticMemberFuncIds.Values.ToImmutableArray(),
-                context.TypeBuilder.StaticMemberVarIds.Values.ToImmutableArray(),
                 context.TypeBuilder.MemberFuncIds.Values.ToImmutableArray(),
                 context.TypeBuilder.MemberVarIds.Values.ToImmutableArray());
 
             context.TypeBuilder = prevTypeBuilder;
 
-            context.Types.Add(enumType);
+            context.TypeInfos.Add(enumType);
         }
 
-        void BuildFuncDecl(QsFuncDecl funcDecl, QsTypeAndFuncBuilderContext context)
+        void BuildFuncDecl(QsFuncDecl funcDecl, Context context)
         {
             bool bThisCall = (context.TypeBuilder != null); // TODO: static 키워드가 추가되면 그때 다시 고쳐야 한다
 
@@ -217,8 +140,24 @@ namespace QuickSC.StaticAnalyzer
                 funcDecl.Params.Select(typeAndName => context.TypeValuesByTypeExp[typeAndName.Type]).ToImmutableArray(),
                 context);
         }
+
+        void BuildGlobalStmt(QsStmt stmt, Context context)
+        {
+            // TODO: public int x; 형식만 모듈단위 외부 전역변수로 노출시킨다
+
+            //var varDeclStmt = stmt as QsVarDeclStmt;
+            //if (varDeclStmt == null) return;
+
+            //var typeValue = context.TypeValuesByTypeExp[varDeclStmt.VarDecl.Type];
+            
+            //foreach(var elem in varDeclStmt.VarDecl.Elems)
+            //{
+            //    // TODO: 인자 bStatic에 true/false가 아니라, Global이라고 체크를 해야 한다
+            //    MakeVar(new QsMetaItemId(new QsMetaItemIdElem(elem.VarName)), bStatic: true, typeValue, context);
+            //}
+        }
         
-        void BuildScript(QsScript script, QsTypeAndFuncBuilderContext context)
+        void BuildScript(QsScript script, Context context)
         {
             foreach (var elem in script.Elements)
             {
@@ -231,21 +170,24 @@ namespace QuickSC.StaticAnalyzer
                     case QsFuncDeclScriptElement funcElem:
                         BuildFuncDecl(funcElem.FuncDecl, context);
                         break;
-                        
+
+                    case QsStmtScriptElement stmtElem:
+                        BuildGlobalStmt(stmtElem.Stmt, context);
+                        break;
                 }
             }
         }
 
-        public QsTypeAndFuncBuildResult BuildScript(string moduleName, QsScript script, QsTypeSkelCollectResult skelResult,  QsTypeEvalResult typeEvalResult)
+        public Result BuildScript(string moduleName, QsScript script, QsTypeSkelCollectResult skelResult,  QsTypeEvalResult typeEvalResult)
         {   
-            var context = new QsTypeAndFuncBuilderContext(moduleName, skelResult, typeEvalResult);
+            var context = new Context(moduleName, skelResult, typeEvalResult);
 
             BuildScript(script, context);
 
-            return new QsTypeAndFuncBuildResult(
-                context.Types.ToImmutableArray(),
-                context.Funcs.ToImmutableArray(),
-                context.Vars.ToImmutableArray(),
+            return new Result(
+                context.TypeInfos.ToImmutableArray(),
+                context.FuncInfos.ToImmutableArray(),
+                context.VarInfos.ToImmutableArray(),
                 context.FuncsByFuncDecl.ToImmutableWithComparer());
         }
     }

@@ -1,3 +1,3 @@
 ﻿// HomeDir
 
-@${env.HomeDir1}
+@${env.HomeDir}

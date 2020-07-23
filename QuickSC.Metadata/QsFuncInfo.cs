@@ -5,7 +5,7 @@ using System.Text;
 
 namespace QuickSC
 {
-    public class QsFunc
+    public class QsFuncInfo
     {
         public QsMetaItemId FuncId { get; }
         public bool bSeqCall { get; }
@@ -14,17 +14,17 @@ namespace QuickSC
         public QsTypeValue RetTypeValue { get; }
         public ImmutableArray<QsTypeValue> ParamTypeValues { get; }
 
-        public QsFunc(QsMetaItemId funcId, bool bSeqCall, bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retTypeValue, ImmutableArray<QsTypeValue> paramTypeValues)
+        public QsFuncInfo(QsMetaItemId funcId, bool bSeqCall, bool bThisCall, IReadOnlyList<string> typeParams, QsTypeValue retTypeValue, ImmutableArray<QsTypeValue> paramTypeValues)
         {
             FuncId = funcId;
             this.bSeqCall = bSeqCall;
             this.bThisCall = bThisCall;            
-            TypeParams = typeParams;
+            TypeParams = typeParams.ToImmutableArray();
             RetTypeValue = retTypeValue;
             ParamTypeValues = paramTypeValues;
         }
 
-        public QsFunc(QsMetaItemId funcId, bool bSeqCall, bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retTypeValues, params QsTypeValue[] paramTypeValues)
+        public QsFuncInfo(QsMetaItemId funcId, bool bSeqCall, bool bThisCall, ImmutableArray<string> typeParams, QsTypeValue retTypeValues, params QsTypeValue[] paramTypeValues)
         {
             FuncId = funcId;
             this.bSeqCall = bSeqCall;

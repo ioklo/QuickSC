@@ -9,9 +9,9 @@ namespace QuickSC
     public interface IQsMetadata
     {
         string ModuleName { get; }
-
-        IEnumerable<QsType> Types { get; }
-        IEnumerable<QsFunc> Funcs { get; }
-        IEnumerable<QsVariable> Vars { get; }
+        
+        bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(returnValue: true)] out QsTypeInfo? typeInfo);
+        bool GetFuncInfo(QsMetaItemId id, [NotNullWhen(returnValue: true)] out QsFuncInfo? funcInfo);
+        bool GetVarInfo(QsMetaItemId id, [NotNullWhen(returnValue: true)] out QsVarInfo? varInfo);
     }
 }

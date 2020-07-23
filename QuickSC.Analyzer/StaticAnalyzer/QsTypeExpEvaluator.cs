@@ -118,7 +118,7 @@ namespace QuickSC.StaticAnalyzer
             }
 
             // 3-2. Reference에서 검색, GlobalTypeSkeletons에 이름이 겹치지 않아야 한다.. RefMetadata들 끼리도 이름이 겹칠 수 있다
-            foreach (var type in context.MetadataService.GetTypesById(metaItemId))
+            foreach (var type in context.MetadataService.GetTypeInfos(metaItemId))
                 candidates.Add(new QsTypeValue_Normal(null, type.TypeId, typeArgs));
 
             if (candidates.Count == 1)
@@ -192,12 +192,14 @@ namespace QuickSC.StaticAnalyzer
 
         bool EvaluateTypeExp(QsTypeExp exp, QsTypeEvalContext context, [NotNullWhen(returnValue:true)] out QsTypeValue? typeValue)
         {
-            return exp switch
-            {
-                QsIdTypeExp idExp => EvaluateIdTypeExp(idExp, context, out typeValue),
-                QsMemberTypeExp memberExp => EvaluateMemberTypeExp(memberExp, context, out typeValue),
-                _ => throw new NotImplementedException()
-            };
+            if (exp is QsIdTypeExp idExp)
+                return EvaluateIdTypeExp(idExp, context, out typeValue);
+
+            else if (exp is QsMemberTypeExp memberExp)
+                return EvaluateMemberTypeExp(memberExp, context, out typeValue);
+
+            else 
+                throw new NotImplementedException();
         }
 
         void EvaluateEnumDecl(QsEnumDecl enumDecl, QsTypeEvalContext context)

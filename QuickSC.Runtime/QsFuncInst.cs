@@ -16,18 +16,19 @@ namespace QuickSC
     {
         public override bool bThisCall { get; }
 
-        Func<QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>> Invoker;
+        public delegate ValueTask InvokerDelegate(QsValue? thisValue, ImmutableArray<QsValue> args, QsValue retValue);
+        InvokerDelegate Invoker;
 
-        public QsNativeFuncInst(bool bThisCall, Func<QsValue?, ImmutableArray<QsValue>, ValueTask<QsValue>> Invoker)
+        public QsNativeFuncInst(bool bThisCall, InvokerDelegate Invoker)
         {
             this.bThisCall = bThisCall;
             this.Invoker = Invoker;
         }
 
-        public ValueTask<QsValue> CallAsync(QsValue? thisValue, ImmutableArray<QsValue> args)
+        public ValueTask CallAsync(QsValue? thisValue, ImmutableArray<QsValue> args, QsValue result)
         {
             Debug.Assert(bThisCall == (thisValue != null));
-            return Invoker(thisValue, args);
+            return Invoker(thisValue, args, result);
         }
     }
 }

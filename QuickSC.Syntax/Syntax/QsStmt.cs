@@ -202,7 +202,7 @@ namespace QuickSC.Syntax
     }
 
     
-    public abstract class QsForStmtInitializer { }
+    public abstract class QsForStmtInitializer : IQsSyntaxNode{ }
     public class QsExpForStmtInitializer : QsForStmtInitializer
     {
         public QsExp Exp { get; }

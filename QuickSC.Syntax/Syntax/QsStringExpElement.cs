@@ -4,7 +4,7 @@ using System.Text;
 
 namespace QuickSC.Syntax
 {
-    public abstract class QsStringExpElement
+    public abstract class QsStringExpElement : IQsSyntaxNode
     {
     }
 

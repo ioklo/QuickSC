@@ -3,6 +3,7 @@ using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -38,43 +39,43 @@ namespace QuickSC
 
     public class QsMemberExpInfo : QsSyntaxNodeInfo
     {
-        public abstract class ExpKind
+        public class Instance : QsMemberExpInfo
         {
-            public class Instance : ExpKind
-            {
-                public QsName VarName { get; }
-                public Instance(QsName varName)
-                {
-                    VarName = varName;
-                }
-            }
+            public QsTypeValue ObjectTypeValue { get; }
+            public QsName VarName { get; }
 
-            public class Static : ExpKind
-            {   
-                public bool bEvaluateObject { get; }
-                public QsVarValue VarValue { get; }                
-                public Static(bool bEvaluateObject, QsVarValue varValue)
-                {
-                    this.bEvaluateObject = bEvaluateObject;
-                    VarValue = varValue;
-                }
+            public Instance(QsTypeValue objectTypeValue, QsName varName)
+            {
+                ObjectTypeValue = objectTypeValue;
+                VarName = varName;
             }
         }
 
-        public ExpKind Kind { get; }
+        public class Static : QsMemberExpInfo
+        {
+            public bool bEvaluateObject => ObjectTypeValue != null;
+            public QsTypeValue? ObjectTypeValue { get; }
+            public QsVarValue VarValue { get; }
 
-        public static QsMemberExpInfo MakeInstance(QsName varName) => new QsMemberExpInfo(new ExpKind.Instance(varName));
-        public static QsMemberExpInfo MakeStatic(bool bEvaluateObject, QsVarValue varValue) => 
-            new QsMemberExpInfo(new ExpKind.Static(bEvaluateObject, varValue));
+            public Static(QsTypeValue? objectTypeValue, QsVarValue varValue)
+            {
+                ObjectTypeValue = objectTypeValue;
+                VarValue = varValue;
+            }
+        }        
 
-        private QsMemberExpInfo(ExpKind kind) { Kind = kind; }
+        public static QsMemberExpInfo MakeInstance(QsTypeValue objectTypeValue, QsName varName) 
+            => new Instance(objectTypeValue, varName);
+
+        public static QsMemberExpInfo MakeStatic(QsTypeValue? objectTypeValue, QsVarValue varValue)
+            => new Static(objectTypeValue, varValue);
     }
 
     public class QsBinaryOpExpInfo : QsSyntaxNodeInfo
     {
         public enum OpType
         {
-            Integer, String
+            Bool, Integer, String
         }
 
         public OpType Type { get; }
@@ -87,77 +88,93 @@ namespace QuickSC
     public class QsCallExpInfo : QsSyntaxNodeInfo
     {
         public QsFuncValue? FuncValue { get; }
-        public QsCallExpInfo(QsFuncValue? funcValue) { FuncValue = funcValue; }
+        public ImmutableArray<QsTypeValue> ArgTypeValues { get; }
+
+        public QsCallExpInfo(QsFuncValue? funcValue, ImmutableArray<QsTypeValue> argTypeValues) 
+        { 
+            FuncValue = funcValue;
+            ArgTypeValues = argTypeValues;
+        }
     }
 
     public class QsMemberCallExpInfo : QsSyntaxNodeInfo
     {
-        public abstract class CallKind
+        public QsTypeValue? ObjectTypeValue { get; }
+        public ImmutableArray<QsTypeValue> ArgTypeValues { get; set; }
+
+        // C.F(), x.F() // F is static
+        public class StaticFuncCall : QsMemberCallExpInfo
         {
-            // C.F(), x.F() // F is static
-            public class StaticFuncCall : CallKind
+            public bool bEvaluateObject { get => ObjectTypeValue != null; }
+            public QsFuncValue FuncValue { get; }
+
+            public StaticFuncCall(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsFuncValue funcValue)
+                : base(objectTypeValue, argTypeValues)
             {
-                public bool bEvaluateObject { get; }
-                public QsFuncValue FuncValue { get; }
-                public StaticFuncCall(bool bEvaluateObject, QsFuncValue funcValue)
-                {
-                    this.bEvaluateObject = bEvaluateObject;
-                    FuncValue = funcValue;
-                }
+                FuncValue = funcValue;
             }
+        }
 
-            // x.F()
-            public class InstanceFuncCall : CallKind
+        // x.F()
+        public class InstanceFuncCall : QsMemberCallExpInfo
+        {
+            public QsFuncValue FuncValue { get; }
+            public InstanceFuncCall(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsFuncValue funcValue)
+                : base(objectTypeValue, argTypeValues)
             {
-                public QsFuncValue FuncValue { get; }
-                public InstanceFuncCall(QsFuncValue funcValue)
-                {
-                    FuncValue = funcValue;
-
-                }
+                FuncValue = funcValue;
             }
+        }
 
-            // x.f() C.f()
-            public class InstanceLambdaCall : CallKind
+        // x.f() C.f()
+        public class InstanceLambdaCall : QsMemberCallExpInfo
+        {
+            public QsName VarName { get; }
+            public InstanceLambdaCall(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsName varName)
+                : base(objectTypeValue, argTypeValues)
             {
-                public QsName VarName { get; }
-                public InstanceLambdaCall(QsName varName)
-                {
-                    VarName = varName;
-                }
+                VarName = varName;
             }
+        }
 
-            public class StaticLambdaCall : CallKind
+        public class StaticLambdaCall : QsMemberCallExpInfo
+        {
+            public bool bEvaluateObject { get => ObjectTypeValue != null; }
+            public QsVarValue VarValue { get; }
+            public StaticLambdaCall(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsVarValue varValue)
+                : base(objectTypeValue, argTypeValues)
             {
-                public bool bEvaluateObject { get; }                
-                public QsVarValue VarValue { get; }
-                public StaticLambdaCall(bool bEvaluateObject, QsVarValue varValue)
-                {
-                    this.bEvaluateObject = bEvaluateObject;
-                    VarValue = varValue;
-                }
+                VarValue = varValue;
             }
         }
 
         // 네개 씩이나 나눠야 하다니
-        public CallKind Kind { get; }
+        public static QsMemberCallExpInfo MakeStaticFunc(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsFuncValue funcValue)
+            => new StaticFuncCall(objectTypeValue, argTypeValues, funcValue);
 
-        public static QsMemberCallExpInfo MakeStaticFunc(bool bEvaluateObject, QsFuncValue funcValue)
-            => new QsMemberCallExpInfo(new CallKind.StaticFuncCall(bEvaluateObject, funcValue));
+        public static QsMemberCallExpInfo MakeInstanceFunc(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsFuncValue funcValue)
+            => new InstanceFuncCall(objectTypeValue, argTypeValues, funcValue);
 
-        public static QsMemberCallExpInfo MakeInstanceFunc(QsFuncValue funcValue)
-            => new QsMemberCallExpInfo(new CallKind.InstanceFuncCall(funcValue));
+        public static QsMemberCallExpInfo MakeStaticLambda(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsVarValue varValue)
+            => new StaticLambdaCall(objectTypeValue, argTypeValues, varValue);
 
-        public static QsMemberCallExpInfo MakeStaticLambda(bool bEvaluateObject, QsVarValue varValue)
-            => new QsMemberCallExpInfo(new CallKind.StaticLambdaCall(bEvaluateObject, varValue));
+        public static QsMemberCallExpInfo MakeInstanceLambda(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsName varName)
+            => new InstanceLambdaCall(objectTypeValue, argTypeValues, varName);
 
-        public static QsMemberCallExpInfo MakeInstanceLambda(QsName varName)
-            => new QsMemberCallExpInfo(new CallKind.InstanceLambdaCall(varName));
-
-
-        private QsMemberCallExpInfo(CallKind kind)
+        // 왜 private 인데 base()가 먹는지;
+        private QsMemberCallExpInfo(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues)
         {
-            Kind = kind;
+            ObjectTypeValue = objectTypeValue;
+            ArgTypeValues = argTypeValues;
+        }
+    }
+
+    public class QsExpStmtInfo : QsSyntaxNodeInfo
+    {
+        public QsTypeValue ExpTypeValue { get; }
+        public QsExpStmtInfo(QsTypeValue expTypeValue)
+        {
+            ExpTypeValue = expTypeValue;
         }
     }
 
@@ -218,16 +235,40 @@ namespace QuickSC
         }
     }
 
+    public class QsForStmtInfo : QsSyntaxNodeInfo
+    {
+        public QsTypeValue? ContTypeValue { get; }
+        public QsForStmtInfo(QsTypeValue? contTypeValue)
+        {
+            ContTypeValue = contTypeValue;
+        }
+    }
+
+    public class QsExpForStmtInitializerInfo : QsSyntaxNodeInfo
+    {
+        public QsTypeValue ExpTypeValue { get; }
+        public QsExpForStmtInitializerInfo(QsTypeValue expTypeValue)
+        {
+            ExpTypeValue = expTypeValue;
+        }
+    }
+
     public class QsForeachStmtInfo : QsSyntaxNodeInfo
     {
+        public QsTypeValue ObjTypeValue { get; }
+        public QsTypeValue EnumeratorTypeValue { get; }
+
         public QsTypeValue ElemTypeValue { get; }
         public int ElemLocalIndex { get; }
         public QsFuncValue GetEnumeratorValue { get; }
         public QsFuncValue MoveNextValue { get; }
-        public QsFuncValue GetCurrentValue { get; }
+        public QsFuncValue GetCurrentValue { get; }        
 
-        public QsForeachStmtInfo(QsTypeValue elemTypeValue, int elemLocalIndex, QsFuncValue getEnumeratorValue, QsFuncValue moveNextValue, QsFuncValue getCurrentValue)
+        public QsForeachStmtInfo(QsTypeValue objTypeValue, QsTypeValue enumeratorTypeValue, QsTypeValue elemTypeValue, int elemLocalIndex, QsFuncValue getEnumeratorValue, QsFuncValue moveNextValue, QsFuncValue getCurrentValue)
         {
+            ObjTypeValue = objTypeValue;
+            EnumeratorTypeValue = enumeratorTypeValue;
+
             ElemTypeValue = elemTypeValue;
             ElemLocalIndex = elemLocalIndex;
             GetEnumeratorValue = getEnumeratorValue;
@@ -248,9 +289,23 @@ namespace QuickSC
     public class QsIndexerExpInfo : QsSyntaxNodeInfo
     {
         public QsFuncValue FuncValue { get; }
-        public QsIndexerExpInfo(QsFuncValue funcValue)
+        public QsTypeValue ObjectTypeValue { get; }
+        public QsTypeValue IndexTypeValue { get; }
+
+        public QsIndexerExpInfo(QsFuncValue funcValue, QsTypeValue objectTypeValue, QsTypeValue indexTypeValue)
         {
             FuncValue = funcValue;
+            ObjectTypeValue = objectTypeValue;
+            IndexTypeValue = indexTypeValue;
+        }
+    }    
+
+    public class QsExpStringExpElementInfo : QsSyntaxNodeInfo
+    {
+        public QsTypeValue ExpTypeValue { get; }
+        public QsExpStringExpElementInfo(QsTypeValue expTypeValue) 
+        { 
+            ExpTypeValue = expTypeValue; 
         }
     }
 }

@@ -2,16 +2,18 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace QuickSC.Runtime
+namespace QuickSC
 {
-    public class QsNativeVar
-    {
+    public class QsVarInfo
+    {   
         public QsMetaItemId VarId { get; }
+        public bool bStatic { get; }
         public QsTypeValue TypeValue { get; }
 
-        public QsNativeVar(QsMetaItemId varId, QsTypeValue typeValue)
-        {
+        public QsVarInfo(QsMetaItemId varId, bool bStatic, QsTypeValue typeValue)
+        {            
             VarId = varId;
+            this.bStatic = bStatic;
             TypeValue = typeValue;
         }
     }

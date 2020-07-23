@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Text;
-
 using QuickSC.Syntax;
 
 namespace QuickSC.StaticAnalyzer
@@ -33,7 +33,7 @@ namespace QuickSC.StaticAnalyzer
             // 4. var x = 1, y = "string"; // 각각 한다
 
             var elemsBuilder = ImmutableArray.CreateBuilder<QsVarDeclInfo.Element>(varDecl.Elems.Length);
-            var declTypeValue = context.TypeValuesByTypeExp[varDecl.Type];
+            var declTypeValue = context.GetTypeValueByTypeExp(varDecl.Type);
 
             foreach (var elem in varDecl.Elems)
             {
@@ -72,26 +72,24 @@ namespace QuickSC.StaticAnalyzer
                 }
             }
 
-            context.InfosByNode[varDecl] = new QsVarDeclInfo(elemsBuilder.MoveToImmutable());
+            context.AddNodeInfo(varDecl, new QsVarDeclInfo(elemsBuilder.MoveToImmutable()));
             return true;
 
             void AddElement(string name, QsTypeValue typeValue, QsAnalyzerContext context)
             {
-                if (context.bGlobalScope)
+                // TODO: globalScope에서 public인 경우는, globalStorage로 
+                if (context.IsGlobalScope())
                 {
-                    var varId = new QsMetaItemId(ImmutableArray.Create(new QsMetaItemIdElem(name, 0)));
-                    var variable = new QsVariable(true, varId, typeValue);
-                    context.MetadataService.AddVar(variable);
-
-                    elemsBuilder.Add(new QsVarDeclInfo.Element(typeValue, new QsGlobalStorage(varId)));
+                    int varId = context.AddPrivateGlobalVarInfo(name, typeValue);
+                    elemsBuilder.Add(new QsVarDeclInfo.Element(typeValue, QsStorage.MakePrivateGlobal(varId)));
                 }
                 else
                 {
-                    int localVarIndex = context.CurFunc.AddVarInfo(name, typeValue);
-                    elemsBuilder.Add(new QsVarDeclInfo.Element(typeValue, new QsLocalStorage(localVarIndex)));
+                    int localVarIndex = context.AddLocalVarInfo(name, typeValue);
+                    elemsBuilder.Add(new QsVarDeclInfo.Element(typeValue, QsStorage.MakeLocal(localVarIndex)));
                 }
             }
-        }
+        }        
 
         public bool AnalyzeStringExpElement(QsStringExpElement elem, QsAnalyzerContext context)
         {
@@ -100,7 +98,14 @@ namespace QuickSC.StaticAnalyzer
             if (elem is QsExpStringExpElement expElem)
             {
                 // TODO: exp의 결과 string으로 변환 가능해야 하는 조건도 고려해야 한다
-                bResult &= AnalyzeExp(expElem.Exp, context, out var _);
+                if (AnalyzeExp(expElem.Exp, context, out var expTypeValue))
+                {
+                    context.AddNodeInfo(elem, new QsExpStringExpElementInfo(expTypeValue));
+                }
+                else
+                {
+                    bResult = false;
+                }
             }
 
             return bResult;
@@ -126,44 +131,43 @@ namespace QuickSC.StaticAnalyzer
             }
 
             // 람다 함수 컨텍스트를 만든다
-            var lambdaFuncId = new QsMetaItemId(context.CurFunc.FuncId.Elems.Add(
-                    new QsMetaItemIdElem(QsName.AnonymousLambda(context.CurFunc.LambdaCount.ToString()), 0)));
-            context.CurFunc.LambdaCount++;
+            var lambdaFuncId = context.MakeLabmdaFuncId();
 
             // 캡쳐된 variable은 새 VarId를 가져야 한다
-            var func = new QsAnalyzerFuncContext(lambdaFuncId, null, false);
+            var funcContext = new QsAnalyzerFuncContext(lambdaFuncId, null, false);
 
             // 필요한 변수들을 찾는다
             var elemsBuilder = ImmutableArray.CreateBuilder<QsCaptureInfo.Element>();
             foreach (var needCapture in captureResult.NeedCaptures)
             {
-                if (context.CurFunc.GetVarInfo(needCapture.VarName, out var localVarInfo))
+                if (context.GetIdentifierInfo(needCapture.VarName, ImmutableArray<QsTypeValue>.Empty, out var idInfo))
                 {
-                    elemsBuilder.Add(new QsCaptureInfo.Element(needCapture.Kind, new QsLocalStorage(localVarInfo.Index)));
-                    func.AddVarInfo(needCapture.VarName, localVarInfo.TypeValue);
+                    if (idInfo is QsAnalyzerIdentifierInfo.Var varIdInfo)
+                    {
+                        switch (varIdInfo.Storage)
+                        {
+                            // 지역 변수라면 
+                            case QsStorage.Local localStorage:
+                                elemsBuilder.Add(new QsCaptureInfo.Element(needCapture.Kind, localStorage));
+                                funcContext.AddLocalVarInfo(needCapture.VarName, varIdInfo.TypeValue);
+                                break;
+
+                            case QsStorage.ModuleGlobal moduleGlobalStorage:
+                            case QsStorage.PrivateGlobal privateGlobalStorage:
+                                break;
+
+                            default:
+                                throw new InvalidOperationException();
+                        }
+
+                        continue;
+                    }
                 }
-                else if (context.MetadataService.GetGlobalVars(needCapture.VarName, out var globalVars))
-                {
-                    // globalVars가 한개 인지 검사는 Body 분석 에서 할 것이기 때문에 하지 않는다
-                    continue;
 
-                    // TODO: 람다에서 글로벌 변수는 캡쳐하지 않는다 QsLambdaExpInfo.Elem.MakeGlobal 제거
-                    // elemsBuilder.Add(QsLambdaExpInfo.Elem.MakeGlobal(needCapture.Kind, globalVar.VarId));
-                    // context.CurFunc.AddVarInfo(needCapture.VarName, globalVar.TypeValue);
-                }
-                else
-                {
-                    context.ErrorCollector.Add(body, "캡쳐실패");
-                    return false;
-                }
-            }
+                context.ErrorCollector.Add(body, "캡쳐실패");
+                return false;                
+            }            
 
-
-            var (prevFunc, bPrevGlobalScope) = (context.CurFunc, context.bGlobalScope);
-            context.bGlobalScope = false;
-            context.CurFunc = func;
-
-            
             var paramTypeValuesBuilder = ImmutableArray.CreateBuilder<QsTypeValue>(parameters.Length);
             foreach (var param in parameters)
             {
@@ -173,22 +177,25 @@ namespace QuickSC.StaticAnalyzer
                     return false;
                 }
 
-                var paramTypeValue = context.TypeValuesByTypeExp[param.Type];
+                var paramTypeValue = context.GetTypeValueByTypeExp(param.Type);
 
                 paramTypeValuesBuilder.Add(paramTypeValue);
-                context.CurFunc.AddVarInfo(param.Name, paramTypeValue);
+                funcContext.AddLocalVarInfo(param.Name, paramTypeValue);
             }
 
-            bool bResult = AnalyzeStmt(body, context);
+            bool bResult = true;
 
-            context.bGlobalScope = bPrevGlobalScope;
-            context.CurFunc = prevFunc;
+            context.ExecInFuncScope(funcContext, () =>
+            {
+                bResult &= AnalyzeStmt(body, context);
+            });
 
             outCaptureInfo = new QsCaptureInfo(false, elemsBuilder.ToImmutable());
             outFuncTypeValue = new QsTypeValue_Func(
-                func.RetTypeValue ?? QsTypeValue_Void.Instance,
+                funcContext.GetRetTypeValue() ?? QsTypeValue_Void.Instance,
                 paramTypeValuesBuilder.MoveToImmutable());
-            outLocalVarCount = func.LocalVarCount;
+            outLocalVarCount = funcContext.GetLocalVarCount();
+
             return bResult;
         }
 
@@ -204,38 +211,35 @@ namespace QuickSC.StaticAnalyzer
         
         public bool AnalyzeFuncDecl(QsFuncDecl funcDecl, QsAnalyzerContext context)
         {
-            var func = context.FuncsByFuncDecl[funcDecl];
+            var funcInfo = context.GetFuncInfoByFuncDecl(funcDecl);
 
-            var funcContext = new QsAnalyzerFuncContext(func.FuncId, func.RetTypeValue, funcDecl.FuncKind == QsFuncKind.Sequence);
-            var prevFunc = context.CurFunc;
-            context.CurFunc = funcContext;
+            var bResult = true;
+            
+            var funcContext = new QsAnalyzerFuncContext(funcInfo.FuncId, funcInfo.RetTypeValue, funcInfo.bSeqCall);
 
-            if (0 < funcDecl.TypeParams.Length || funcDecl.VariadicParamIndex != null)
-                throw new NotImplementedException();
-
-            try
+            
+            context.ExecInFuncScope(funcContext, () =>
             {   
+                if (0 < funcDecl.TypeParams.Length || funcDecl.VariadicParamIndex != null)
+                    throw new NotImplementedException();
+                
                 // 파라미터 순서대로 추가
-                foreach(var param in funcDecl.Params)
+                foreach (var param in funcDecl.Params)
                 {
-                    var paramTypeValue = context.TypeValuesByTypeExp[param.Type];
-                    funcContext.AddVarInfo(param.Name, paramTypeValue);
+                    var paramTypeValue = context.GetTypeValueByTypeExp(param.Type);
+                    context.AddLocalVarInfo(param.Name, paramTypeValue);
                 }
 
-                bool bResult = AnalyzeStmt(funcDecl.Body, context);
+                bResult &= AnalyzeStmt(funcDecl.Body, context);
 
                 // TODO: Body가 실제로 리턴을 제대로 하는지 확인해야 할 필요가 있다
 
-                context.FuncTemplatesById[func.FuncId] = new QsScriptFuncTemplate.FuncDecl(
-                    funcDecl.FuncKind == QsFuncKind.Sequence ? func.RetTypeValue : null,
-                    func.bThisCall, funcContext.LocalVarCount, funcDecl.Body);
+                context.AddFuncTemplate(funcInfo.FuncId, new QsScriptFuncTemplate.FuncDecl(
+                    funcDecl.FuncKind == QsFuncKind.Sequence ? funcInfo.RetTypeValue : null,
+                    funcInfo.bThisCall, context.GetLocalVarCount(), funcDecl.Body));
+            });
 
-                return bResult;
-            }
-            finally
-            {
-                context.CurFunc = prevFunc;
-            }
+            return bResult;
         }
 
         bool AnalyzeScript(QsScript script, QsAnalyzerContext context)
@@ -265,23 +269,23 @@ namespace QuickSC.StaticAnalyzer
                 }
             }
 
-            context.InfosByNode[script] = new QsScriptInfo(context.CurFunc.LocalVarCount);
+            context.AddNodeInfo(script, new QsScriptInfo(context.GetLocalVarCount()));
 
             return bResult;
         }
 
-        public bool AnalyzeScript(
-            string moduleName,
+        public bool AnalyzeScript(            
             QsScript script,
-            QsMetadataService metadataService,            
+            QsMetadataService metadataService,
+            QsTypeValueService typeValueService,
             QsTypeEvalResult evalResult,
-            QsTypeAndFuncBuildResult buildResult,            
+            QsTypeAndFuncBuilder.Result buildResult,            
             IQsErrorCollector errorCollector,
             [NotNullWhen(returnValue: true)] out QsAnalyzeInfo? outInfo)
         {
             var context = new QsAnalyzerContext(
-                moduleName,
                 metadataService,
+                typeValueService,
                 evalResult,
                 buildResult,
                 errorCollector);
@@ -294,13 +298,44 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
 
-            outInfo = new QsAnalyzeInfo(context.InfosByNode.ToImmutableWithComparer(), context.FuncTemplatesById.ToImmutableDictionary());
+            outInfo = new QsAnalyzeInfo(context.GetPrivateGlobalVarCount(), context.MakeInfosByNode(), context.MakeFuncTemplatesById());
             return true;
         }
 
         public bool IsAssignable(QsTypeValue toTypeValue, QsTypeValue fromTypeValue, QsAnalyzerContext context)
         {
-            return context.MetadataService.IsAssignable(toTypeValue, fromTypeValue);
+            // B <- D
+            // 지금은 fromType의 base들을 찾아가면서 toTypeValue와 맞는 것이 있는지 본다
+            // TODO: toTypeValue가 interface라면, fromTypeValue의 interface들을 본다
+
+            QsTypeValue? curType = fromTypeValue;
+            while (curType != null)
+            {
+                if (EqualityComparer<QsTypeValue>.Default.Equals(toTypeValue, curType))
+                    return true;
+
+                if (!context.TypeValueService.GetBaseTypeValue(curType, out var outType))
+                    return false;
+
+                curType = outType;
+            }
+
+            return false;
+        }
+
+        public QsTypeValue GetIntTypeValue()
+        {
+            return new QsTypeValue_Normal(null, new QsMetaItemId(new QsMetaItemIdElem("int")));
+        }
+
+        public QsTypeValue GetBoolTypeValue()
+        {
+            return new QsTypeValue_Normal(null, new QsMetaItemId(new QsMetaItemIdElem("bool")));
+        }
+
+        public QsTypeValue GetStringTypeValue()
+        {
+            return new QsTypeValue_Normal(null, new QsMetaItemId(new QsMetaItemIdElem("string"))); ;
         }
     }
 }

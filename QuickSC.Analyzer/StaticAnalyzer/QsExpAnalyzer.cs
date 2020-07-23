@@ -13,8 +13,47 @@ using System.Text;
 
 namespace QuickSC.StaticAnalyzer
 {
+    public class QsAnalyzerIdentifierInfo
+    {
+        public class Var : QsAnalyzerIdentifierInfo
+        {
+            public QsStorage Storage { get; }
+            public QsTypeValue TypeValue { get; }
+
+            public Var(QsStorage storage, QsTypeValue typeValue)
+            {
+                Storage = storage;
+                TypeValue = typeValue;
+            }
+        }
+
+        public class Func : QsAnalyzerIdentifierInfo
+        {
+            public QsFuncValue FuncValue { get; }
+            public Func(QsFuncValue funcValue)
+            {
+                FuncValue = funcValue;
+            }
+        }
+
+        public class Type : QsAnalyzerIdentifierInfo
+        {
+            public QsTypeValue TypeValue { get; }
+            public Type(QsTypeValue typeValue)
+            {
+                TypeValue = typeValue;
+            }
+        }
+
+        public static Var MakeVar(QsStorage storage, QsTypeValue typeValue) => new Var(storage, typeValue);
+
+        public static Func MakeFunc(QsFuncValue funcValue) => new Func(funcValue);
+
+        public static Type MakeType(QsTypeValue typeValue) => new Type(typeValue);
+    }
+
     // 어떤 Exp에서 타입 정보 등을 알아냅니다
-    class QsExpAnalyzer
+    partial class QsExpAnalyzer
     {
         QsAnalyzer analyzer;        
 
@@ -26,145 +65,42 @@ namespace QuickSC.StaticAnalyzer
         // x
         internal bool AnalyzeIdExp(QsIdentifierExp idExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
-            if (AnalyzeIdExpWithStatic(idExp, context, out var outValue))
-            {
-                if (!outValue.Value.bStatic)
-                {
-                    outTypeValue = outValue.Value.TypeValue;
-                    return true;
-                }
-            }
-
             outTypeValue = null;
-            return false;
-        }
 
-        internal bool AnalyzeIdExpWithStatic(QsIdentifierExp idExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out (bool bStatic, QsTypeValue TypeValue)? outValue)
-        {
-            // 변수에서 검색
-            if (context.CurFunc.GetVarInfo(idExp.Value, out var localVarInfo))
-            {
-                if (idExp.TypeArgs.Length != 0)
-                {
-                    context.ErrorCollector.Add(idExp, $"{idExp.Value} 변수는 타입인자를 가질 수 없습니다");
-                    outValue = null;
-                    return false;
-                }
+            var typeArgs = QsAnalyzerMisc.GetTypeValues(idExp.TypeArgs, context);
 
-                // Local
-                context.InfosByNode.Add(idExp, new QsIdentifierExpInfo(new QsLocalStorage(localVarInfo.Index)));
-                outValue = (false, localVarInfo.TypeValue);
-                return true;
-            }
-
-            var typeArgs = ImmutableArray.CreateRange(idExp.TypeArgs, typeArg => context.TypeValuesByTypeExp[typeArg]);
-
-            // TODO: this scope 변수, 함수 검색            
-
-            // 전역 변수/함수, 레퍼런스에서 검색
-            var candidates = new List<(QsTypeValue TypeValue, QsIdentifierExpInfo Info)>();
-            if (idExp.TypeArgs.Length == 0 && context.MetadataService.GetGlobalVars(idExp.Value, out var globalVars))
-            {
-                if (1 < globalVars.Length)
-                {
-                    context.ErrorCollector.Add(idExp, $"{idExp.Value} 이름의 전역 변수가 한 개 이상 있습니다");
-                    outValue = null;
-                    return false;
-                }
-
-                var globalVar = globalVars[0];
-                candidates.Add((globalVar.TypeValue, new QsIdentifierExpInfo(new QsGlobalStorage(globalVar.VarId))));
-            }
-
-            // TODO: GlobalFunc Lambda 지원 Test\Lambda\05_FuncAsLambda.qs
-            //if (analyzer.GetGlobalFunc(idExp.Value, context, out var func))
-            //{
-            //    // GlobalFunc
-            //    var funcTypeValue = typeValueService.MakeFuncTypeValue(null, func, typeArgs, context.TypeValueServiceContext);
-            //    candidates.Add((funcTypeValue, QsGlobalStorage.Instance, QsStorageKind.Func));
-            //}
-
-            if (candidates.Count == 1)
-            {
-                context.InfosByNode.Add(idExp, candidates[0].Info);
-                outValue = (false, candidates[0].TypeValue);
-                return true;
-            }
-            else if (1 < candidates.Count)
-            {
-                outValue = null;
-                context.ErrorCollector.Add(idExp, $"{idExp}가 모호합니다. 가능한 함수, 람다가 여러개 있습니다");
+            if (!context.GetIdentifierInfo(idExp.Value, typeArgs, out var idInfo))
                 return false;
-            }
 
-            // 전역/레퍼런스 타입에서 검색, GlobalType, RefType
-            if (context.MetadataService.GetGlobalTypeValues(idExp.Value, typeArgs, out var typeValues))
+            if (idInfo is QsAnalyzerIdentifierInfo.Var varIdInfo)
             {
-                if (typeValues.Length == 1)
-                {
-                    // 여기는 MemberExp로부터만 오기 때문에 MemberExp에 추가해본다
-                    outValue = (true, typeValues[0]);
-                    return true;
-                }
-
-                if (1 < candidates.Count)
-                {
-                    outValue = null;
-                    context.ErrorCollector.Add(idExp, $"이름이 같은 {idExp.Value} 타입이 여러개 입니다");
-                    return false;
-                }
-            }
-
-            outValue = null;
-            context.ErrorCollector.Add(idExp, $"이름이 {idExp.Value} 인 함수, 람다, 타입이 없습니다");
-            return false;
-        }
-
-        // identifier가 type을 가리킬 때, AnalyzeExp는 에러를 추가해서 진행을 멈추지만 AnalyzeExpWithStatic은 계속 진행할 수 있습니다
-        internal bool AnalyzeExpWithStatic(QsExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out (bool bStatic, QsTypeValue TypeValue)? outValue)
-        {
-            if (exp is QsIdentifierExp idExp)
-                return AnalyzeIdExpWithStatic(idExp, context, out outValue);
-
-            if (AnalyzeExp(exp, context, out var typeValue))
-            {
-                outValue = (false, typeValue);
+                outTypeValue = varIdInfo.TypeValue;
+                context.AddNodeInfo(idExp, new QsIdentifierExpInfo(varIdInfo.Storage));
                 return true;
             }
-            else
-            {
-                outValue = null;
-                return false;
-            }
+
+            // TODO: Func
+            return false;
         }
 
         internal bool AnalyzeBoolLiteralExp(QsBoolLiteralExp boolExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
-        {
-            if (!context.MetadataService.GetGlobalTypeValue("bool", out var boolTypeValue))
-                Debug.Fail("Runtime에 bool이 없습니다");
-
-            typeValue = boolTypeValue;
+        {   
+            typeValue = analyzer.GetBoolTypeValue();
             return true;
         }
 
         internal bool AnalyzeIntLiteralExp(QsIntLiteralExp intExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            if (!context.MetadataService.GetGlobalTypeValue("int", out var intTypeValue))
-                Debug.Fail("Runtime에 int가 없습니다");
-
-            typeValue = intTypeValue;
+            typeValue = analyzer.GetIntTypeValue();
             return true;
         }
 
         internal bool AnalyzeStringExp(QsStringExp stringExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            if (!context.MetadataService.GetGlobalTypeValue("string", out var stringTypeValue))
-                Debug.Fail("Runtime에 string이 없습니다");
-
             foreach(var elem in stringExp.Elements)
                 analyzer.AnalyzeStringExpElement(elem, context);
 
-            typeValue = stringTypeValue;
+            typeValue = analyzer.GetStringTypeValue();
             return true;
         }
 
@@ -172,14 +108,9 @@ namespace QuickSC.StaticAnalyzer
         {
             typeValue = null;
 
-            // TODO: operator 함수 선택 방식 따로 만들기, 지금은 하드코딩
-            if (!context.MetadataService.GetGlobalTypeValue("bool", out var boolTypeValue) || 
-                !context.MetadataService.GetGlobalTypeValue("int", out var intTypeValue))
-            {
-                Debug.Fail("Runtime에 bool, int가 없습니다");
-                return false;
-            }
-
+            var boolTypeValue = analyzer.GetBoolTypeValue();
+            var intTypeValue = analyzer.GetIntTypeValue();
+            
             if (!AnalyzeExp(unaryOpExp.Operand, context, out var operandTypeValue))            
                 return false; // AnalyzeExp에서 에러가 생겼으므로 내부에서 에러를 추가했을 것이다. 여기서는 더 추가 하지 않는다
 
@@ -225,14 +156,9 @@ namespace QuickSC.StaticAnalyzer
         {
             typeValue = null;
 
-            if (!context.MetadataService.GetGlobalTypeValue("bool", out var boolTypeValue) ||
-                !context.MetadataService.GetGlobalTypeValue("int", out var intTypeValue) ||
-                !context.MetadataService.GetGlobalTypeValue("string", out var stringTypeValue))
-            {
-                Debug.Fail("Runtime에 bool, int가 없습니다");
-                return false;
-            }
-
+            var boolTypeValue = analyzer.GetBoolTypeValue();
+            var intTypeValue = analyzer.GetIntTypeValue();
+            var stringTypeValue = analyzer.GetStringTypeValue();
 
             if (!AnalyzeExp(binaryOpExp.Operand0, context, out var operandTypeValue0))
                 return false;
@@ -252,10 +178,31 @@ namespace QuickSC.StaticAnalyzer
                 return true;
             }
             else if (binaryOpExp.Kind == QsBinaryOpKind.Equal || binaryOpExp.Kind == QsBinaryOpKind.NotEqual)
-            {
+            {   
                 if (!EqualityComparer<QsTypeValue>.Default.Equals(operandTypeValue0, operandTypeValue1))
                 {
                     context.ErrorCollector.Add(binaryOpExp, $"{operandTypeValue0}와 {operandTypeValue1}을 비교할 수 없습니다");
+                    return false;
+                }
+
+                if (analyzer.IsAssignable(boolTypeValue, operandTypeValue0, context) &&
+                    analyzer.IsAssignable(boolTypeValue, operandTypeValue1, context))
+                {
+                    context.AddNodeInfo(binaryOpExp, new QsBinaryOpExpInfo(QsBinaryOpExpInfo.OpType.Bool));
+                }
+                else if (analyzer.IsAssignable(intTypeValue, operandTypeValue0, context) &&
+                    analyzer.IsAssignable(intTypeValue, operandTypeValue1, context))
+                {
+                    context.AddNodeInfo(binaryOpExp, new QsBinaryOpExpInfo(QsBinaryOpExpInfo.OpType.Integer));
+                }
+                else if (analyzer.IsAssignable(stringTypeValue, operandTypeValue0, context) &&
+                    analyzer.IsAssignable(stringTypeValue, operandTypeValue1, context))
+                {
+                    context.AddNodeInfo(binaryOpExp, new QsBinaryOpExpInfo(QsBinaryOpExpInfo.OpType.String));
+                }
+                else
+                {
+                    context.ErrorCollector.Add(binaryOpExp, $"bool, int, string만 비교를 지원합니다");
                     return false;
                 }
 
@@ -288,7 +235,7 @@ namespace QuickSC.StaticAnalyzer
                 }
 
                 // 하드코딩
-                context.InfosByNode[binaryOpExp] = new QsBinaryOpExpInfo(QsBinaryOpExpInfo.OpType.Integer);
+                context.AddNodeInfo(binaryOpExp, new QsBinaryOpExpInfo(QsBinaryOpExpInfo.OpType.Integer));
 
                 switch (binaryOpExp.Kind)
                 {
@@ -321,7 +268,7 @@ namespace QuickSC.StaticAnalyzer
                 }
 
                 // 하드코딩
-                context.InfosByNode[binaryOpExp] = new QsBinaryOpExpInfo(QsBinaryOpExpInfo.OpType.String);
+                context.AddNodeInfo(binaryOpExp, new QsBinaryOpExpInfo(QsBinaryOpExpInfo.OpType.String));
 
                 switch (binaryOpExp.Kind)
                 {
@@ -353,7 +300,10 @@ namespace QuickSC.StaticAnalyzer
             // 1. this 검색
 
             // 2. global 검색
-            if (context.MetadataService.GetGlobalFuncs(exp.Value, exp.TypeArgs.Length, out var globalFuncs))
+            var funcId = new QsMetaItemId(new QsMetaItemIdElem(exp.Value, exp.TypeArgs.Length));
+            var globalFuncs = context.MetadataService.GetFuncInfos(funcId).ToImmutableArray();
+
+            if (0 < globalFuncs.Length)
             {                
                 if (1 < globalFuncs.Length)
                 {
@@ -364,10 +314,10 @@ namespace QuickSC.StaticAnalyzer
 
                 var globalFunc = globalFuncs[0];
 
-                var typeArgs = ImmutableArray.CreateRange(exp.TypeArgs, typeArg => context.TypeValuesByTypeExp[typeArg]);
+                var typeArgs = ImmutableArray.CreateRange(exp.TypeArgs, typeArg => context.GetTypeValueByTypeExp(typeArg));
 
                 var funcValue = new QsFuncValue(null, globalFunc.FuncId, typeArgs);
-                var funcTypeValue = context.MetadataService.GetFuncTypeValue(funcValue);
+                var funcTypeValue = context.TypeValueService.GetTypeValue(funcValue);
 
                 if (!CheckParamTypes(exp, funcTypeValue.Params, args, context))
                 {
@@ -464,7 +414,7 @@ namespace QuickSC.StaticAnalyzer
                 return false;
 
             outTypeValue = callableInfo.Value.TypeValue.Return;
-            context.InfosByNode[exp] = new QsCallExpInfo(callableInfo.Value.FuncValue);
+            context.AddNodeInfo(exp, new QsCallExpInfo(callableInfo.Value.FuncValue, args));
             return true;
         }
         
@@ -477,7 +427,7 @@ namespace QuickSC.StaticAnalyzer
             }
 
             outTypeValue = funcTypeValue;
-            context.InfosByNode[lambdaExp] = new QsLambdaExpInfo(captureInfo, localVarCount);
+            context.AddNodeInfo(lambdaExp, new QsLambdaExpInfo(captureInfo, localVarCount));
             return true;
         }
 
@@ -492,33 +442,27 @@ namespace QuickSC.StaticAnalyzer
                 return false;
 
             // objTypeValue에 indexTypeValue를 인자로 갖고 있는 indexer가 있는지
-            if (!context.MetadataService.GetMemberFuncValue(false, objTypeValue, QsName.Special(QsSpecialName.Indexer), ImmutableArray<QsTypeValue>.Empty, out var funcValue))
+            if (!context.TypeValueService.GetMemberFuncValue(objTypeValue, QsName.Special(QsSpecialName.Indexer), ImmutableArray<QsTypeValue>.Empty, out var funcValue))
             {
                 context.ErrorCollector.Add(exp, "객체에 indexer함수가 없습니다");
                 return false;
             }
-
-            // TODO: Non-Static만 검색하는 함수를 따로 만들자
-            if (context.MetadataService.IsFuncStatic(funcValue.FuncId))
+            
+            if (QsAnalyzerMisc.IsFuncStatic(funcValue.FuncId, context))
             {
                 Debug.Fail("객체에 indexer가 있는데 Static입니다");
                 return false;
             }
 
-            var funcTypeValue = context.MetadataService.GetFuncTypeValue(funcValue);
+            var funcTypeValue = context.TypeValueService.GetTypeValue(funcValue);
 
             if (!CheckParamTypes(exp, funcTypeValue.Params, ImmutableArray.Create(indexTypeValue), context))
                 return false;
 
-            context.InfosByNode[exp] = new QsIndexerExpInfo(funcValue);
+            context.AddNodeInfo(exp, new QsIndexerExpInfo(funcValue, objTypeValue, indexTypeValue));
 
             outTypeValue = funcTypeValue.Return;
             return true;
-        }
-
-        ImmutableArray<QsTypeValue> GetTypeValues(ImmutableArray<QsTypeExp> typeExps, QsAnalyzerContext context)
-        {
-            return ImmutableArray.CreateRange(typeExps, typeExp => context.TypeValuesByTypeExp[typeExp]);
         }
 
         bool AnalyzeExps(ImmutableArray<QsExp> exps, QsAnalyzerContext context, out ImmutableArray<QsTypeValue> outTypeValues)
@@ -539,147 +483,37 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        internal bool AnalyzeMemberCallExp(QsMemberCallExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue) 
+        internal bool AnalyzeMemberCallExp(QsMemberCallExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
-            typeValue = null;
+            outTypeValue = null;
 
-            var memberTypeArgs = GetTypeValues(exp.MemberTypeArgs, context);
+            var result = new MemberCallExpAnalyzer(this, exp, context).Analyze();
+            if (result == null) return false;
 
-            if (!AnalyzeExps(exp.Args, context, out var args))
+            if (!CheckParamTypes(exp, result.Value.TypeValue.Params, result.Value.ArgTypeValues, context))
                 return false;
 
-            // 가능한 경우 'obj'.F(), 'obj'.f(), 'C'.F() 'C'.f()
-            if (!AnalyzeExpWithStatic(exp.Object, context, out var outValue))
-                return false;
-
-            var (bStaticObject, objTypeValue) = outValue.Value;
-            
-            // 함수에서 찾기.. FuncValue도 같이 주는것이 좋을 듯 하다
-            if (context.MetadataService.GetMemberFuncValue(bStaticOnly: bStaticObject, objTypeValue, QsName.Text(exp.MemberName), memberTypeArgs, out var funcValue))
-            {
-                bool bStaticFunc = context.MetadataService.IsFuncStatic(funcValue.FuncId);
-                var funcTypeValue = context.MetadataService.GetFuncTypeValue(funcValue);
-
-                if (!CheckParamTypes(exp, funcTypeValue.Params, args, context))
-                    return false;
-
-                context.InfosByNode[exp] = bStaticFunc
-                    ? QsMemberCallExpInfo.MakeStaticFunc(bEvaluateObject: !bStaticObject, funcValue)
-                    : QsMemberCallExpInfo.MakeInstanceFunc(funcValue);
-                
-                typeValue = funcTypeValue.Return;
-                return true;
-            }
-
-            // 변수에서 찾기
-            if (memberTypeArgs.Length == 0 && 
-                context.MetadataService.GetMemberVarValue(bStaticOnly: bStaticObject, objTypeValue, exp.MemberName, out var varValue))
-            {
-                bool bStaticVar = context.MetadataService.IsVarStatic(varValue.VarId);
-                var varFuncTypeValue = context.MetadataService.GetVarTypeValue(varValue) as QsTypeValue_Func;
-
-                if (varFuncTypeValue == null)
-                {
-                    context.ErrorCollector.Add(exp, $"호출 가능한 타입이 아닙니다");
-                    return false;
-                }
-
-                context.InfosByNode[exp] = bStaticVar
-                    ? QsMemberCallExpInfo.MakeStaticLambda(bEvaluateObject: !bStaticObject, varValue)
-                    : QsMemberCallExpInfo.MakeInstanceLambda(varValue.VarId.Name);
-
-                typeValue = varFuncTypeValue.Return;
-                return true;
-            }
-
-            // 변수에서 찾기 VarId도 같이 주는것이 좋을 것 같다
-            context.ErrorCollector.Add(exp, $"{exp.Object}에 {exp.MemberName} 함수가 없습니다");
-            return false;
+            context.AddNodeInfo(exp, result.Value.NodeInfo);
+            outTypeValue = result.Value.TypeValue.Return;
+            return true;
         }
 
         internal bool AnalyzeMemberExp(QsMemberExp memberExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
         {
-            if (!AnalyzeExpWithStatic(memberExp.Object, context, out var objInfo))
+            var analyzer = new MemberExpAnalyzer(this, memberExp, context);
+            var result = analyzer.Analyze();
+
+            if (result != null)
+            {
+                context.AddNodeInfo(memberExp, result.Value.MemberExpInfo);
+                outTypeValue = result.Value.TypeValue;
+                return true;
+            }
+            else
             {
                 outTypeValue = null;
                 return false;
             }
-
-            // obj.id
-            if (!objInfo.Value.bStatic)
-            {
-                QsTypeValue_Normal? objNormalTypeValue = objInfo.Value.TypeValue as QsTypeValue_Normal;
-
-                if (objNormalTypeValue == null)
-                {
-                    context.ErrorCollector.Add(memberExp, "멤버를 가져올 수 없습니다");
-                    outTypeValue = null;
-                    return false;
-                }
-
-                if (!context.MetadataService.GetMemberVar(objNormalTypeValue.TypeId, memberExp.MemberName, out var memberVar))
-                {
-                    context.ErrorCollector.Add(memberExp, $"{memberExp.MemberName}은 {objNormalTypeValue}의 멤버가 아닙니다");
-                    outTypeValue = null;
-                    return false;
-                }
-
-                if (0 < memberExp.MemberTypeArgs.Length)
-                    context.ErrorCollector.Add(memberExp, "멤버변수에는 타입인자를 붙일 수 없습니다");
-
-                outTypeValue = context.MetadataService.MakeTypeValue(objNormalTypeValue, memberVar.Value.Var.TypeValue);
-
-                // instance이지만 static 이라면, exp는 실행하고, static변수에서 가져온다
-                if (memberVar.Value.bStatic)
-                {
-                    context.InfosByNode[memberExp] = QsMemberExpInfo.MakeStatic(true, new QsVarValue(objNormalTypeValue, memberVar.Value.Var.VarId));
-                    return true;
-                }
-                else
-                {
-                    context.InfosByNode[memberExp] = QsMemberExpInfo.MakeInstance(memberVar.Value.Var.VarId.Name);
-                    return true;
-                }
-            }
-            else // X.id
-            {
-                QsTypeValue_Normal? objNormalTypeValue = objInfo.Value.TypeValue as QsTypeValue_Normal;
-
-                if (objNormalTypeValue == null)
-                {
-                    context.ErrorCollector.Add(memberExp, "멤버를 가져올 수 없습니다");
-                    outTypeValue = null;
-                    return false;
-                }
-
-                if (context.MetadataService.GetMemberVar(objNormalTypeValue.TypeId, memberExp.MemberName, out var variable))
-                {
-                    if (0 < memberExp.MemberTypeArgs.Length)
-                    {
-                        context.ErrorCollector.Add(memberExp, "멤버변수에는 타입인자를 붙일 수 없습니다");
-                        outTypeValue = null;
-                        return false;
-                    }
-
-                    if (!variable.Value.bStatic) // instance인데 static을 가져오는건 괜찮다
-                    {
-                        context.ErrorCollector.Add(memberExp, "정적 변수가 아닙니다");
-                        outTypeValue = null;
-                        return false;
-                    }
-                    else
-                    {
-                        outTypeValue = context.MetadataService.MakeTypeValue(objNormalTypeValue, variable.Value.Var.TypeValue);
-                        context.InfosByNode[memberExp] = QsMemberExpInfo.MakeStatic(false, new QsVarValue(objNormalTypeValue, variable.Value.Var.VarId));
-                        return true;
-                    }                    
-                }
-            }
-
-            // TODO: Func추가
-
-            outTypeValue = null;
-            return false;
         }
 
         internal bool AnalyzeListExp(QsListExp listExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
@@ -712,37 +546,37 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
 
-            if (!context.MetadataService.GetGlobalTypeValues("List", ImmutableArray.Create(curElemTypeValue), out var typeValues) || 
-                typeValues.Length != 1)
+            var typeInfos = context.MetadataService.GetTypeInfos(new QsMetaItemId(new QsMetaItemIdElem("List", 1))).ToImmutableArray();            
+
+            if (typeInfos.Length != 1)
             {
                 Debug.Fail("Runtime에 적합한 리스트가 없습니다");
                 return false;
             }
 
-            typeValue = typeValues[0];
-            context.InfosByNode[listExp] = new QsListExpInfo(curElemTypeValue);
+            typeValue = new QsTypeValue_Normal(null, typeInfos[0].TypeId, curElemTypeValue);
+            context.AddNodeInfo(listExp, new QsListExpInfo(curElemTypeValue));
             return true;
         }
 
         public bool AnalyzeExp(QsExp exp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            return exp switch
+            switch(exp)
             {
-                QsIdentifierExp idExp => AnalyzeIdExp(idExp, context, out typeValue),
-                QsBoolLiteralExp boolExp => AnalyzeBoolLiteralExp(boolExp, context, out typeValue),
-                QsIntLiteralExp intExp => AnalyzeIntLiteralExp(intExp, context, out typeValue),
-                QsStringExp stringExp => AnalyzeStringExp(stringExp, context, out typeValue),
-                QsUnaryOpExp unaryOpExp => AnalyzeUnaryOpExp(unaryOpExp, context, out typeValue),
-                QsBinaryOpExp binaryOpExp => AnalyzeBinaryOpExp(binaryOpExp, context, out typeValue),
-                QsCallExp callExp => AnalyzeCallExp(callExp, context, out typeValue),                
-                QsLambdaExp lambdaExp => AnalyzeLambdaExp(lambdaExp, context, out typeValue),
-                QsIndexerExp indexerExp => AnalyzeIndexerExp(indexerExp, context, out typeValue),
-                QsMemberCallExp memberCallExp => AnalyzeMemberCallExp(memberCallExp, context, out typeValue),
-                QsMemberExp memberExp => AnalyzeMemberExp(memberExp, context, out typeValue),
-                QsListExp listExp => AnalyzeListExp(listExp, context, out typeValue),
-
-                _ => throw new NotImplementedException()
-            };
+                case QsIdentifierExp idExp: return AnalyzeIdExp(idExp, context, out typeValue);
+                case QsBoolLiteralExp boolExp: return AnalyzeBoolLiteralExp(boolExp, context, out typeValue);
+                case QsIntLiteralExp intExp: return AnalyzeIntLiteralExp(intExp, context, out typeValue);
+                case QsStringExp stringExp: return AnalyzeStringExp(stringExp, context, out typeValue);
+                case QsUnaryOpExp unaryOpExp: return AnalyzeUnaryOpExp(unaryOpExp, context, out typeValue);
+                case QsBinaryOpExp binaryOpExp: return AnalyzeBinaryOpExp(binaryOpExp, context, out typeValue);
+                case QsCallExp callExp: return AnalyzeCallExp(callExp, context, out typeValue);        
+                case QsLambdaExp lambdaExp: return AnalyzeLambdaExp(lambdaExp, context, out typeValue);
+                case QsIndexerExp indexerExp: return AnalyzeIndexerExp(indexerExp, context, out typeValue);
+                case QsMemberCallExp memberCallExp: return AnalyzeMemberCallExp(memberCallExp, context, out typeValue);
+                case QsMemberExp memberExp: return AnalyzeMemberExp(memberExp, context, out typeValue);
+                case QsListExp listExp: return AnalyzeListExp(listExp, context, out typeValue);
+                default: throw new NotImplementedException();
+            }
         }
     }
 }

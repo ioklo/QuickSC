@@ -11,11 +11,11 @@ namespace QuickSC
         public QsMetaItemId FuncId { get; }
         public ImmutableArray<QsTypeValue> TypeArgs { get; }
 
-        public QsFuncValue(QsTypeValue? outer, QsMetaItemId funcId, ImmutableArray<QsTypeValue> typeArgs)
+        public QsFuncValue(QsTypeValue? outer, QsMetaItemId funcId, IEnumerable<QsTypeValue> typeArgs)
         {
             Outer = outer;
             FuncId = funcId;
-            TypeArgs = typeArgs;
+            TypeArgs = typeArgs.ToImmutableArray();
         }
 
         public QsFuncValue(QsTypeValue? outer, QsMetaItemId funcId, params QsTypeValue[] typeArgs)

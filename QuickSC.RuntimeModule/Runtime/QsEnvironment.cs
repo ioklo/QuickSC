@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 
 namespace QuickSC.Runtime
@@ -8,28 +9,16 @@ namespace QuickSC.Runtime
     class QsEnvironmentInfo : QsRuntimeModuleObjectInfo
     {
         public QsEnvironmentInfo()
+            : base(null, new QsMetaItemId(new QsMetaItemIdElem("Environment")), Enumerable.Empty<string>(), null, () => new QsObjectValue(null))
         {
-            var typeId = new QsMetaItemId(new QsMetaItemIdElem("Environment"));
+        }
 
-            var memberVarIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
+        public override void Build(QsRuntimeModuleObjectBuilder builder)
+        {
+            var stringTypeValue = new QsTypeValue_Normal(null, QsRuntimeModule.StringId);
 
-            var stringTypeValue = new QsTypeValue_Normal(null, new QsMetaItemId(new QsMetaItemIdElem("string")));
-
-            var homeDirId = typeId.Append("HomeDir");
-            AddNativeVar(new QsNativeVar(homeDirId, stringTypeValue));
-            memberVarIdsBuilder.Add(homeDirId);
-
-            var scriptDirId = typeId.Append("ScriptDir");
-            AddNativeVar(new QsNativeVar(scriptDirId, stringTypeValue));
-            memberVarIdsBuilder.Add(scriptDirId);
-
-            AddNativeType(new QsNativeType(typeId, ImmutableArray<string>.Empty, baseTypeValue: null,
-                memberTypeIds: ImmutableArray<QsMetaItemId>.Empty,
-                staticMemberFuncIds: ImmutableArray<QsMetaItemId>.Empty,
-                staticMemberVarIds: ImmutableArray<QsMetaItemId>.Empty,
-                memberFuncIds: ImmutableArray<QsMetaItemId>.Empty,
-                memberVarIds: memberVarIdsBuilder.ToImmutable(),
-                new QsNativeTypeInstantiator(() => new QsObjectValue(null))));
+            builder.AddMemberVar(QsName.Text("HomeDir"), false, stringTypeValue);
+            builder.AddMemberVar(QsName.Text("ScriptDir"), false, stringTypeValue);
         }
     }
 

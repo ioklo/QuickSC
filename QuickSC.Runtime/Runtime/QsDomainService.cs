@@ -9,55 +9,72 @@ using System.Text;
 
 namespace QuickSC.Runtime
 {
+    class QsVoidTypeInst : QsTypeInst
+    {
+        public static QsVoidTypeInst Instance { get; } = new QsVoidTypeInst();
+
+        private QsVoidTypeInst() { }
+
+        public override QsTypeValue GetTypeValue()
+        {
+            return QsTypeValue_Void.Instance;
+        }
+
+        public override QsValue MakeDefaultValue()
+        {
+            return QsVoidValue.Instance;
+        }
+    }
+
+    class QsFuncTypeInst : QsTypeInst
+    {
+        private QsTypeValue_Func typeValue;
+
+        public QsFuncTypeInst(QsTypeValue_Func typeValue) { this.typeValue = typeValue; }
+
+        public override QsTypeValue GetTypeValue()
+        {
+            return typeValue;
+        }
+
+        public override QsValue MakeDefaultValue()
+        {
+            return new QsFuncInstValue();
+        }
+    }
+
     // 도메인: 프로그램 실행에 대한 격리 단위   
     public class QsDomainService
     {
-        QsMetadataService metadataService;
-        Dictionary<QsMetaItemId, IQsModuleTypeInfo> typeInfos;
-        Dictionary<QsMetaItemId, IQsModuleFuncInfo> funcInfos;
-
         // 모든 모듈의 전역 변수
         public Dictionary<QsMetaItemId, QsValue> globalValues { get; }
+        List<IQsModule> modules;
 
-        public QsDomainService(QsMetadataService metadataService)
+        public QsDomainService()
         {
-            // TODO: metadataService와 LoadModule사이에 연관이 없다 실수하기 쉽다
-            this.metadataService = metadataService;
-            
-            typeInfos = new Dictionary<QsMetaItemId, IQsModuleTypeInfo>();
-            funcInfos = new Dictionary<QsMetaItemId, IQsModuleFuncInfo>();
             globalValues = new Dictionary<QsMetaItemId, QsValue>();
+            modules = new List<IQsModule>();
         }
 
         public QsValue GetGlobalValue(QsMetaItemId varId)
         {
             return globalValues[varId];
         }
-
-        public void AddTypeInfos(IEnumerable<IQsModuleTypeInfo> typeInfos)
-        {
-            foreach (var typeInfo in typeInfos)
-                this.typeInfos.Add(typeInfo.TypeId, typeInfo);
-        }
-
-        public void AddFuncInfos(IEnumerable<IQsModuleFuncInfo> funcInfos)
-        {
-            foreach (var funcInfo in funcInfos)
-                this.funcInfos.Add(funcInfo.FuncId, funcInfo);
-        }
-
+        
         public void LoadModule(IQsModule module)
         {
-            AddTypeInfos(module.TypeInfos);
-            AddFuncInfos(module.FuncInfos);
-
+            modules.Add(module);
             module.OnLoad(this);
         }
 
         public QsFuncInst GetFuncInst(QsFuncValue funcValue)
         {
             // TODO: caching
-            return funcInfos[funcValue.FuncId].GetFuncInst(this, funcValue);
+            foreach (var module in modules)
+                if (module.GetFuncInfo(funcValue.FuncId, out var _))
+                    return module.GetFuncInst(this, funcValue);
+
+            throw new InvalidOperationException();
         }
         
         // 실행중 TypeValue는 모두 Apply된 상태이다
@@ -71,32 +88,26 @@ namespace QuickSC.Runtime
                     Debug.Fail("실행중에 바인드 되지 않은 타입 인자가 나왔습니다");
                     throw new InvalidOperationException();
 
-                case QsTypeValue_Normal ntv:                    
-                    return typeInfos[ntv.TypeId].GetTypeInst(this, ntv);
+                case QsTypeValue_Normal ntv:
+                    {
+                        foreach (var module in modules)
+                            if (module.GetTypeInfo(ntv.TypeId, out var _))
+                                return module.GetTypeInst(this, ntv);
+
+                        throw new InvalidOperationException();
+                    }
 
                 case QsTypeValue_Void vtv:
-                    throw new NotImplementedException(); // TODO: void는 따로 처리
-
+                    return QsVoidTypeInst.Instance;
+                
                 case QsTypeValue_Func ftv:
-                    throw new NotImplementedException(); // TODO: 함수는 따로 처리
+                    return new QsFuncTypeInst(ftv);
 
                 default:
                     throw new NotImplementedException();
             }
-        }
+        }        
         
-        public bool GetBaseTypeValue(QsTypeValue_Normal ntv, out QsTypeValue_Normal? outBaseTypeValue)
-        {
-            if (metadataService.GetBaseTypeValue(ntv, out var baseTypeValue))
-            {
-                outBaseTypeValue = (QsTypeValue_Normal?)baseTypeValue;
-                return true;
-            }
-
-            outBaseTypeValue = null;
-            return false;
-        }
-
         void MakeTypeEnv(QsTypeValue_Normal ntv, ImmutableArray<QsTypeValue>.Builder builder)
         {
             if (ntv.Outer != null)
