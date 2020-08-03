@@ -2,11 +2,11 @@
 {
     public struct QsAnalyzerVarInfo
     {
-        public QsStorage Storage { get; }
+        public QsStorageInfo StorageInfo { get; }
         public QsTypeValue TypeValue { get; }
-        public QsAnalyzerVarInfo(QsStorage storage, QsTypeValue typeValue)
+        public QsAnalyzerVarInfo(QsStorageInfo storageInfo, QsTypeValue typeValue)
         {
-            Storage = storage;
+            StorageInfo = storageInfo;
             TypeValue = typeValue;
         }
     }

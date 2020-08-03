@@ -68,9 +68,9 @@ namespace QuickSC.StaticAnalyzer
             infosByNode.Add(node, info);
         }
 
-        internal void AddOverrideVarInfo(QsStorage storage, QsTypeValue testTypeValue)
+        internal void AddOverrideVarInfo(QsStorageInfo storageInfo, QsTypeValue testTypeValue)
         {
-            curFunc.AddOverrideVarInfo(storage, testTypeValue);
+            curFunc.AddOverrideVarInfo(storageInfo, testTypeValue);
         }
 
         public int AddPrivateGlobalVarInfo(string name, QsTypeValue typeValue)
@@ -165,7 +165,7 @@ namespace QuickSC.StaticAnalyzer
             if (typeArgs.Count == 0)
                 if (curFunc.GetLocalVarInfo(idName, out var localVarInfo))
                 {
-                    var storage = QsStorage.MakeLocal(localVarInfo.Index);
+                    var storage = QsStorageInfo.MakeLocal(localVarInfo.Index);
                     var typeValue = localVarInfo.TypeValue;
 
                     outIdInfo = QsAnalyzerIdentifierInfo.MakeVar(storage, typeValue);
@@ -193,7 +193,7 @@ namespace QuickSC.StaticAnalyzer
             if (typeArgs.Count == 0)
                 if (privateGlobalVarInfos.TryGetValue(idName, out var privateGlobalVarInfo))
                 {
-                    var storage = QsStorage.MakePrivateGlobal(privateGlobalVarInfo.Index);
+                    var storage = QsStorageInfo.MakePrivateGlobal(privateGlobalVarInfo.Index);
                     var typeValue = privateGlobalVarInfo.TypeValue;
 
                     outIdInfo = QsAnalyzerIdentifierInfo.MakeVar(storage, typeValue);
@@ -215,7 +215,7 @@ namespace QuickSC.StaticAnalyzer
             // id에 typeCount가 들어가므로 typeArgs.Count검사는 하지 않는다
             foreach (var varInfo in MetadataService.GetVarInfos(itemId))
             {
-                var storage = QsStorage.MakeModuleGlobal(itemId);
+                var storage = QsStorageInfo.MakeModuleGlobal(itemId);
                 var typeValue = varInfo.TypeValue;
 
                 var idInfo = QsAnalyzerIdentifierInfo.MakeVar(storage, typeValue);

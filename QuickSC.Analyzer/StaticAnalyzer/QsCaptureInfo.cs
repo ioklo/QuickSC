@@ -10,12 +10,12 @@ namespace QuickSC.StaticAnalyzer
         public struct Element
         {   
             public QsCaptureKind CaptureKind { get; }
-            public QsStorage Storage { get; }
+            public QsStorageInfo StorageInfo { get; }
 
-            public Element(QsCaptureKind captureKind, QsStorage storage)
+            public Element(QsCaptureKind captureKind, QsStorageInfo storageInfo)
             {
                 CaptureKind = captureKind;
-                Storage = storage;
+                StorageInfo = storageInfo;
             }
         }
 

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, ImmutableArray<QsValue>, QsValue, ValueTask>;
+    using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
 
     class QsListObjectInfo : QsRuntimeModuleObjectInfo
     {
@@ -43,7 +43,7 @@ namespace QuickSC.Runtime
                 new QsTypeValue_Normal(null, QsRuntimeModule.EnumeratorId, listElemTypeValue), ImmutableArray<QsTypeValue>.Empty, wrappedGetEnumerator);
 
             // T List<T>.Indexer(int index)
-            builder.AddMemberFunc(QsName.Special(QsSpecialName.Indexer),
+            builder.AddMemberFunc(QsName.Special(QsSpecialName.IndexerGet),
                 bSeqCall: false, bThisCall: true, ImmutableArray<string>.Empty,
                 listElemTypeValue, ImmutableArray.Create(intTypeValue), QsListObject.NativeIndexer);
             
@@ -64,7 +64,7 @@ namespace QuickSC.Runtime
         }
         
         // Enumerator<T> List<T>.GetEnumerator()
-        internal static ValueTask NativeGetEnumerator(QsDomainService domainService, QsMetaItemId enumeratorId, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args, QsValue result)
+        internal static ValueTask NativeGetEnumerator(QsDomainService domainService, QsMetaItemId enumeratorId, QsTypeEnv typeEnv, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);
@@ -87,9 +87,9 @@ namespace QuickSC.Runtime
 #pragma warning restore CS1998
         }
 
-        internal static ValueTask NativeIndexer(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args, QsValue result)
+        internal static ValueTask NativeIndexer(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
-            Debug.Assert(args.Length == 1);
+            Debug.Assert(args.Count == 1);
             Debug.Assert(thisValue != null);
 
             var list = GetObject<QsListObject>(thisValue);
@@ -100,9 +100,9 @@ namespace QuickSC.Runtime
         }
 
         // List<T>.Add
-        internal static ValueTask NativeAdd(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args, QsValue result)
+        internal static ValueTask NativeAdd(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
-            Debug.Assert(args.Length == 1);
+            Debug.Assert(args.Count == 1);
             Debug.Assert(thisValue != null);
             Debug.Assert(result == null);
 
@@ -112,9 +112,9 @@ namespace QuickSC.Runtime
             return new ValueTask();
         }
 
-        internal static ValueTask NativeRemoveAt(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args, QsValue result)
+        internal static ValueTask NativeRemoveAt(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
-            Debug.Assert(args.Length == 1);
+            Debug.Assert(args.Count == 1);
             Debug.Assert(thisValue != null);
             Debug.Assert(result == null);
 

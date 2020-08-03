@@ -16,7 +16,7 @@ namespace QuickSC
     {
         public override bool bThisCall { get; }
 
-        public delegate ValueTask InvokerDelegate(QsValue? thisValue, ImmutableArray<QsValue> args, QsValue retValue);
+        public delegate ValueTask InvokerDelegate(QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue retValue);
         InvokerDelegate Invoker;
 
         public QsNativeFuncInst(bool bThisCall, InvokerDelegate Invoker)
@@ -25,7 +25,7 @@ namespace QuickSC
             this.Invoker = Invoker;
         }
 
-        public ValueTask CallAsync(QsValue? thisValue, ImmutableArray<QsValue> args, QsValue result)
+        public ValueTask CallAsync(QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
             Debug.Assert(bThisCall == (thisValue != null));
             return Invoker(thisValue, args, result);

@@ -81,12 +81,12 @@ namespace QuickSC.StaticAnalyzer
                 if (context.IsGlobalScope())
                 {
                     int varId = context.AddPrivateGlobalVarInfo(name, typeValue);
-                    elemsBuilder.Add(new QsVarDeclInfo.Element(typeValue, QsStorage.MakePrivateGlobal(varId)));
+                    elemsBuilder.Add(new QsVarDeclInfo.Element(typeValue, QsStorageInfo.MakePrivateGlobal(varId)));
                 }
                 else
                 {
                     int localVarIndex = context.AddLocalVarInfo(name, typeValue);
-                    elemsBuilder.Add(new QsVarDeclInfo.Element(typeValue, QsStorage.MakeLocal(localVarIndex)));
+                    elemsBuilder.Add(new QsVarDeclInfo.Element(typeValue, QsStorageInfo.MakeLocal(localVarIndex)));
                 }
             }
         }        
@@ -144,16 +144,16 @@ namespace QuickSC.StaticAnalyzer
                 {
                     if (idInfo is QsAnalyzerIdentifierInfo.Var varIdInfo)
                     {
-                        switch (varIdInfo.Storage)
+                        switch (varIdInfo.StorageInfo)
                         {
                             // 지역 변수라면 
-                            case QsStorage.Local localStorage:
+                            case QsStorageInfo.Local localStorage:
                                 elemsBuilder.Add(new QsCaptureInfo.Element(needCapture.Kind, localStorage));
                                 funcContext.AddLocalVarInfo(needCapture.VarName, varIdInfo.TypeValue);
                                 break;
 
-                            case QsStorage.ModuleGlobal moduleGlobalStorage:
-                            case QsStorage.PrivateGlobal privateGlobalStorage:
+                            case QsStorageInfo.ModuleGlobal moduleGlobalStorage:
+                            case QsStorageInfo.PrivateGlobal privateGlobalStorage:
                                 break;
 
                             default:
@@ -337,5 +337,91 @@ namespace QuickSC.StaticAnalyzer
         {
             return new QsTypeValue_Normal(null, new QsMetaItemId(new QsMetaItemIdElem("string"))); ;
         }
+
+        public bool CheckInstanceMember(
+            QsMemberExp memberExp,
+            QsTypeValue objTypeValue,
+            QsAnalyzerContext context,
+            [NotNullWhen(returnValue: true)] out QsVarValue? outVarValue)
+        {
+            outVarValue = null;
+
+            // TODO: Func추가
+            QsTypeValue_Normal? objNormalTypeValue = objTypeValue as QsTypeValue_Normal;
+
+            if (objNormalTypeValue == null)
+            {
+                context.ErrorCollector.Add(memberExp, "멤버를 가져올 수 없습니다");
+                return false;
+            }
+
+            if (0 < memberExp.MemberTypeArgs.Length)
+                context.ErrorCollector.Add(memberExp, "멤버변수에는 타입인자를 붙일 수 없습니다");
+
+            if (!context.TypeValueService.GetMemberVarValue(objNormalTypeValue, QsName.Text(memberExp.MemberName), out outVarValue))
+            {
+                context.ErrorCollector.Add(memberExp, $"{memberExp.MemberName}은 {objNormalTypeValue}의 멤버가 아닙니다");
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool CheckStaticMember(
+            QsMemberExp memberExp,
+            QsTypeValue objTypeValue,
+            QsAnalyzerContext context,
+            [NotNullWhen(returnValue: true)] out QsVarValue? outVarValue)
+        {
+            outVarValue = null;
+            QsTypeValue_Normal? objNormalTypeValue = objTypeValue as QsTypeValue_Normal;
+
+            if (objNormalTypeValue == null)
+            {
+                context.ErrorCollector.Add(memberExp, "멤버를 가져올 수 없습니다");
+                return false;
+            }
+
+            if (!context.TypeValueService.GetMemberVarValue(objNormalTypeValue, QsName.Text(memberExp.MemberName), out outVarValue))
+            {
+                context.ErrorCollector.Add(memberExp, "멤버가 존재하지 않습니다");
+                return false;
+            }
+
+            if (0 < memberExp.MemberTypeArgs.Length)
+            {
+                context.ErrorCollector.Add(memberExp, "멤버변수에는 타입인자를 붙일 수 없습니다");
+                return false;
+            }
+
+            if (!QsAnalyzerMisc.IsVarStatic(outVarValue.VarId, context))
+            {
+                context.ErrorCollector.Add(memberExp, "정적 변수가 아닙니다");
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool CheckParamTypes(object objForErrorMsg, ImmutableArray<QsTypeValue> parameters, IReadOnlyList<QsTypeValue> args, QsAnalyzerContext context)
+        {
+            if (parameters.Length != args.Count)
+            {
+                context.ErrorCollector.Add(objForErrorMsg, $"함수는 인자를 {parameters.Length}개 받는데, 호출 인자는 {args.Count} 개입니다");
+                return false;
+            }
+
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (!IsAssignable(parameters[i], args[i], context))
+                {
+                    context.ErrorCollector.Add(objForErrorMsg, $"함수의 {i + 1}번 째 매개변수 타입은 {parameters[i]} 인데, 호출 인자 타입은 {args[i]} 입니다");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
     }
 }

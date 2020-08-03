@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, ImmutableArray<QsValue>, QsValue, ValueTask>;
+    using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
 
     class QsEnumerableObjectInfo : QsRuntimeModuleObjectInfo
     {
@@ -52,7 +52,7 @@ namespace QuickSC.Runtime
         }
         
         // Enumerator<T> Enumerable<T>.GetEnumerator()
-        internal static ValueTask NativeGetEnumerator(QsDomainService domainService, QsMetaItemId enumeratorId, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args, QsValue result)
+        internal static ValueTask NativeGetEnumerator(QsDomainService domainService, QsMetaItemId enumeratorId, QsTypeEnv typeEnv, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);

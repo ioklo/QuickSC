@@ -34,7 +34,6 @@
 
   <ItemGroup>
     <Folder Include="Input\Exp\CallExp\" />
-    <Folder Include="Input\Stmt\" />
   </ItemGroup>
 
 </Project>

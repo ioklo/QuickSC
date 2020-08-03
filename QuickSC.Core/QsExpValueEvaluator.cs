@@ -14,7 +14,7 @@ using static QuickSC.QsCollectionExtensions;
 
 namespace QuickSC
 {
-    class QsExpValueEvaluator
+    partial class QsExpValueEvaluator
     {
         private QsEvaluator evaluator;
 
@@ -23,22 +23,52 @@ namespace QuickSC
             this.evaluator = evaluator;
         }
         
-        void EvalIdExp(QsIdentifierExp idExp, QsValue result, QsEvalContext context)
+        public async ValueTask<QsValue> GetValueAsync(QsStorageInfo storageInfo, QsEvalContext context)
         {
-            var info = (QsIdentifierExpInfo)context.AnalyzeInfo.InfosByNode[idExp];
-
-            var value = info.Storage switch
+            switch(storageInfo)
             {
                 // 모듈
-                QsStorage.ModuleGlobal storage => context.DomainService.GetGlobalValue(storage.VarId),
+                case QsStorageInfo.ModuleGlobal mgs:
+                    return context.DomainService.GetGlobalValue(mgs.VarId);
 
                 // 스크립트
-                QsStorage.PrivateGlobal storage => context.PrivateGlobalVars[storage.Index]!,
+                case QsStorageInfo.PrivateGlobal pgs:
+                    return context.PrivateGlobalVars[pgs.Index]!;
 
                 // 함수
-                QsStorage.Local storage => context.LocalVars[storage.Index]!,
-                _ => throw new NotImplementedException()
+                case QsStorageInfo.Local ls:
+                    return context.LocalVars[ls.Index]!;
+
+                case QsStorageInfo.StaticMember sms:
+                    {
+                        if (sms.ObjectExp != null)
+                        {
+                            var objValue = evaluator.GetDefaultValue(sms.VarValue.Outer!, context);
+                            await evaluator.EvalExpAsync(sms.ObjectExp, objValue, context);
+                        }
+
+                        // object와는 별개로 static value를 가져온다
+                        return evaluator.GetStaticValue(sms.VarValue, context);
+                    }
+
+                case QsStorageInfo.InstanceMember ims:
+                    {
+                        var objValue = evaluator.GetDefaultValue(ims.ObjectTypeValue, context);
+                        await evaluator.EvalExpAsync(ims.ObjectExp, objValue, context);
+
+                        return evaluator.GetMemberValue(objValue, ims.VarName);
+                    }
+
+                default:
+                    throw new NotImplementedException();
             };
+        }
+        
+        async ValueTask EvalIdExpAsync(QsIdentifierExp idExp, QsValue result, QsEvalContext context)
+        {
+            var info = context.GetNodeInfo<QsIdentifierExpInfo>(idExp);
+
+            var value = await GetValueAsync(info.StorageInfo, context);
 
             result.SetValue(value);
         }
@@ -70,11 +100,10 @@ namespace QuickSC
 
                     case QsExpStringExpElement expElem:
                         {
-                            var expStringExpElementInfo = (QsExpStringExpElementInfo)context.AnalyzeInfo.InfosByNode[expElem];
-
+                            var expStringExpElementInfo = context.GetNodeInfo<QsExpStringExpElementInfo>(expElem);
                             var tempValue = evaluator.GetDefaultValue(expStringExpElementInfo.ExpTypeValue, context);
-                            await EvalAsync(expElem.Exp, tempValue, context);
 
+                            await EvalAsync(expElem.Exp, tempValue, context);
                             var strValue = context.RuntimeModule.GetString(tempValue!);
                             sb.Append(strValue);
                             break;
@@ -86,31 +115,125 @@ namespace QuickSC
             }
 
             context.RuntimeModule.SetString(context.DomainService, result, sb.ToString());
+        }        
+
+        async ValueTask EvalUnaryOpExpAssignAsync(QsUnaryOpExp exp, QsValue result, QsEvalContext context)
+        {
+            async ValueTask EvalDirectAsync(QsUnaryOpExpAssignInfo.Direct directInfo)
+            {
+                // postfix
+                if (directInfo.bReturnPrevValue)
+                {
+                    var oldValue = evaluator.GetDefaultValue(directInfo.ValueTypeValue, context);
+                    var operatorInst = context.DomainService.GetFuncInst(directInfo.OperatorValue);
+
+                    // universal getValue 
+                    var loc = await GetValueAsync(directInfo.StorageInfo, context);
+
+                    oldValue.SetValue(loc);
+
+                    await evaluator.EvaluateFuncInstAsync(null, operatorInst, ImmutableArray.Create(oldValue), loc, context);
+
+                    result.SetValue(oldValue);
+                }
+                else
+                {
+                    var oldValue = evaluator.GetDefaultValue(directInfo.ValueTypeValue, context);
+                    var operatorInst = context.DomainService.GetFuncInst(directInfo.OperatorValue);
+
+                    var loc = await GetValueAsync(directInfo.StorageInfo, context);
+
+                    oldValue.SetValue(loc);
+
+                    await evaluator.EvaluateFuncInstAsync(null, operatorInst, ImmutableArray.Create(oldValue), loc, context);
+
+                    result.SetValue(loc);
+                }
+            }
+
+            async ValueTask EvalCallFuncAsync(QsUnaryOpExpAssignInfo.CallFunc callFuncInfo)
+            {
+                QsValue? thisValue = null;
+
+                if (callFuncInfo.ObjectExp != null)
+                {
+                    thisValue = evaluator.GetDefaultValue(callFuncInfo.ObjectTypeValue!, context);
+                    await evaluator.EvalExpAsync(callFuncInfo.ObjectExp, thisValue, context);
+                }
+
+                var argValues = new List<QsValue>(callFuncInfo.Arguments.Length);
+                foreach (var arg in callFuncInfo.Arguments)
+                {
+                    var argValue = evaluator.GetDefaultValue(arg.TypeValue, context);
+                    await evaluator.EvalExpAsync(arg.Exp, argValue, context);
+                    argValues.Add(argValue);
+                }
+
+                // postfix
+                if (callFuncInfo.bReturnPrevValue)
+                {
+                    var v0 = evaluator.GetDefaultValue(callFuncInfo.ValueTypeValue0, context);
+                    var v1 = evaluator.GetDefaultValue(callFuncInfo.ValueTypeValue1, context);
+                    var getterInst = context.DomainService.GetFuncInst(callFuncInfo.Getter);
+                    var operatorInst = context.DomainService.GetFuncInst(callFuncInfo.Operator);
+                    var setterInst = context.DomainService.GetFuncInst(callFuncInfo.Setter);
+
+                    // v0 = obj.GetX()
+                    await evaluator.EvaluateFuncInstAsync(thisValue, getterInst, argValues, v0, context);
+
+                    // v1 = operatorInc(v0);
+                    await evaluator.EvaluateFuncInstAsync(null, operatorInst, ImmutableArray.Create(v0), v1, context);
+
+                    // obj.SetX(v1)
+                    argValues.Add(v1);
+                    await evaluator.EvaluateFuncInstAsync(thisValue, setterInst, argValues, QsVoidValue.Instance, context);
+
+                    // return v0
+                    result.SetValue(v0);
+                }
+                else
+                {
+                    var v0 = evaluator.GetDefaultValue(callFuncInfo.ValueTypeValue0, context);
+                    var v1 = evaluator.GetDefaultValue(callFuncInfo.ValueTypeValue1, context);
+                    var getterInst = context.DomainService.GetFuncInst(callFuncInfo.Getter);
+                    var operatorInst = context.DomainService.GetFuncInst(callFuncInfo.Operator);
+                    var setterInst = context.DomainService.GetFuncInst(callFuncInfo.Setter);
+
+                    // v0 = obj.GetX()
+                    await evaluator.EvaluateFuncInstAsync(thisValue, getterInst, argValues, v0, context);
+
+                    // v1 = operatorInc(v0);
+                    await evaluator.EvaluateFuncInstAsync(null, operatorInst, ImmutableArray.Create(v0), v1, context);
+
+                    // obj.SetX(v1)
+                    argValues.Add(v1);
+                    await evaluator.EvaluateFuncInstAsync(thisValue, setterInst, argValues, QsVoidValue.Instance, context);
+
+                    // return v1
+                    result.SetValue(v1);
+                }
+            }
+
+            var info = context.GetNodeInfo<QsUnaryOpExpAssignInfo>(exp);
+
+            if (info is QsUnaryOpExpAssignInfo.Direct directInfo)
+                await EvalDirectAsync(directInfo);
+            else if (info is QsUnaryOpExpAssignInfo.CallFunc callFuncInfo)
+                await EvalCallFuncAsync(callFuncInfo);
+            else
+                throw new InvalidOperationException();
         }
 
         async ValueTask EvalUnaryOpExpAsync(QsUnaryOpExp exp, QsValue result, QsEvalContext context)
         {
             switch (exp.Kind)
             {
-                case QsUnaryOpKind.PostfixInc:  // i++
-                    {
-                        var operandValue = evaluator.EvalValueLocExp(exp.Operand, context);
-
-                        var intValue = context.RuntimeModule.GetInt(operandValue);
-                        context.RuntimeModule.SetInt(operandValue, intValue + 1);
-                        context.RuntimeModule.SetInt(result, intValue);
-                        return;
-                    }
-
+                case QsUnaryOpKind.PostfixInc:  // i++                
                 case QsUnaryOpKind.PostfixDec: // i--
-                    {
-                        var operandValue = evaluator.EvalValueLocExp(exp.Operand, context);
-
-                        var intValue = context.RuntimeModule.GetInt(operandValue);
-                        context.RuntimeModule.SetInt(operandValue, intValue - 1);
-                        context.RuntimeModule.SetInt(result, intValue);
-                        return;
-                    }
+                case QsUnaryOpKind.PrefixInc: // ++i
+                case QsUnaryOpKind.PrefixDec: // --i
+                    await EvalUnaryOpExpAssignAsync(exp, result, context);
+                    return;
 
                 case QsUnaryOpKind.LogicalNot:
                     {
@@ -121,23 +244,7 @@ namespace QuickSC
                         return;
                     }
 
-                case QsUnaryOpKind.PrefixInc: // ++i
-                    {
-                        var operandValue = evaluator.EvalValueLocExp(exp.Operand, context);
-                        var intValue = context.RuntimeModule.GetInt(operandValue);
-                        context.RuntimeModule.SetInt(operandValue, intValue + 1);
-                        context.RuntimeModule.SetInt(result, intValue + 1);
-                        return;
-                    }
-
-                case QsUnaryOpKind.PrefixDec: // --i
-                    {
-                        var operandValue = evaluator.EvalValueLocExp(exp.Operand, context);
-                        var intValue = context.RuntimeModule.GetInt(operandValue);
-                        context.RuntimeModule.SetInt(operandValue, intValue - 1);
-                        context.RuntimeModule.SetInt(result, intValue - 1);
-                        return;
-                    }
+                
 
                 case QsUnaryOpKind.Minus: // -i
                     {
@@ -194,7 +301,7 @@ namespace QuickSC
 
                 case QsBinaryOpKind.Add:
                     {
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+                        var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
 
                         // TODO: 이쪽은 operator+로 교체될 것이므로 임시로 하드코딩
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
@@ -240,7 +347,7 @@ namespace QuickSC
                 case QsBinaryOpKind.LessThan:
                     {
                         // TODO: 이쪽은 operator<로 교체될 것이므로 임시로 하드코딩
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+                        var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
@@ -278,7 +385,7 @@ namespace QuickSC
                 case QsBinaryOpKind.GreaterThan:
                     {
                         // TODO: 이쪽은 operator> 로 교체될 것이므로 임시로 하드코딩
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+                        var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
@@ -316,7 +423,7 @@ namespace QuickSC
                 case QsBinaryOpKind.LessThanOrEqual:
                     {
                         // TODO: 이쪽은 operator<=로 교체될 것이므로 임시로 하드코딩
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+                        var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
@@ -354,7 +461,7 @@ namespace QuickSC
                 case QsBinaryOpKind.GreaterThanOrEqual:
                     {
                         // TODO: 이쪽은 operator>=로 교체될 것이므로 임시로 하드코딩
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+                        var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
@@ -392,7 +499,7 @@ namespace QuickSC
                 case QsBinaryOpKind.Equal:
                     {
                         // TODO: 이쪽은 operator>=로 교체될 것이므로 임시로 하드코딩
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+                        var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
@@ -443,7 +550,7 @@ namespace QuickSC
                 case QsBinaryOpKind.NotEqual:
                     {
                         // TODO: 이쪽은 operator>=로 교체될 것이므로 임시로 하드코딩
-                        var info = (QsBinaryOpExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+                        var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
 
                         if (info.Type == QsBinaryOpExpInfo.OpType.Integer)
                         {
@@ -493,10 +600,7 @@ namespace QuickSC
 
                 case QsBinaryOpKind.Assign:
                     {
-                        var loc = evaluator.EvalValueLocExp(exp.Operand0, context);
-                        await EvalAsync(exp.Operand1, loc, context);
-
-                        result.SetValue(loc);
+                        await EvalAssignExpAsync(exp, result, context);                        
                         return;
                     }
             }
@@ -506,7 +610,7 @@ namespace QuickSC
 
         async ValueTask EvalCallExpAsync(QsCallExp exp, QsValue result, QsEvalContext context)
         {
-            var callExpInfo = (QsCallExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+            var callExpInfo = context.GetNodeInfo<QsCallExpInfo>(exp);
 
             QsFuncInst funcInst;
             if (callExpInfo.FuncValue != null)
@@ -544,7 +648,7 @@ namespace QuickSC
         
         void EvalLambdaExp(QsLambdaExp exp, QsValue result, QsEvalContext context)
         {
-            var info = (QsLambdaExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+            var info = context.GetNodeInfo<QsLambdaExpInfo>(exp);
 
             var captures = evaluator.MakeCaptures(info.CaptureInfo.Captures, context);
 
@@ -560,7 +664,7 @@ namespace QuickSC
         // a[x] => a.Func(x)
         async ValueTask EvalIndexerExpAsync(QsIndexerExp exp, QsValue result, QsEvalContext context)
         {
-            var info = (QsIndexerExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+            var info = context.GetNodeInfo<QsIndexerExpInfo>(exp);
             var thisValue = evaluator.GetDefaultValue(info.ObjectTypeValue, context);
             var indexValue = evaluator.GetDefaultValue(info.IndexTypeValue, context);
             
@@ -574,7 +678,7 @@ namespace QuickSC
 
         async ValueTask EvalMemberCallExpAsync(QsMemberCallExp exp, QsValue result, QsEvalContext context)
         {
-            var info = (QsMemberCallExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+            var info = context.GetNodeInfo<QsMemberCallExpInfo>(exp);
 
             switch (info)
             {
@@ -655,7 +759,7 @@ namespace QuickSC
         {
             // TODO: namespace가 있으면 Global(N.x의 경우) 이 될수 있다.  
             // 지금은 Instance(obj.id) / Static(Type.id)으로 나눠진다
-            var info = (QsMemberExpInfo)context.AnalyzeInfo.InfosByNode[exp];
+            var info = context.GetNodeInfo<QsMemberExpInfo>(exp);
 
             if (info is QsMemberExpInfo.Instance instanceKind)
             {
@@ -683,7 +787,7 @@ namespace QuickSC
 
         async ValueTask EvalListExpAsync(QsListExp listExp, QsValue result, QsEvalContext context)
         {
-            var info = (QsListExpInfo)context.AnalyzeInfo.InfosByNode[listExp];
+            var info = context.GetNodeInfo<QsListExpInfo>(listExp);
 
             var elems = new List<QsValue>(listExp.Elems.Length);
 
@@ -702,7 +806,7 @@ namespace QuickSC
         {
             switch(exp)
             {
-                case QsIdentifierExp idExp: EvalIdExp(idExp, result, context); break;
+                case QsIdentifierExp idExp: await EvalIdExpAsync(idExp, result, context); break;
                 case QsBoolLiteralExp boolExp: EvalBoolLiteralExp(boolExp, result, context); break;
                 case QsIntLiteralExp intExp: EvalIntLiteralExp(intExp, result, context); break;
                 case QsStringExp stringExp: await EvalStringExpAsync(stringExp, result, context); break;

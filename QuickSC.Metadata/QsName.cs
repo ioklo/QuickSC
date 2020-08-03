@@ -6,8 +6,12 @@ namespace QuickSC
     public enum QsSpecialName
     {
         Normal,
-        Indexer,
+        IndexerGet,
+        IndexerSet,
         AnonymousLambda, // use Name member
+
+        OpInc,
+        OpDec,
     }
 
     public struct QsName
@@ -63,9 +67,8 @@ namespace QuickSC
             switch(Kind)
             {
                 case QsSpecialName.Normal: return Name!;
-                case QsSpecialName.Indexer: return "$Indexer";
                 case QsSpecialName.AnonymousLambda: return $"$Labmda{Name!}";
-                default: return string.Empty;
+                default: return $"${Kind}";
             }
         }
     }

@@ -16,13 +16,11 @@ namespace QuickSC
     public class QsEvaluator
     {
         private QsExpValueEvaluator expValueEvaluator;
-        private QsExpValueLocationEvaluator expValueLocEvaluator;
         private QsStmtEvaluator stmtEvaluator;        
 
         public QsEvaluator(IQsCommandProvider commandProvider)
         {
             this.expValueEvaluator = new QsExpValueEvaluator(this);
-            this.expValueLocEvaluator = new QsExpValueLocationEvaluator();
             this.stmtEvaluator = new QsStmtEvaluator(this, commandProvider);
         }        
         
@@ -96,7 +94,7 @@ namespace QuickSC
             foreach (var captureElem in captureElems)
             {
                 QsValue origValue;
-                if (captureElem.Storage is QsStorage.Local localVar)
+                if (captureElem.StorageInfo is QsStorageInfo.Local localVar)
                     origValue = context.LocalVars[localVar.Index]!;
                 else
                     throw new NotImplementedException();
@@ -120,10 +118,10 @@ namespace QuickSC
 
         async IAsyncEnumerable<QsValue> EvaluateScriptFuncInstSeqAsync(
             QsScriptFuncInst scriptFuncInst,
-            ImmutableArray<QsValue> args,
+            IReadOnlyList<QsValue> args,
             QsEvalContext context)
         {
-            for (int i = 0; i < args.Length; i++)
+            for (int i = 0; i < args.Count; i++)
                 context.LocalVars[i] = args[i];
 
             await foreach (var value in EvaluateStmtAsync(scriptFuncInst.Body, context))
@@ -134,7 +132,7 @@ namespace QuickSC
 
         public async ValueTask EvaluateVarDeclAsync(QsVarDecl varDecl, QsEvalContext context)
         {
-            var info = (QsVarDeclInfo)context.AnalyzeInfo.InfosByNode[varDecl];
+            var info = context.GetNodeInfo<QsVarDeclInfo>(varDecl);
 
             Debug.Assert(info.Elems.Length == varDecl.Elems.Length);
             for(int i = 0; i < varDecl.Elems.Length; i++)
@@ -144,17 +142,17 @@ namespace QuickSC
 
                 var value = GetDefaultValue(varDeclInfoElem.TypeValue, context);
 
-                switch (varDeclInfoElem.Storage)
+                switch (varDeclInfoElem.StorageInfo)
                 {
-                    case QsStorage.ModuleGlobal storage:
+                    case QsStorageInfo.ModuleGlobal storage:
                         context.DomainService.SetGlobalValue(storage.VarId, value);
                         break;
 
-                    case QsStorage.PrivateGlobal storage:
+                    case QsStorageInfo.PrivateGlobal storage:
                         context.PrivateGlobalVars[storage.Index] = value;
                         break;
 
-                    case QsStorage.Local storage:
+                    case QsStorageInfo.Local storage:
                         // For문에서 재사용할 수 있다
                         // Debug.Assert(context.LocalVars[storage.LocalIndex] == null);
                         context.LocalVars[storage.Index] = value;
@@ -172,7 +170,7 @@ namespace QuickSC
             }
         }
 
-        public async ValueTask EvaluateFuncInstAsync(QsValue? thisValue, QsFuncInst funcInst, ImmutableArray<QsValue> args, QsValue result, QsEvalContext context)
+        public async ValueTask EvaluateFuncInstAsync(QsValue? thisValue, QsFuncInst funcInst, IReadOnlyList<QsValue> args, QsValue result, QsEvalContext context)
         {
             if (funcInst is QsScriptFuncInst scriptFuncInst)
             {
@@ -186,7 +184,7 @@ namespace QuickSC
                 for (int i = 0; i < scriptFuncInst.Captures.Length; i++)
                     localVars[i] = scriptFuncInst.Captures[i];
 
-                int argEndIndex = scriptFuncInst.Captures.Length + args.Length;
+                int argEndIndex = scriptFuncInst.Captures.Length + args.Count;
                 for (int i = scriptFuncInst.Captures.Length; i < argEndIndex; i++)
                     localVars[i] = args[i];
                 
@@ -228,12 +226,7 @@ namespace QuickSC
             }
         }
 
-        public QsValue EvalValueLocExp(QsExp exp, QsEvalContext context)
-        {
-            return expValueLocEvaluator.Eval(exp, context);
-        }
-
-        public ValueTask EvaluateExpAsync(QsExp exp, QsValue result, QsEvalContext context)
+        public ValueTask EvalExpAsync(QsExp exp, QsValue result, QsEvalContext context)
         {
             return expValueEvaluator.EvalAsync(exp, result, context);
         }
@@ -245,7 +238,7 @@ namespace QuickSC
         
         async ValueTask<int> EvaluateScriptAsync(QsScript script, QsEvalContext context)
         {
-            var info = (QsScriptInfo)context.AnalyzeInfo.InfosByNode[script];
+            var info = context.GetNodeInfo<QsScriptInfo>(script);
 
             var retValue = context.RuntimeModule.MakeInt(0);
 

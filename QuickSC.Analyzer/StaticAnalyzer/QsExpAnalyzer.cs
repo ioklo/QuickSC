@@ -17,12 +17,12 @@ namespace QuickSC.StaticAnalyzer
     {
         public class Var : QsAnalyzerIdentifierInfo
         {
-            public QsStorage Storage { get; }
+            public QsStorageInfo StorageInfo { get; }
             public QsTypeValue TypeValue { get; }
 
-            public Var(QsStorage storage, QsTypeValue typeValue)
+            public Var(QsStorageInfo storageInfo, QsTypeValue typeValue)
             {
-                Storage = storage;
+                StorageInfo = storageInfo;
                 TypeValue = typeValue;
             }
         }
@@ -45,7 +45,7 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        public static Var MakeVar(QsStorage storage, QsTypeValue typeValue) => new Var(storage, typeValue);
+        public static Var MakeVar(QsStorageInfo storageInfo, QsTypeValue typeValue) => new Var(storageInfo, typeValue);
 
         public static Func MakeFunc(QsFuncValue funcValue) => new Func(funcValue);
 
@@ -75,7 +75,7 @@ namespace QuickSC.StaticAnalyzer
             if (idInfo is QsAnalyzerIdentifierInfo.Var varIdInfo)
             {
                 outTypeValue = varIdInfo.TypeValue;
-                context.AddNodeInfo(idExp, new QsIdentifierExpInfo(varIdInfo.Storage));
+                context.AddNodeInfo(idExp, new QsIdentifierExpInfo(varIdInfo.StorageInfo));
                 return true;
             }
 
@@ -104,6 +104,146 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
+        class UnaryAssignExpAnalyzer : AssignExpAnalyzer
+        {
+            QsAnalyzer analyzer;
+            QsAnalyzerContext context;
+            QsUnaryOpExp exp;
+
+            public UnaryAssignExpAnalyzer(QsAnalyzer analyzer, QsAnalyzerContext context, QsUnaryOpExp exp)
+                : base(analyzer, context)
+            {
+                this.analyzer = analyzer;
+                this.context = context;
+                this.exp = exp;
+            }
+
+            protected override QsTypeValue? AnalyzeDirect(QsTypeValue typeValue, QsStorageInfo storageInfo)
+            {
+                var operatorName = GetOperatorName();
+
+                if (!context.TypeValueService.GetMemberFuncValue(typeValue, operatorName, ImmutableArray<QsTypeValue>.Empty, out var operatorValue))
+                {
+                    context.ErrorCollector.Add(exp, "해당 타입에 operator++이 없습니다");
+                    return null;
+                }
+
+                if (!QsAnalyzerMisc.IsFuncStatic(operatorValue.FuncId, context))
+                {
+                    context.ErrorCollector.Add(exp, "operator++은 static이어야 합니다");
+                    return null;
+                }
+
+                var bReturnPrevValue = ShouldReturnPrevValue();
+                context.AddNodeInfo(exp, QsUnaryOpExpAssignInfo.MakeDirect(storageInfo, operatorValue, bReturnPrevValue, typeValue));
+
+                return typeValue;
+            }
+
+            private bool ShouldReturnPrevValue()
+            {
+                switch (exp.Kind)
+                {
+                    case QsUnaryOpKind.PostfixDec: 
+                    case QsUnaryOpKind.PostfixInc:
+                        return true;
+
+                    case QsUnaryOpKind.PrefixDec: 
+                    case QsUnaryOpKind.PrefixInc:
+                        return false;
+                }
+
+                throw new InvalidOperationException();
+            }
+
+            private QsName GetOperatorName()
+            {
+                switch(exp.Kind)
+                {
+                    case QsUnaryOpKind.PostfixDec: return QsName.Special(QsSpecialName.OpDec);
+                    case QsUnaryOpKind.PostfixInc: return QsName.Special(QsSpecialName.OpInc);
+                    case QsUnaryOpKind.PrefixDec: return QsName.Special(QsSpecialName.OpDec);
+                    case QsUnaryOpKind.PrefixInc: return QsName.Special(QsSpecialName.OpInc);
+                }
+
+                throw new InvalidOperationException();
+            }
+
+            protected override QsTypeValue? AnalyzeCall(QsTypeValue objTypeValue, QsExp objExp, QsFuncValue? getter, QsFuncValue? setter, IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> args)
+            {
+                // e.x++;
+                // e.x가 프로퍼티(GetX, SetX) 라면,
+                // let o = Eval(e);
+                // let v0 = Eval.Call(o, GetX, [a...]) 
+                // let v1 = v0.operator++(); 
+                // Eval.Call(o, SetX, [a...]@[v1]) 
+                // return v0
+
+                if (getter == null || setter == null)
+                {
+                    context.ErrorCollector.Add(objExp, "getter, setter 모두 존재해야 합니다");
+                    return null;
+                }
+
+                // 1. getter의 인자 타입이 args랑 맞는지
+                // 2. getter의 리턴 타입이 operator++을 지원하는지,
+                // 3. setter의 인자 타입이 {getter의 리턴타입의 operator++의 리턴타입}을 포함해서 args와 맞는지
+                // 4. 이 expression의 타입은 getter의 리턴 타입
+
+                var argTypeValues = args.Select(arg => arg.TypeValue).ToList();
+
+                // 1.
+                var getterTypeValue = context.TypeValueService.GetTypeValue(getter);
+                if (!analyzer.CheckParamTypes(objExp, getterTypeValue.Params, argTypeValues, context))
+                    return null;
+
+                // 2. 
+                var operatorName = GetOperatorName();
+                if (!context.TypeValueService.GetMemberFuncValue(getterTypeValue.Return, operatorName, ImmutableArray<QsTypeValue>.Empty, out var operatorValue))
+                {
+                    context.ErrorCollector.Add(objExp, $"{objExp}에서 {operatorName} 함수를 찾을 수 없습니다");
+                    return null;
+                }
+                var operatorTypeValue = context.TypeValueService.GetTypeValue(operatorValue);
+
+                // 3. 
+                argTypeValues.Add(operatorTypeValue.Return);
+                var setterTypeValue = context.TypeValueService.GetTypeValue(setter);
+                if (!analyzer.CheckParamTypes(objExp, setterTypeValue.Params, argTypeValues, context))
+                    return null;                
+                
+                // TODO: QsPropertyInfo 가 만들어진다면 위의 1, 2, 3, 4는 프로퍼티와 operator의 작성할 때 Constraint일 것이므로 위의 체크를 건너뛰어도 된다. Prop
+                // 1. getter, setter의 인자타입은 동일해야 한다
+                // 2. getter의 리턴타입은 setter의 마지막 인자와 같아야 한다
+                // 3. {T}.operator++은 {T} 타입만 리턴해야 한다                
+                // 4. 이 unaryExp의 타입은 프로퍼티의 타입이다
+
+                context.AddNodeInfo(exp, QsUnaryOpExpAssignInfo.MakeCallFunc(
+                    objExp, objTypeValue, 
+                    getterTypeValue.Return,
+                    operatorTypeValue.Return,
+                    ShouldReturnPrevValue(),
+                    args, 
+                    getter, setter, operatorValue));
+
+                return operatorTypeValue;
+            }
+
+            protected override QsExp GetTargetExp()
+            {
+                return exp.Operand;
+            }
+        }
+
+        internal bool AnalyzeUnaryAssignExp(
+            QsUnaryOpExp unaryOpExp,
+            QsAnalyzerContext context,
+            [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        {
+            var assignAnalyzer = new UnaryAssignExpAnalyzer(analyzer, context, unaryOpExp);
+            return assignAnalyzer.Analyze(out outTypeValue);
+        }
+
         internal bool AnalyzeUnaryOpExp(QsUnaryOpExp unaryOpExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             typeValue = null;
@@ -127,12 +267,12 @@ namespace QuickSC.StaticAnalyzer
                         typeValue = boolTypeValue;
                         return true;
                     }
-
-                // TODO: operand가 lvalue인지 체크를 해줘야 한다..
-                case QsUnaryOpKind.PostfixInc:
+                
+                case QsUnaryOpKind.PostfixInc: // e.m++ 등
                 case QsUnaryOpKind.PostfixDec:
                 case QsUnaryOpKind.PrefixInc:
                 case QsUnaryOpKind.PrefixDec:
+                    return AnalyzeUnaryAssignExp(unaryOpExp, context, out typeValue);
 
                 case QsUnaryOpKind.Minus:
                     {
@@ -150,10 +290,15 @@ namespace QuickSC.StaticAnalyzer
                     context.ErrorCollector.Add(unaryOpExp, $"{operandTypeValue}를 지원하는 연산자가 없습니다");
                     return false;
             }
-        }
+        }        
+
+        
 
         internal bool AnalyzeBinaryOpExp(QsBinaryOpExp binaryOpExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
-        {
+        {   
+            if (binaryOpExp.Kind == QsBinaryOpKind.Assign)
+                return AnalyzeAssignExp(binaryOpExp, context, out typeValue);
+
             typeValue = null;
 
             var boolTypeValue = analyzer.GetBoolTypeValue();
@@ -165,19 +310,8 @@ namespace QuickSC.StaticAnalyzer
 
             if (!AnalyzeExp(binaryOpExp.Operand1, context, out var operandTypeValue1))
                 return false;
-            
-            if (binaryOpExp.Kind == QsBinaryOpKind.Assign)
-            {
-                if (!analyzer.IsAssignable(operandTypeValue0, operandTypeValue1, context))
-                {
-                    context.ErrorCollector.Add(binaryOpExp, $"{operandTypeValue1}를 {operandTypeValue0}에 대입할 수 없습니다");
-                    return false;
-                }
 
-                typeValue = operandTypeValue0;
-                return true;
-            }
-            else if (binaryOpExp.Kind == QsBinaryOpKind.Equal || binaryOpExp.Kind == QsBinaryOpKind.NotEqual)
+            if (binaryOpExp.Kind == QsBinaryOpKind.Equal || binaryOpExp.Kind == QsBinaryOpKind.NotEqual)
             {   
                 if (!EqualityComparer<QsTypeValue>.Default.Equals(operandTypeValue0, operandTypeValue1))
                 {
@@ -319,7 +453,7 @@ namespace QuickSC.StaticAnalyzer
                 var funcValue = new QsFuncValue(null, globalFunc.FuncId, typeArgs);
                 var funcTypeValue = context.TypeValueService.GetTypeValue(funcValue);
 
-                if (!CheckParamTypes(exp, funcTypeValue.Params, args, context))
+                if (!analyzer.CheckParamTypes(exp, funcTypeValue.Params, args, context))
                 {
                     outValue = null;
                     return false;
@@ -352,7 +486,7 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
 
-            if (!CheckParamTypes(exp, funcTypeValue.Params, args, context))
+            if (!analyzer.CheckParamTypes(exp, funcTypeValue.Params, args, context))
             {
                 outValue = null;
                 return false;
@@ -361,27 +495,7 @@ namespace QuickSC.StaticAnalyzer
             outValue = (null, funcTypeValue);
             return true;
         }
-
-        bool CheckParamTypes(object objForErrorMsg, ImmutableArray<QsTypeValue> parameters, ImmutableArray<QsTypeValue> args, QsAnalyzerContext context)
-        {
-            if (parameters.Length != args.Length)
-            {
-                context.ErrorCollector.Add(objForErrorMsg, $"함수는 인자를 {parameters.Length}개 받는데, 호출 인자는 {args.Length} 개입니다");
-                return false;
-            }
-
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                if (!analyzer.IsAssignable(parameters[i], args[i], context))
-                {
-                    context.ErrorCollector.Add(objForErrorMsg, $"함수의 {i + 1}번 째 매개변수 타입은 {parameters[i]} 인데, 호출 인자 타입은 {args[i]} 입니다");
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
+        
         // FuncValue도 같이 리턴한다
         // CallExp(F, [1]); // F(1)
         //   -> AnalyzeCallableExp(F, [Int])
@@ -442,7 +556,7 @@ namespace QuickSC.StaticAnalyzer
                 return false;
 
             // objTypeValue에 indexTypeValue를 인자로 갖고 있는 indexer가 있는지
-            if (!context.TypeValueService.GetMemberFuncValue(objTypeValue, QsName.Special(QsSpecialName.Indexer), ImmutableArray<QsTypeValue>.Empty, out var funcValue))
+            if (!context.TypeValueService.GetMemberFuncValue(objTypeValue, QsName.Special(QsSpecialName.IndexerGet), ImmutableArray<QsTypeValue>.Empty, out var funcValue))
             {
                 context.ErrorCollector.Add(exp, "객체에 indexer함수가 없습니다");
                 return false;
@@ -456,7 +570,7 @@ namespace QuickSC.StaticAnalyzer
 
             var funcTypeValue = context.TypeValueService.GetTypeValue(funcValue);
 
-            if (!CheckParamTypes(exp, funcTypeValue.Params, ImmutableArray.Create(indexTypeValue), context))
+            if (!analyzer.CheckParamTypes(exp, funcTypeValue.Params, ImmutableArray.Create(indexTypeValue), context))
                 return false;
 
             context.AddNodeInfo(exp, new QsIndexerExpInfo(funcValue, objTypeValue, indexTypeValue));
@@ -490,7 +604,7 @@ namespace QuickSC.StaticAnalyzer
             var result = new MemberCallExpAnalyzer(this, exp, context).Analyze();
             if (result == null) return false;
 
-            if (!CheckParamTypes(exp, result.Value.TypeValue.Params, result.Value.ArgTypeValues, context))
+            if (!analyzer.CheckParamTypes(exp, result.Value.TypeValue.Params, result.Value.ArgTypeValues, context))
                 return false;
 
             context.AddNodeInfo(exp, result.Value.NodeInfo);
@@ -500,8 +614,8 @@ namespace QuickSC.StaticAnalyzer
 
         internal bool AnalyzeMemberExp(QsMemberExp memberExp, QsAnalyzerContext context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
         {
-            var analyzer = new MemberExpAnalyzer(this, memberExp, context);
-            var result = analyzer.Analyze();
+            var memberExpAnalyzer = new MemberExpAnalyzer(analyzer, memberExp, context);
+            var result = memberExpAnalyzer.Analyze();
 
             if (result != null)
             {

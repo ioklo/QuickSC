@@ -1,4 +1,5 @@
 ﻿using QuickSC.Syntax;
+using System;
 using System.Collections.Immutable;
 
 namespace QuickSC.StaticAnalyzer
@@ -6,7 +7,7 @@ namespace QuickSC.StaticAnalyzer
     public class QsAnalyzeInfo
     {
         public int PrivateGlobalVarCount { get; }
-        public ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> InfosByNode { get; }
+        private ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> infosByNode { get; }
         public ImmutableDictionary<QsMetaItemId, QsScriptFuncTemplate> FuncTemplatesById { get; }
 
         public QsAnalyzeInfo(
@@ -15,8 +16,13 @@ namespace QuickSC.StaticAnalyzer
             ImmutableDictionary<QsMetaItemId, QsScriptFuncTemplate> funcTemplatesById)
         {
             PrivateGlobalVarCount = privateGlobalVarCount;
-            InfosByNode = infosByNode;
+            this.infosByNode = infosByNode;
             FuncTemplatesById = funcTemplatesById;
+        }
+
+        public TSyntaxNodeInfo GetNodeInfo<TSyntaxNodeInfo>(IQsSyntaxNode node) where TSyntaxNodeInfo : QsSyntaxNodeInfo
+        {
+            return (TSyntaxNodeInfo)infosByNode[node];
         }
     }
 }

@@ -48,7 +48,7 @@ namespace QuickSC.Runtime
             this.enumerator = enumerator;
         }
 
-        internal static async ValueTask NativeMoveNext(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args, QsValue result)
+        internal static async ValueTask NativeMoveNext(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);
@@ -60,7 +60,7 @@ namespace QuickSC.Runtime
             ((QsValue<bool>)result).Value = bResult;
         }
 
-        internal static ValueTask NativeGetCurrent(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, ImmutableArray<QsValue> args, QsValue result)
+        internal static ValueTask NativeGetCurrent(QsDomainService domainService, QsTypeEnv typeEnv, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);

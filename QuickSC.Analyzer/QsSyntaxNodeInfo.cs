@@ -15,8 +15,8 @@ namespace QuickSC
     
     public class QsIdentifierExpInfo : QsSyntaxNodeInfo
     {
-        public QsStorage Storage { get; }
-        public QsIdentifierExpInfo(QsStorage storage) { Storage = storage; }
+        public QsStorageInfo StorageInfo { get; }
+        public QsIdentifierExpInfo(QsStorageInfo storageInfo) { StorageInfo = storageInfo; }
     }
 
     public class QsLambdaExpInfo : QsSyntaxNodeInfo
@@ -83,6 +83,123 @@ namespace QuickSC
         {
             Type = type;
         }
+    }
+
+    public class QsBinaryOpExpAssignInfo : QsSyntaxNodeInfo
+    {
+        public class Direct : QsBinaryOpExpAssignInfo        
+        {
+            public QsStorageInfo StorageInfo { get; }
+            public Direct(QsStorageInfo storageInfo) { StorageInfo = storageInfo; }
+        }
+        
+        public class CallSetter : QsBinaryOpExpAssignInfo
+        {
+            public QsTypeValue? ObjectTypeValue { get; }
+            public QsExp? Object { get;}            
+            public QsFuncValue Setter { get;}
+            public ImmutableArray<(QsExp Exp, QsTypeValue TypeValue)> Arguments { get; }
+            public QsTypeValue ValueTypeValue { get; }
+
+            public CallSetter(
+                QsTypeValue? objTypeValue,
+                QsExp? obj,
+                QsFuncValue setter,
+                IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> arguments,
+                QsTypeValue valueTypeValue)
+            {
+                ObjectTypeValue = objTypeValue;
+                Object = obj;                
+                Setter = setter;
+                Arguments = arguments.ToImmutableArray();
+                ValueTypeValue = valueTypeValue;
+            }
+        }
+
+        public static Direct MakeDirect(QsStorageInfo storageInfo) 
+            => new Direct(storageInfo);
+
+        public static CallSetter MakeCallSetter(
+            QsTypeValue? objTypeValue,
+            QsExp? obj,
+            QsFuncValue setter,
+            IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> arguments,
+            QsTypeValue valueTypeValue)
+            => new CallSetter(objTypeValue, obj, setter, arguments, valueTypeValue);
+    }
+
+    public class QsUnaryOpExpAssignInfo : QsSyntaxNodeInfo
+    {
+        public class Direct : QsUnaryOpExpAssignInfo
+        {
+            public QsStorageInfo StorageInfo { get; }
+            public QsFuncValue OperatorValue { get; }
+            public bool bReturnPrevValue { get; }
+            public QsTypeValue ValueTypeValue { get; }
+
+            public Direct(QsStorageInfo storageInfo, QsFuncValue operatorValue, bool bReturnPrevValue, QsTypeValue valueTypeValue) 
+            { 
+                StorageInfo = storageInfo;
+                OperatorValue = operatorValue;
+                this.bReturnPrevValue = bReturnPrevValue;
+                ValueTypeValue = valueTypeValue;
+            }
+        }
+
+        public class CallFunc : QsUnaryOpExpAssignInfo
+        {
+            public QsExp? ObjectExp { get; }
+            public QsTypeValue? ObjectTypeValue { get; }
+
+            public QsTypeValue ValueTypeValue0 { get; }
+            public QsTypeValue ValueTypeValue1 { get; }
+            public bool bReturnPrevValue { get; }
+
+            // Getter/setter Arguments without setter value
+            public ImmutableArray<(QsExp Exp, QsTypeValue TypeValue)> Arguments { get; }
+
+            public QsFuncValue Getter { get; }            
+            public QsFuncValue Setter { get; }
+            public QsFuncValue Operator { get; }
+
+            public CallFunc(
+                QsExp? objectExp,
+                QsTypeValue? objectTypeValue,
+                QsTypeValue valueTypeValue0,
+                QsTypeValue valueTypeValue1,
+                bool bReturnPrevValue,
+                IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> arguments,
+                QsFuncValue getter,
+                QsFuncValue setter,
+                QsFuncValue op)
+            {
+                ObjectExp = objectExp;
+                ObjectTypeValue = objectTypeValue;
+                ValueTypeValue0 = valueTypeValue0;
+                ValueTypeValue1 = valueTypeValue1;
+                this.bReturnPrevValue= bReturnPrevValue;
+
+                Arguments = arguments.ToImmutableArray();
+                Getter = getter;
+                Setter = setter;
+                Operator = op;
+            }
+        }
+
+        public static Direct MakeDirect(QsStorageInfo storageInfo, QsFuncValue operatorValue, bool bReturnPrevValue, QsTypeValue valueTypeValue)
+            => new Direct(storageInfo, operatorValue, bReturnPrevValue, valueTypeValue);
+
+        public static CallFunc MakeCallFunc(
+            QsExp? objectExp,
+            QsTypeValue? objectTypeValue,
+            QsTypeValue valueTypeValue0,
+            QsTypeValue valueTypeValue1,
+            bool bReturnPrevValue,
+            IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> arguments,
+            QsFuncValue getter,
+            QsFuncValue setter,
+            QsFuncValue op)
+            => new CallFunc(objectExp, objectTypeValue, valueTypeValue0, valueTypeValue1, bReturnPrevValue, arguments, getter, setter, op);
     }
 
     public class QsCallExpInfo : QsSyntaxNodeInfo
@@ -183,12 +300,12 @@ namespace QuickSC
         public class Element
         {
             public QsTypeValue TypeValue { get; }
-            public QsStorage Storage { get; }
+            public QsStorageInfo StorageInfo { get; }
             
-            public Element(QsTypeValue typeValue, QsStorage storage)
+            public Element(QsTypeValue typeValue, QsStorageInfo storageInfo)
             {
                 TypeValue = typeValue;
-                Storage = storage;
+                StorageInfo = storageInfo;
             }
         }
         

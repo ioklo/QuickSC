@@ -97,5 +97,10 @@ namespace QuickSC
 
             return prevValue;
         }
+
+        public TSyntaxNodeInfo GetNodeInfo<TSyntaxNodeInfo>(IQsSyntaxNode node) where TSyntaxNodeInfo : QsSyntaxNodeInfo
+        {
+            return AnalyzeInfo.GetNodeInfo<TSyntaxNodeInfo>(node);
+        }
     }
 }

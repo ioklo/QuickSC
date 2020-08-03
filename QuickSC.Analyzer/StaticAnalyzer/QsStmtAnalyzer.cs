@@ -82,7 +82,7 @@ namespace QuickSC.StaticAnalyzer
                         // Global일지, Static일지, This일지 모른다
                         context.ExecInLocalScope(() =>
                         {
-                            context.AddOverrideVarInfo(varIdInfo.Storage, testTypeValue);
+                            context.AddOverrideVarInfo(varIdInfo.StorageInfo, testTypeValue);
 
                             if (!AnalyzeStmt(ifStmt.Body, context))
                                 bResult = false;

@@ -16,7 +16,7 @@ namespace QuickSC.StaticAnalyzer
 
         private List<QsAnalyzerLocalVarInfo> localVarInfos;
         private ImmutableDictionary<string, QsAnalyzerLocalVarInfo> localVarsByName;
-        private ImmutableDictionary<QsStorage, QsTypeValue> overriddenTypeValues;
+        private ImmutableDictionary<QsStorageInfo, QsTypeValue> overriddenTypeValues;
 
         public QsAnalyzerFuncContext(QsMetaItemId funcId, QsTypeValue? retTypeValue, bool bSequence)
         {
@@ -27,7 +27,7 @@ namespace QuickSC.StaticAnalyzer
 
             this.localVarInfos = new List<QsAnalyzerLocalVarInfo>();
             this.localVarsByName = ImmutableDictionary<string, QsAnalyzerLocalVarInfo>.Empty;
-            this.overriddenTypeValues = ImmutableDictionary<QsStorage, QsTypeValue>.Empty;
+            this.overriddenTypeValues = ImmutableDictionary<QsStorageInfo, QsTypeValue>.Empty;
         }
 
         public int AddLocalVarInfo(string name, QsTypeValue typeValue)
@@ -39,9 +39,9 @@ namespace QuickSC.StaticAnalyzer
             return localVarInfo.Index;
         }
 
-        public void AddOverrideVarInfo(QsStorage storage, QsTypeValue typeValue)
+        public void AddOverrideVarInfo(QsStorageInfo storageInfo, QsTypeValue typeValue)
         {
-            overriddenTypeValues = overriddenTypeValues.SetItem(storage, typeValue);
+            overriddenTypeValues = overriddenTypeValues.SetItem(storageInfo, typeValue);
         }
 
         public bool GetLocalVarInfo(string varName, [NotNullWhen(returnValue: true)] out QsAnalyzerLocalVarInfo? localVarInfo)

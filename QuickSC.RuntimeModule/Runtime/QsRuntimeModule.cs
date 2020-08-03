@@ -58,7 +58,7 @@ namespace QuickSC.Runtime
             var moduleBuilder = new QsRuntimeModuleBuilder();
 
             moduleBuilder.AddObjectInfo(new QsEmptyObjectInfo(BoolId, () => new QsValue<bool>(false)));
-            moduleBuilder.AddObjectInfo(new QsEmptyObjectInfo(IntId, () => new QsValue<int>(0)));
+            moduleBuilder.AddObjectInfo(new QsIntValueInfo(this));
             moduleBuilder.AddObjectInfo(new QsEmptyObjectInfo(StringId, () => new QsObjectValue(null)));
             moduleBuilder.AddObjectInfo(new QsEnumerableObjectInfo());
             moduleBuilder.AddObjectInfo(new QsEnumeratorObjectInfo());
