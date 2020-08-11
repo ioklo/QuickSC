@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace QuickSC.Syntax
 {
-    public abstract class QsTypeExp
+    public abstract class QsTypeExp : IQsSyntaxNode
     {   
     }
  

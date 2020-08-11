@@ -17,7 +17,7 @@ namespace QuickSC.Runtime
 
         public override QsTypeValue GetTypeValue()
         {
-            return QsTypeValue_Void.Instance;
+            return QsTypeValue.MakeVoid();
         }
 
         public override QsValue MakeDefaultValue()
@@ -28,9 +28,9 @@ namespace QuickSC.Runtime
 
     class QsFuncTypeInst : QsTypeInst
     {
-        private QsTypeValue_Func typeValue;
+        private QsTypeValue.Func typeValue;
 
-        public QsFuncTypeInst(QsTypeValue_Func typeValue) { this.typeValue = typeValue; }
+        public QsFuncTypeInst(QsTypeValue.Func typeValue) { this.typeValue = typeValue; }
 
         public override QsTypeValue GetTypeValue()
         {
@@ -80,15 +80,14 @@ namespace QuickSC.Runtime
         // 실행중 TypeValue는 모두 Apply된 상태이다
         public QsTypeInst GetTypeInst(QsTypeValue typeValue)
         {
-            // typeValue -> typeEnv
             // X<int>.Y<short> => Tx -> int, Ty -> short
             switch (typeValue)
             {
-                case QsTypeValue_TypeVar tvtv:
+                case QsTypeValue.TypeVar tvtv:
                     Debug.Fail("실행중에 바인드 되지 않은 타입 인자가 나왔습니다");
                     throw new InvalidOperationException();
 
-                case QsTypeValue_Normal ntv:
+                case QsTypeValue.Normal ntv:
                     {
                         foreach (var module in modules)
                             if (module.GetTypeInfo(ntv.TypeId, out var _))
@@ -97,63 +96,19 @@ namespace QuickSC.Runtime
                         throw new InvalidOperationException();
                     }
 
-                case QsTypeValue_Void vtv:
+                case QsTypeValue.Void vtv:
                     return QsVoidTypeInst.Instance;
                 
-                case QsTypeValue_Func ftv:
+                case QsTypeValue.Func ftv:
                     return new QsFuncTypeInst(ftv);
 
                 default:
                     throw new NotImplementedException();
             }
-        }        
+        }
         
-        void MakeTypeEnv(QsTypeValue_Normal ntv, ImmutableArray<QsTypeValue>.Builder builder)
-        {
-            if (ntv.Outer != null)
-            {
-                if (ntv.Outer is QsTypeValue_Normal outerNTV)
-                    MakeTypeEnv(outerNTV, builder);
-                else
-                    throw new InvalidOperationException(); // TODO: ntv.Outer를 normaltypeValue로 바꿔야 하지 않을까
-            }
-
-            foreach (var typeArg in ntv.TypeArgs)
-            {
-                builder.Add(typeArg);
-            }
-        }
-
-        public QsTypeEnv MakeTypeEnv(QsTypeValue_Normal ntv)
-        {
-            var builder = ImmutableArray.CreateBuilder<QsTypeValue>();
-
-            MakeTypeEnv(ntv, builder);
-
-            return new QsTypeEnv(builder.ToImmutable());
-        }
-
-        public QsTypeEnv MakeTypeEnv(QsFuncValue fv)
-        {
-            var builder = ImmutableArray.CreateBuilder<QsTypeValue>();
-
-            if (fv.Outer != null)
-            {
-                if (fv.Outer is QsTypeValue_Normal outerNTV)
-                    MakeTypeEnv(outerNTV, builder);
-                else
-                    throw new InvalidOperationException(); // TODO: ntv.Outer를 normaltypeValue로 바꿔야 하지 않을까
-            }
-
-            foreach (var typeArg in fv.TypeArgs)
-            {
-                builder.Add(typeArg);
-            }
-
-            return new QsTypeEnv(builder.ToImmutable());
-        }
-
-        public void SetGlobalValue(QsMetaItemId varId, QsValue value)
+        
+        public void InitGlobalValue(QsMetaItemId varId, QsValue value)
         {
             Debug.Assert(!globalValues.ContainsKey(varId));
             globalValues[varId] = value;

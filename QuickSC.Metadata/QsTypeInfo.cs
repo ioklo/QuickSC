@@ -75,7 +75,7 @@ namespace QuickSC
 
         public override bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsMetaItemId? outTypeId)
         {
-            if (memberTypeIds.TryGetValue(QsName.Text(name), out var typeId))
+            if (memberTypeIds.TryGetValue(QsName.MakeText(name), out var typeId))
             {
                 outTypeId = typeId;
                 return true;

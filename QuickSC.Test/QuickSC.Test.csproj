@@ -27,6 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\QuickSC.Analyzer\QuickSC.Analyzer.csproj" />
     <ProjectReference Include="..\QuickSC.Core\QuickSC.Core.csproj" />
     <ProjectReference Include="..\QuickSC.RuntimeModule\QuickSC.RuntimeModule.csproj" />
     <ProjectReference Include="..\QuickSC.Syntax\QuickSC.Syntax.csproj" />

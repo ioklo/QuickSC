@@ -14,36 +14,36 @@ namespace QuickSC
         public IQsRuntimeModule RuntimeModule { get; }
         public QsDomainService DomainService { get; }
         public QsTypeValueService TypeValueService { get; }
-        public QsStaticValueService StaticValueService { get; }
-        public QsAnalyzeInfo AnalyzeInfo { get; }
 
-        public QsValue?[] PrivateGlobalVars { get; private set; }
-        public QsValue?[] LocalVars { get; private set; }
-        
-        public QsEvalFlowControl FlowControl { get; set; }
-        public ImmutableArray<Task> Tasks { get; private set; }
-        public QsValue? ThisValue { get; set; }
-        public QsValue RetValue { get; private set; }        
+        private QsValue?[] privateGlobalVars;
+        private QsValue?[] localVars;
+
+        private QsEvalFlowControl flowControl;
+        private ImmutableArray<Task> tasks;
+        private QsValue? thisValue;
+        private QsValue retValue;
+
+        private ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> infosByNode;
 
         public QsEvalContext(
             IQsRuntimeModule runtimeModule, 
             QsDomainService domainService, 
             QsTypeValueService typeValueService,
-            QsStaticValueService staticValueService,
-            QsAnalyzeInfo analyzeInfo)
+            int privateGlobalVarCount,
+            ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> infosByNode)
         {
             RuntimeModule = runtimeModule;
             DomainService = domainService;
             TypeValueService = typeValueService;
-            StaticValueService = staticValueService;
-
-            AnalyzeInfo = analyzeInfo;
-            LocalVars = new QsValue?[0];
-            PrivateGlobalVars = new QsValue?[analyzeInfo.PrivateGlobalVarCount];
-            FlowControl = QsEvalFlowControl.None;
-            Tasks = ImmutableArray<Task>.Empty; ;
-            ThisValue = null;
-            RetValue = QsVoidValue.Instance;
+            
+            this.infosByNode = infosByNode;
+            
+            localVars = new QsValue?[0];
+            privateGlobalVars = new QsValue?[privateGlobalVarCount];
+            flowControl = QsEvalFlowControl.None;
+            tasks = ImmutableArray<Task>.Empty; ;
+            thisValue = null;
+            retValue = QsVoidValue.Instance;
         }
 
         public QsEvalContext(
@@ -57,50 +57,119 @@ namespace QuickSC
             RuntimeModule = other.RuntimeModule;
             DomainService = other.DomainService;
             TypeValueService = other.TypeValueService;
-            StaticValueService = other.StaticValueService;
-            AnalyzeInfo = other.AnalyzeInfo;
-            PrivateGlobalVars = other.PrivateGlobalVars;
+            this.infosByNode = other.infosByNode;
+            privateGlobalVars = other.privateGlobalVars;
 
-            LocalVars = localVars;
-            FlowControl = flowControl;
-            Tasks = tasks;
-            ThisValue = thisValue;
-            RetValue = retValue;
+            this.localVars = localVars;
+            this.flowControl = flowControl;
+            this.tasks = tasks;
+            this.thisValue = thisValue;
+            this.retValue = retValue;
         }
 
         public QsEvalContext SetTasks(ImmutableArray<Task> newTasks)
         {
-            Tasks = newTasks;
+            tasks = newTasks;
             return this;
         }
 
         public ImmutableArray<Task> GetTasks()
         {
-            return Tasks;
+            return tasks;
         }
 
         public void AddTask(Task task)
         {
-            Tasks = Tasks.Add(task);
+            tasks = tasks.Add(task);
         }
 
-        public (QsValue?[] prevLocalVars, QsEvalFlowControl prevFlowControl, ImmutableArray<Task> prevTasks, QsValue? prevThisValue, QsValue prevRetValue) 
-            Update(QsValue?[] localVars, QsEvalFlowControl flowControl, ImmutableArray<Task> tasks, QsValue? thisValue, QsValue retValue)
+        public async ValueTask ExecInNewFuncFrameAsync(
+            QsValue?[] newLocalVars, 
+            QsEvalFlowControl newFlowControl, 
+            ImmutableArray<Task> newTasks, 
+            QsValue? newThisValue, 
+            QsValue newRetValue,
+            Func<ValueTask> ActionAsync)
         {
-            var prevValue = (LocalVars, FlowControl, Tasks, ThisValue, RetValue);
+            var prevValue = (localVars, flowControl, tasks, thisValue, retValue);
+            (localVars, flowControl, tasks, thisValue, retValue) = (newLocalVars, newFlowControl, newTasks, newThisValue, newRetValue);
 
-            LocalVars = localVars;
-            FlowControl = flowControl;
-            Tasks = tasks;
-            ThisValue = thisValue;
-            RetValue = retValue;
-
-            return prevValue;
+            try
+            {
+                await ActionAsync();
+            }
+            finally
+            {
+                (localVars, flowControl, tasks, thisValue, retValue) = prevValue;
+            }
         }
 
         public TSyntaxNodeInfo GetNodeInfo<TSyntaxNodeInfo>(IQsSyntaxNode node) where TSyntaxNodeInfo : QsSyntaxNodeInfo
         {
-            return AnalyzeInfo.GetNodeInfo<TSyntaxNodeInfo>(node);
+            return (TSyntaxNodeInfo)infosByNode[node];
+        }
+
+        public QsValue GetStaticValue(QsVarValue varValue)
+        {
+            throw new NotImplementedException();
+        }
+
+        public QsValue GetPrivateGlobalVar(int index)
+        {
+            return privateGlobalVars[index]!;
+        }
+
+        public void InitPrivateGlobalVar(int index, QsValue value)
+        {
+            privateGlobalVars[index] = value;
+        }
+
+        public QsValue GetLocalVar(int index)
+        {
+            return localVars[index]!;
+        }
+
+        public void InitLocalVar(int i, QsValue value)
+        {
+            // for문 내부에서 decl할 경우 재사용하기 때문에 assert를 넣으면 안된다
+            // Debug.Assert(context.LocalVars[storage.LocalIndex] == null);
+            localVars[i] = value;
+        }
+
+        public bool IsFlowControl(QsEvalFlowControl testValue)
+        {
+            return flowControl == testValue;
+        }
+
+        public QsEvalFlowControl GetFlowControl()
+        {
+            return flowControl;
+        }
+
+        public void SetFlowControl(QsEvalFlowControl newFlowControl)
+        {
+            flowControl = newFlowControl;
+        }
+
+        public QsValue GetRetValue()
+        {
+            return retValue!;
+        }
+
+        public QsValue? GetThisValue()
+        {
+            return thisValue;
+        }
+
+        public async IAsyncEnumerable<QsValue> ExecInNewTasks(Func<IAsyncEnumerable<QsValue>> enumerable)
+        {
+            var prevTasks = tasks;
+            tasks = ImmutableArray<Task>.Empty;
+
+            await foreach (var v in enumerable())
+                yield return v;
+            
+            tasks = prevTasks;
         }
     }
 }

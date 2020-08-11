@@ -14,27 +14,30 @@ namespace QuickSC
         OpDec,
     }
 
+    public static class QsSpecialNames
+    {
+        public static QsName IndexerGet { get; } = new QsName(QsSpecialName.IndexerGet, null);
+        public static QsName IndexerSet { get; } = new QsName(QsSpecialName.IndexerGet, null);
+        public static QsName OpInc { get; } = new QsName(QsSpecialName.OpInc, null);
+        public static QsName OpDec { get; } = new QsName(QsSpecialName.OpDec, null);
+    }
+
     public struct QsName
     {
         public QsSpecialName Kind { get;  }
         public string? Name { get; }
 
-        static public QsName AnonymousLambda(string name)
+        public static QsName MakeAnonymousLambda(string name)
         {
             return new QsName(QsSpecialName.AnonymousLambda, name);
         }
 
-        static public QsName Special(QsSpecialName specialName)
-        {
-            return new QsName(specialName, null);
-        }
-
-        static public QsName Text(string name)
+        public static QsName MakeText(string name)
         {
             return new QsName(QsSpecialName.Normal, name);
         }
 
-        private QsName(QsSpecialName kind, string? name)
+        internal QsName(QsSpecialName kind, string? name)
         {
             Kind = kind;
             Name = name;

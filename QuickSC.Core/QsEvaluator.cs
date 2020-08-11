@@ -15,12 +15,14 @@ namespace QuickSC
     // TODO: Small Step으로 가야하지 않을까 싶다 (yield로 실행 point 잡는거 해보면 재미있을 것 같다)
     public class QsEvaluator
     {
-        private QsExpValueEvaluator expValueEvaluator;
+        private QsAnalyzer analyzer;
+        private QsExpEvaluator expValueEvaluator;
         private QsStmtEvaluator stmtEvaluator;        
 
-        public QsEvaluator(IQsCommandProvider commandProvider)
+        public QsEvaluator(QsAnalyzer analyzer, IQsCommandProvider commandProvider)
         {
-            this.expValueEvaluator = new QsExpValueEvaluator(this);
+            this.analyzer = analyzer;
+            this.expValueEvaluator = new QsExpEvaluator(this);
             this.stmtEvaluator = new QsStmtEvaluator(this, commandProvider);
         }        
         
@@ -29,30 +31,40 @@ namespace QuickSC
             return expValueEvaluator.EvalStringExpAsync(command, result, context);
         }
 
-        QsTypeValue ApplyTypeValue(QsTypeValue typeValue, ImmutableDictionary<QsTypeValue_TypeVar, QsTypeValue> typeEnv)
+        QsTypeArgumentList ApplyTypeArgumentList(QsTypeArgumentList typeArgList, ImmutableDictionary<QsTypeValue.TypeVar, QsTypeValue> typeEnv)
+        {
+            QsTypeArgumentList? appliedOuter = null;
+
+            if (typeArgList.Outer != null)
+                appliedOuter = ApplyTypeArgumentList(typeArgList.Outer, typeEnv);
+
+            var appliedArgs = typeArgList.Args.Select(arg => ApplyTypeValue(arg, typeEnv));
+
+            return QsTypeArgumentList.Make(appliedOuter, appliedArgs);
+        }
+
+        QsTypeValue ApplyTypeValue(QsTypeValue typeValue, ImmutableDictionary<QsTypeValue.TypeVar, QsTypeValue> typeEnv)
         {
             switch(typeValue)
             {
-                case QsTypeValue_TypeVar typeVar: 
+                case QsTypeValue.TypeVar typeVar: 
                     return typeEnv[typeVar];
 
-                case QsTypeValue_Normal ntv:
+                case QsTypeValue.Normal ntv:
                     {
-                        var appliedOuter = (ntv.Outer != null) ? ApplyTypeValue(ntv.Outer, typeEnv) : null;
-                        var appliedTypeArgs = ImmutableArray.CreateRange(ntv.TypeArgs, typeArg => ApplyTypeValue(typeArg, typeEnv));
-
-                        return new QsTypeValue_Normal(appliedOuter, ntv.TypeId, appliedTypeArgs);
+                        var appliedTypeArgList = ApplyTypeArgumentList(ntv.TypeArgList, typeEnv);
+                        return QsTypeValue.MakeNormal(ntv.TypeId, appliedTypeArgList);
                     }
 
-                case QsTypeValue_Void vtv: 
+                case QsTypeValue.Void vtv: 
                     return typeValue;
 
-                case QsTypeValue_Func ftv:
+                case QsTypeValue.Func ftv:
                     {
                         var appliedReturn = ApplyTypeValue(ftv.Return, typeEnv);
                         var appliedParams = ImmutableArray.CreateRange(ftv.Params, param => ApplyTypeValue(param, typeEnv));
 
-                        return new QsTypeValue_Func(appliedReturn, appliedParams);
+                        return QsTypeValue.MakeFunc(appliedReturn, appliedParams);
                     }
 
                 default:
@@ -95,7 +107,7 @@ namespace QuickSC
             {
                 QsValue origValue;
                 if (captureElem.StorageInfo is QsStorageInfo.Local localVar)
-                    origValue = context.LocalVars[localVar.Index]!;
+                    origValue = context.GetLocalVar(localVar.Index);
                 else
                     throw new NotImplementedException();
 
@@ -121,8 +133,9 @@ namespace QuickSC
             IReadOnlyList<QsValue> args,
             QsEvalContext context)
         {
+            // NOTICE: args가 미리 할당되서 나온 상태
             for (int i = 0; i < args.Count; i++)
-                context.LocalVars[i] = args[i];
+                context.InitLocalVar(i, args[i]);
 
             await foreach (var value in EvaluateStmtAsync(scriptFuncInst.Body, context))
             {
@@ -145,17 +158,15 @@ namespace QuickSC
                 switch (varDeclInfoElem.StorageInfo)
                 {
                     case QsStorageInfo.ModuleGlobal storage:
-                        context.DomainService.SetGlobalValue(storage.VarId, value);
+                        context.DomainService.InitGlobalValue(storage.VarId, value);
                         break;
 
                     case QsStorageInfo.PrivateGlobal storage:
-                        context.PrivateGlobalVars[storage.Index] = value;
+                        context.InitPrivateGlobalVar(storage.Index, value);
                         break;
 
                     case QsStorageInfo.Local storage:
-                        // For문에서 재사용할 수 있다
-                        // Debug.Assert(context.LocalVars[storage.LocalIndex] == null);
-                        context.LocalVars[storage.Index] = value;
+                        context.InitLocalVar(storage.Index, value);
                         break;
 
                     default:
@@ -170,10 +181,15 @@ namespace QuickSC
             }
         }
 
-        public async ValueTask EvaluateFuncInstAsync(QsValue? thisValue, QsFuncInst funcInst, IReadOnlyList<QsValue> args, QsValue result, QsEvalContext context)
-        {
+        public ValueTask EvaluateFuncInstAsync(QsValue? thisValue, QsFuncInst funcInst, IReadOnlyList<QsValue> args, QsValue result, QsEvalContext context)
+        {            
             if (funcInst is QsScriptFuncInst scriptFuncInst)
             {
+                async ValueTask InnerBodyAsync()
+                {
+                    await foreach (var _ in EvaluateStmtAsync(scriptFuncInst.Body, context)) { }
+                }
+
                 // (Capture한 곳의 this), (MemberExp의 this), Static의 경우 this
                 if (scriptFuncInst.CapturedThis != null)
                     thisValue = scriptFuncInst.CapturedThis;
@@ -206,19 +222,14 @@ namespace QuickSC
                     var asyncEnum = EvaluateScriptFuncInstSeqAsync(scriptFuncInst, args, newContext);
                     context.RuntimeModule.SetEnumerable(context.DomainService, result, scriptFuncInst.SeqElemTypeValue, asyncEnum);
 
-                    return;
+                    return new ValueTask(Task.CompletedTask);
                 }
 
-                var (prevLocalVars, prevFlowControl, prevTasks, prevThisValue, prevRetValue) = 
-                    context.Update(localVars, QsEvalFlowControl.None, ImmutableArray<Task>.Empty, thisValue, result);
-
-                await foreach (var _ in EvaluateStmtAsync(scriptFuncInst.Body, context)) { }                
-
-                context.Update(prevLocalVars, prevFlowControl, prevTasks, prevThisValue, prevRetValue);
+                return context.ExecInNewFuncFrameAsync(localVars, QsEvalFlowControl.None, ImmutableArray<Task>.Empty, thisValue, result, InnerBodyAsync);
             }
             else if (funcInst is QsNativeFuncInst nativeFuncInst)
             {
-                await nativeFuncInst.CallAsync(thisValue, args, result);
+                return nativeFuncInst.CallAsync(thisValue, args, result);
             }
             else
             {
@@ -238,45 +249,69 @@ namespace QuickSC
         
         async ValueTask<int> EvaluateScriptAsync(QsScript script, QsEvalContext context)
         {
-            var info = context.GetNodeInfo<QsScriptInfo>(script);
+            async ValueTask InnerBodyAsync()
+            {
+                foreach (var elem in script.Elements)
+                {
+                    if (elem is QsStmtScriptElement statementElem)
+                    {
+                        await foreach (var value in stmtEvaluator.EvaluateStmtAsync(statementElem.Stmt, context))
+                        {
+                        }
+                    }
 
+                    if (context.GetFlowControl() == QsEvalFlowControl.Return)
+                        break;
+                }
+            }
+
+            var info = context.GetNodeInfo<QsScriptInfo>(script);
             var retValue = context.RuntimeModule.MakeInt(0);
 
-            context.Update(new QsValue?[info.LocalVarCount], QsEvalFlowControl.None, ImmutableArray<Task>.Empty, null, retValue);
-
-            foreach(var elem in script.Elements)
-            {
-                if (elem is QsStmtScriptElement statementElem)
-                {
-                    await foreach (var value in stmtEvaluator.EvaluateStmtAsync(statementElem.Stmt, context))
-                    {
-                    }
-                }
-
-                if (context.FlowControl == QsEvalFlowControl.Return)
-                    break;
-            }
+            await context.ExecInNewFuncFrameAsync(
+                new QsValue?[info.LocalVarCount], 
+                QsEvalFlowControl.None, 
+                ImmutableArray<Task>.Empty, 
+                null, 
+                retValue, 
+                InnerBodyAsync);
 
             return context.RuntimeModule.GetInt(retValue);
         }
 
-        public async ValueTask<int> EvaluateScriptAsync(
-            QsScript script, 
+        public async ValueTask<int?> EvaluateScriptAsync(
+            string moduleName,
+            QsScript script,             
             IQsRuntimeModule runtimeModule,
-            QsDomainService domainService,
-            QsTypeValueService typeValueService,
-            QsStaticValueService staticValueService, 
-            QsAnalyzeInfo analyzeInfo)
+            IEnumerable<IQsMetadata> metadatas,
+            IQsErrorCollector errorCollector)
         {
-            var context = new QsEvalContext(runtimeModule, domainService, typeValueService, staticValueService, analyzeInfo);
+            // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
+            var optionalAnalyzeResult = analyzer.AnalyzeScript(moduleName, script, metadatas, errorCollector);
+            if (optionalAnalyzeResult == null)
+                return null;
+
+            var analyzeResult = optionalAnalyzeResult.Value;
+
+            var scriptModule = new QsScriptModule(
+                analyzeResult.ScriptMetadata,
+                analyzeResult.FuncTemplates);
+
+            var domainService = new QsDomainService();
+
+            domainService.LoadModule(runtimeModule);
+            domainService.LoadModule(scriptModule);
+
+            var context = new QsEvalContext(
+                runtimeModule, 
+                domainService, 
+                analyzeResult.TypeValueService,                 
+                analyzeResult.PrivateGlobalVarCount,
+                analyzeResult.InfosByNode);
+
             return await EvaluateScriptAsync(script, context);
         }
-
-        public QsValue GetStaticValue(QsVarValue varValue, QsEvalContext context)
-        {
-            return context.StaticValueService.GetValue(varValue);
-        }
-
+        
         internal QsValue GetMemberValue(QsValue value, QsName varName)
         {
             if (value is QsObjectValue objValue)

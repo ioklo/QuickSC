@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
+    using Invoker = Func<QsDomainService, QsTypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
 
     public class QsNativeFuncInstantiator
     {
@@ -23,8 +23,7 @@ namespace QuickSC.Runtime
 
         public QsFuncInst Instantiate(QsDomainService domainService, QsFuncValue fv)
         {
-            var typeEnv = domainService.MakeTypeEnv(fv);
-            return new QsNativeFuncInst(bThisCall, (thisValue, argValues, result) => invoker.Invoke(domainService, typeEnv, thisValue, argValues, result));
+            return new QsNativeFuncInst(bThisCall, (thisValue, argValues, result) => invoker.Invoke(domainService, fv.TypeArgList, thisValue, argValues, result));
         }
     }
 }

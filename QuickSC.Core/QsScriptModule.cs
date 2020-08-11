@@ -1,6 +1,7 @@
 ﻿using QuickSC.Runtime;
 using QuickSC.StaticAnalyzer;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 
@@ -11,10 +12,10 @@ namespace QuickSC
         private QsScriptMetadata scriptMetadata;
         private ImmutableDictionary<QsMetaItemId, QsScriptFuncTemplate> funcTemplatesById;
 
-        public QsScriptModule(QsScriptMetadata scriptMetadata, ImmutableDictionary<QsMetaItemId, QsScriptFuncTemplate> funcTemplatesById)
+        public QsScriptModule(QsScriptMetadata scriptMetadata, IEnumerable<QsScriptFuncTemplate> funcTemplates)
         {
             this.scriptMetadata = scriptMetadata;
-            this.funcTemplatesById = funcTemplatesById;
+            this.funcTemplatesById = funcTemplates.ToImmutableDictionary(ft => ft.FuncId);
         }
 
         public string ModuleName => scriptMetadata.ModuleName;
@@ -40,7 +41,7 @@ namespace QuickSC
 
             if (funcTempl is QsScriptFuncTemplate.FuncDecl funcDeclTempl)
             {
-                if (funcValue.TypeArgs.Length != 0)
+                if (funcValue.TypeArgList.GetTotalLength() != 0)
                     throw new NotImplementedException();
 
                 return new QsScriptFuncInst(funcDeclTempl.SeqElemTypeValue, funcDeclTempl.bThisCall, null, ImmutableArray<QsValue>.Empty, funcDeclTempl.LocalVarCount, funcDeclTempl.Body);
@@ -49,7 +50,7 @@ namespace QuickSC
             throw new NotImplementedException();
         }
 
-        public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue_Normal typeValue)
+        public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue.Normal typeValue)
         {
             throw new System.NotImplementedException();
         }

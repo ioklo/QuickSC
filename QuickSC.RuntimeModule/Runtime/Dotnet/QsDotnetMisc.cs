@@ -8,7 +8,7 @@ namespace QuickSC.Runtime.Dotnet
 {
     static class QsDotnetMisc
     {
-        public static QsMetaItemId MakeTypeId(Type type)
+        public static QsMetaItemId? MakeTypeId(Type type)
         {
             // ([^\s]+(`(\d+))?)([\.+][^\s]+(`(\d+))?)+
             // C20200622_Reflection.Type1`1+Type2`1<T, U>
@@ -16,7 +16,7 @@ namespace QuickSC.Runtime.Dotnet
             // System.Collections.Generic.List`1
 
             var elems = type.FullName.Split('.', '+');
-            var elemsBuilder = ImmutableArray.CreateBuilder<QsMetaItemIdElem>(elems.Length);
+            QsMetaItemId? curId = null;
 
             foreach (var elem in elems)
             {
@@ -27,18 +27,17 @@ namespace QuickSC.Runtime.Dotnet
                 var name = match.Groups["Name"].Value;
                 var typeParamCountText = match.Groups["TypeParamCount"].Value;
 
+                int typeParamCount = 0;
                 if (typeParamCountText.Length != 0)
-                {
-                    var typeParamCount = int.Parse(typeParamCountText);
-                    elemsBuilder.Add(new QsMetaItemIdElem(name, typeParamCount));
-                }
+                    typeParamCount = int.Parse(typeParamCountText);
+
+                if (curId != null)
+                    curId = curId.Append(name, typeParamCount);
                 else
-                {
-                    elemsBuilder.Add(new QsMetaItemIdElem(name));
-                }
+                    curId = QsMetaItemId.Make(name, typeParamCount);
             }
 
-            return new QsMetaItemId(elemsBuilder.ToImmutable());
+            return curId;
         }
 
     }

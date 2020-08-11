@@ -13,7 +13,7 @@ namespace QuickSC.ModuleTest
         {
             //var domainService = new QsDomainService();
 
-            //QsMetaItemId funcId = new QsMetaItemId(new QsMetaItemIdElem());
+            //QsMetaItemId funcId = QsMetaItemId.Make(new QsMetaItemIdElem());
             //var funcInst = reflectionService.GetFuncInst(new QsFuncValue(null, funcId));
         }
     }

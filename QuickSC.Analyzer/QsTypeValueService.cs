@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Linq;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 
 namespace QuickSC
 {
@@ -17,7 +18,7 @@ namespace QuickSC
             this.metadataService = metadataService;
             this.typeValueApplier = typeValueApplier;
         }
-        
+
         //private bool GetMemberVarInfo(QsMetaItemId typeId, QsName name, [NotNullWhen(returnValue: true)] out QsVarInfo? outVarInfo)
         //{
         //    outVarInfo = null;
@@ -37,7 +38,7 @@ namespace QuickSC
         //{
         //    outTypeValue = null;
 
-        //    var typeValue_normal = typeValue as QsTypeValue_Normal;
+        //    var typeValue_normal = typeValue as QsTypeValue.Normal;
         //    if (typeValue_normal == null) return false;
 
         //    if (!GetMemberVarInfo(typeValue_normal.TypeId, name, out var memberVarInfo))
@@ -45,19 +46,23 @@ namespace QuickSC
 
         //    outTypeValue = typeValueApplier.Apply(typeValue_normal, memberVarInfo.TypeValue);
         //    return true;
-        //}        
+        //}    
         
         // class X<T> { class Y<U> { Dict<T, U> x; } } 
         // GetTypeValue(X<int>.Y<short>, x) => Dict<int, short>
         public QsTypeValue GetTypeValue(QsVarValue varValue)
         {
             var varInfo = metadataService.GetVarInfos(varValue.VarId).Single();
-            return typeValueApplier.Apply(varValue.Outer, varInfo.TypeValue);
+
+            if (varInfo.OuterId != null)
+                return typeValueApplier.Apply(QsTypeValue.MakeNormal(varInfo.OuterId, varValue.OuterTypeArgList), varInfo.TypeValue);
+            else
+                return varInfo.TypeValue;
         }
 
         // class X<T> { class Y<U> { S<T> F<V>(V v, List<U> u); } } => MakeFuncTypeValue(X<int>.Y<short>, F, context) 
         // (V, List<short>) => S<int>
-        public QsTypeValue_Func GetTypeValue(QsFuncValue funcValue)
+        public QsTypeValue.Func GetTypeValue(QsFuncValue funcValue)
         {
             var funcInfo = metadataService.GetFuncInfos(funcValue.FuncId).Single();
 
@@ -65,15 +70,15 @@ namespace QuickSC
             QsTypeValue retTypeValue;
             if (funcInfo.bSeqCall)
             {
-                var enumerableId = new QsMetaItemId(new QsMetaItemIdElem("Enumerable", 1));
-                retTypeValue = new QsTypeValue_Normal(null, enumerableId, funcInfo.RetTypeValue);
+                var enumerableId = QsMetaItemId.Make("Enumerable", 1);
+                retTypeValue = QsTypeValue.MakeNormal(enumerableId, QsTypeArgumentList.Make(funcInfo.RetTypeValue));
             }
             else
             {
                 retTypeValue = funcInfo.RetTypeValue;
             }
 
-            return typeValueApplier.Apply_Func(funcValue, new QsTypeValue_Func(retTypeValue, funcInfo.ParamTypeValues));
+            return typeValueApplier.Apply_Func(funcValue, QsTypeValue.MakeFunc(retTypeValue, funcInfo.ParamTypeValues));
         }
 
 
@@ -82,10 +87,10 @@ namespace QuickSC
         // 
         //private bool GetMemberFuncTypeValue_Normal(
         //    bool bStaticOnly,
-        //    QsTypeValue_Normal typeValue,
+        //    QsTypeValue.Normal typeValue,
         //    QsName memberFuncId,
         //    ImmutableArray<QsTypeValue> typeArgs,
-        //    [NotNullWhen(returnValue: true)] out QsTypeValue_Func? funcTypeValue)
+        //    [NotNullWhen(returnValue: true)] out QsTypeValue.Func? funcTypeValue)
         //{
         //    funcTypeValue = null;
 
@@ -110,18 +115,18 @@ namespace QuickSC
         //    QsTypeValue typeValue,
         //    QsName memberFuncId,
         //    ImmutableArray<QsTypeValue> typeArgs,
-        //    [NotNullWhen(returnValue: true)] out QsTypeValue_Func? funcTypeValue)
+        //    [NotNullWhen(returnValue: true)] out QsTypeValue.Func? funcTypeValue)
         //{
         //    // var / typeVar / normal / func
 
-        //    if (typeValue is QsTypeValue_Normal typeValue_normal)
+        //    if (typeValue is QsTypeValue.Normal typeValue_normal)
         //        return GetMemberFuncTypeValue_Normal(bStaticOnly, typeValue_normal, memberFuncId, typeArgs, out funcTypeValue);
 
         //    throw new NotImplementedException();
         //}
 
         // class N<T> : B<T> => N.GetBaseType => B<T(N)>
-        private bool GetBaseTypeValue_Normal(QsTypeValue_Normal typeValue, out QsTypeValue? outBaseTypeValue)
+        private bool GetBaseTypeValue_Normal(QsTypeValue.Normal typeValue, out QsTypeValue? outBaseTypeValue)
         {
             outBaseTypeValue = null;
 
@@ -142,7 +147,7 @@ namespace QuickSC
 
             return typeValue switch
             {
-                QsTypeValue_Normal normalTypeValue => GetBaseTypeValue_Normal(normalTypeValue, out baseTypeValue),
+                QsTypeValue.Normal normalTypeValue => GetBaseTypeValue_Normal(normalTypeValue, out baseTypeValue),
                 _ => false
             };
         }
@@ -155,7 +160,7 @@ namespace QuickSC
         {
             funcValue = null;
 
-            QsTypeValue_Normal? ntv = objTypeValue as QsTypeValue_Normal;
+            QsTypeValue.Normal? ntv = objTypeValue as QsTypeValue.Normal;
             if (ntv == null) return false;
 
             var typeInfo = metadataService.GetTypeInfos(ntv.TypeId).SingleOrDefault();
@@ -165,7 +170,7 @@ namespace QuickSC
             if (!typeInfo.GetMemberFuncId(funcName, out var memberFuncId))
                 return false;
 
-            var funcInfo = metadataService.GetFuncInfos(memberFuncId.Value).SingleOrDefault();
+            var funcInfo = metadataService.GetFuncInfos(memberFuncId).SingleOrDefault();
 
             if (funcInfo == null)
                 return false;
@@ -174,15 +179,12 @@ namespace QuickSC
             if (funcInfo.TypeParams.Length < typeArgs.Count)
                 return false;
 
-            var typeArgsBuilder = ImmutableArray.CreateBuilder<QsTypeValue>(typeArgs.Count + funcInfo.TypeParams.Length);
+            var completedTypeArgs = typeArgs.ToList();
 
-            foreach (var typeArg in typeArgs)
-                typeArgsBuilder.Add(typeArg);
+            for (int i = typeArgs.Count; i < funcInfo.TypeParams.Length; i++)
+                completedTypeArgs.Add(QsTypeValue.MakeTypeVar(memberFuncId, funcInfo.TypeParams[i]));
 
-            foreach (var typeParam in funcInfo.TypeParams)
-                typeArgsBuilder.Add(new QsTypeValue_TypeVar(memberFuncId.Value, typeParam));
-
-            funcValue = new QsFuncValue(objTypeValue, memberFuncId.Value, typeArgsBuilder.MoveToImmutable());
+            funcValue = new QsFuncValue(memberFuncId, QsTypeArgumentList.Make(ntv.TypeArgList, completedTypeArgs));
             return true;
         }
 
@@ -193,7 +195,7 @@ namespace QuickSC
         {
             outVarValue = null;
 
-            var ntv = objTypeValue as QsTypeValue_Normal;
+            var ntv = objTypeValue as QsTypeValue.Normal;
             if (ntv == null) return false;
 
             var typeInfo = metadataService.GetTypeInfos(ntv.TypeId).SingleOrDefault();
@@ -203,17 +205,8 @@ namespace QuickSC
             if (!typeInfo.GetMemberVarId(varName, out var memberVarId))
                 return false;
 
-            outVarValue = new QsVarValue(objTypeValue, memberVarId.Value);
+            outVarValue = new QsVarValue(memberVarId, ntv.TypeArgList);
             return true;
-        }
-
-        // X<T>.Y<U>{ Dict<T, U> x; } 
-        // GetVarTypeValue(X<int>.Y<short>, x) => Dict<int, short>
-        public QsTypeValue GetVarTypeValue(QsVarValue varValue)
-        {
-            var varInfo = metadataService.GetVarInfos(varValue.VarId).Single();
-
-            return typeValueApplier.Apply(varValue.Outer, varInfo.TypeValue);
         }
     }
 }

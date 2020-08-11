@@ -17,13 +17,19 @@ namespace QuickSC
 
         public QsMetaItemIdElem(string name, int typeParamCount = 0)
         {
-            Name = QsName.Text(name);
+            Name = QsName.MakeText(name);
             TypeParamCount = typeParamCount;
         }
 
         public override string ToString()
         {
             var sb = new StringBuilder();
+            ToString(sb);            
+            return sb.ToString();
+        }
+
+        public void ToString(StringBuilder sb)
+        {
             sb.Append(Name);
 
             if (TypeParamCount != 0)
@@ -33,8 +39,6 @@ namespace QuickSC
                     sb.Append(',');
                 sb.Append('>');
             }
-
-            return sb.ToString();
         }
     }
 }

@@ -13,7 +13,7 @@ namespace QuickSC.Runtime
             this.defaultValueFactory = defaultValueFactory;
         }
 
-        public QsTypeInst Instantiate(QsDomainService domainService, QsTypeValue_Normal ntv)
+        public QsTypeInst Instantiate(QsDomainService domainService, QsTypeValue.Normal ntv)
         {
             return new QsNativeTypeInst(ntv, defaultValueFactory);
         }

@@ -7,137 +7,115 @@ using System.Text;
 
 namespace QuickSC
 {
-    // enum류 naming을 바꿔볼까
+#pragma warning disable CS0660, CS0661
     public abstract class QsTypeValue
-    {        
-    }
-
-    // "var"
-    public class QsTypeValue_Var : QsTypeValue
     {
-        public static QsTypeValue_Var Instance { get; } = new QsTypeValue_Var();
-        private QsTypeValue_Var() { }
-    }
-
-    // T
-    public class QsTypeValue_TypeVar : QsTypeValue
-    {        
-        public QsMetaItemId ParentId { get; } 
-        public string Name { get; }
-
-        public QsTypeValue_TypeVar(QsMetaItemId parentId, string name)
+        // "var"
+        public class Var : QsTypeValue
         {
-            ParentId = parentId;
-            Name = name;
+            public static Var Instance { get; } = new Var();
+            private Var() { }
         }
 
-        public override bool Equals(object? obj)
+        // T
+        public class TypeVar : QsTypeValue
         {
-            return obj is QsTypeValue_TypeVar value &&
-                   EqualityComparer<QsMetaItemId>.Default.Equals(ParentId, value.ParentId) &&
-                   Name == value.Name;
+            public QsMetaItemId ParentId { get; }
+            public string Name { get; }
+
+            internal TypeVar(QsMetaItemId parentId, string name)
+            {
+                ParentId = parentId;
+                Name = name;
+            }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is TypeVar value &&
+                       EqualityComparer<QsMetaItemId>.Default.Equals(ParentId, value.ParentId) &&
+                       Name == value.Name;
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(ParentId, Name);
+            }
+        }
+        
+        public class Normal : QsTypeValue
+        {
+            public QsMetaItemId TypeId { get; }
+            public QsTypeArgumentList TypeArgList { get; }
+
+            internal Normal(QsMetaItemId typeId, QsTypeArgumentList typeArgList)
+            {
+                this.TypeId = typeId;
+                this.TypeArgList = typeArgList;
+            }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is Normal value &&
+                       EqualityComparer<QsMetaItemId>.Default.Equals(TypeId, value.TypeId) &&
+                       EqualityComparer<QsTypeArgumentList>.Default.Equals(TypeArgList, value.TypeArgList);
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(TypeId, TypeArgList);
+            }
         }
 
-        public override int GetHashCode()
+        // "void"
+        public class Void : QsTypeValue
         {
-            return HashCode.Combine(ParentId, Name);
+            public static Void Instance { get; } = new Void();
+            private Void() { }
         }
 
-        public static bool operator ==(QsTypeValue_TypeVar? left, QsTypeValue_TypeVar? right)
+        // ArgTypeValues => RetValueTypes
+        public class Func : QsTypeValue
         {
-            return EqualityComparer<QsTypeValue_TypeVar?>.Default.Equals(left, right);
+            public QsTypeValue Return { get; }
+            public ImmutableArray<QsTypeValue> Params { get; }
+
+            public Func(QsTypeValue ret, IEnumerable<QsTypeValue> parameters)
+            {
+                Return = ret;
+                Params = parameters.ToImmutableArray();
+            }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is Func value &&
+                       EqualityComparer<QsTypeValue>.Default.Equals(Return, value.Return) &&
+                       Enumerable.SequenceEqual(Params, value.Params);
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(Return, Params);
+            }
         }
 
-        public static bool operator !=(QsTypeValue_TypeVar? left, QsTypeValue_TypeVar? right)
+        public static Var MakeVar() => Var.Instance;
+        public static TypeVar MakeTypeVar(QsMetaItemId parentId, string name) => new TypeVar(parentId, name);
+        public static Normal MakeNormal(QsMetaItemId typeId, QsTypeArgumentList args) => new Normal(typeId, args);
+        public static Normal MakeNormal(QsMetaItemId typeId) => new Normal(typeId, QsTypeArgumentList.Empty);
+        public static Void MakeVoid() => Void.Instance;
+        public static Func MakeFunc(QsTypeValue ret, IEnumerable<QsTypeValue> parameters) => new Func(ret, parameters);
+
+        // opeator
+        public static bool operator ==(QsTypeValue? left, QsTypeValue? right)
+        {
+            return EqualityComparer<QsTypeValue?>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(QsTypeValue? left, QsTypeValue? right)
         {
             return !(left == right);
         }
     }
-
-    public class QsTypeValue_Normal : QsTypeValue
-    {
-        // TODO: Outer를 NormalTypeValue로 고쳐보기
-        public QsTypeValue? Outer { get; }
-        public QsMetaItemId TypeId { get; }
-        public ImmutableArray<QsTypeValue> TypeArgs { get; }
-
-        public QsTypeValue_Normal(QsTypeValue? outer, QsMetaItemId typeId, IEnumerable<QsTypeValue> typeArgs)
-        {
-            this.Outer = outer;
-            this.TypeId = typeId;
-            this.TypeArgs = typeArgs.ToImmutableArray();
-        }
-
-        public QsTypeValue_Normal(QsTypeValue? outer, QsMetaItemId TypeId, params QsTypeValue[] typeArgs)
-        {
-            this.Outer = outer;
-            this.TypeId = TypeId;
-            this.TypeArgs = ImmutableArray.Create(typeArgs);
-        }
-
-        public override bool Equals(object? obj)
-        {
-            return obj is QsTypeValue_Normal value &&
-                   EqualityComparer<QsTypeValue?>.Default.Equals(Outer, value.Outer) &&
-                   EqualityComparer<QsMetaItemId>.Default.Equals(TypeId, value.TypeId) &&
-                   Enumerable.SequenceEqual(TypeArgs, value.TypeArgs);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Outer, TypeId, TypeArgs);
-        }
-
-        public static bool operator ==(QsTypeValue_Normal? left, QsTypeValue_Normal? right)
-        {
-            return EqualityComparer<QsTypeValue_Normal?>.Default.Equals(left, right);
-        }
-
-        public static bool operator !=(QsTypeValue_Normal? left, QsTypeValue_Normal? right)
-        {
-            return !(left == right);
-        }
-    }
-
-    // "void"
-    public class QsTypeValue_Void : QsTypeValue
-    {
-        public static QsTypeValue_Void Instance { get; } = new QsTypeValue_Void();
-        private QsTypeValue_Void() { }
-    }
-
-    // ArgTypeValues => RetValueTypes
-    public class QsTypeValue_Func : QsTypeValue
-    {
-        public QsTypeValue Return { get; }
-        public ImmutableArray<QsTypeValue> Params { get; }
-
-        public QsTypeValue_Func(QsTypeValue ret, ImmutableArray<QsTypeValue> parameters)
-        {
-            Return = ret;
-            Params = parameters;
-        }
-
-        public override bool Equals(object? obj)
-        {
-            return obj is QsTypeValue_Func value &&
-                   EqualityComparer<QsTypeValue>.Default.Equals(Return, value.Return) &&
-                   Enumerable.SequenceEqual(Params, value.Params);
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Return, Params);
-        }
-
-        public static bool operator ==(QsTypeValue_Func? left, QsTypeValue_Func? right)
-        {
-            return EqualityComparer<QsTypeValue_Func?>.Default.Equals(left, right);
-        }
-
-        public static bool operator !=(QsTypeValue_Func? left, QsTypeValue_Func? right)
-        {
-            return !(left == right);
-        }
-    }
+    
+#pragma warning restore CS0660, CS0661
 }

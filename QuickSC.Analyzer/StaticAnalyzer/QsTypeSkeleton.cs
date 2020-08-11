@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace QuickSC.StaticAnalyzer
 {
@@ -6,12 +8,22 @@ namespace QuickSC.StaticAnalyzer
     public class QsTypeSkeleton
     {
         public QsMetaItemId TypeId { get; }
-        public Dictionary<QsMetaItemIdElem, QsTypeSkeleton> MemberSkeletons { get; }
+        private Dictionary<QsMetaItemIdElem, QsMetaItemId> memberTypeIds;
 
         public QsTypeSkeleton(QsMetaItemId typeId)
         {
             TypeId = typeId;
-            MemberSkeletons = new Dictionary<QsMetaItemIdElem, QsTypeSkeleton>();
+            this.memberTypeIds = new Dictionary<QsMetaItemIdElem, QsMetaItemId>();
+        }
+
+        public bool GetMemberTypeId(string name, int typeParamCount, [NotNullWhen(returnValue: true)] out QsMetaItemId? outTypeId)
+        {
+            return memberTypeIds.TryGetValue(new QsMetaItemIdElem(name, typeParamCount), out outTypeId);
+        }
+
+        public void AddMemberTypeId(string name, int typeParamCount, QsMetaItemId typeId)
+        {
+            memberTypeIds.Add(new QsMetaItemIdElem(name, typeParamCount), typeId);
         }
     }
 }

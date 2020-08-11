@@ -7,6 +7,8 @@ namespace QuickSC.StaticAnalyzer
 {
     public abstract class QsScriptFuncTemplate
     {
+        public QsMetaItemId FuncId { get; }
+
         public class FuncDecl : QsScriptFuncTemplate
         {
             public QsTypeValue? SeqElemTypeValue { get; }
@@ -14,7 +16,8 @@ namespace QuickSC.StaticAnalyzer
             public int LocalVarCount { get; }
             public QsStmt Body { get; }
 
-            public FuncDecl(QsTypeValue? seqElemTypeValue, bool bThisCall, int localVarCount, QsStmt body)
+            internal FuncDecl(QsMetaItemId funcId, QsTypeValue? seqElemTypeValue, bool bThisCall, int localVarCount, QsStmt body)
+                : base(funcId)
             {
                 SeqElemTypeValue = seqElemTypeValue;
                 this.bThisCall = bThisCall;
@@ -22,6 +25,14 @@ namespace QuickSC.StaticAnalyzer
                 Body = body;
             }
         }
+
+        public QsScriptFuncTemplate(QsMetaItemId funcId)
+        {
+            FuncId = funcId;
+        }
+
+        public static FuncDecl MakeFuncDecl(QsMetaItemId funcId, QsTypeValue? seqElemTypeValue, bool bThisCall, int localVarCount, QsStmt body)
+            => new FuncDecl(funcId, seqElemTypeValue, bThisCall, localVarCount, body);
 
         //public class EnumDeclElem : QsScriptFuncTemplate
         //{

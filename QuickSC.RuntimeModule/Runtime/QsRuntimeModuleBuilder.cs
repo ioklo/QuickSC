@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<QsDomainService, QsTypeEnv, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
+    using Invoker = Func<QsDomainService, QsTypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
 
     class QsRuntimeModuleBuilder
     {
@@ -27,9 +27,9 @@ namespace QuickSC.Runtime
             funcInstantiators = new List<QsNativeFuncInstantiator>();
         }
 
-        public void AddObjectInfo(QsRuntimeModuleObjectInfo objInfo)
+        public void AddBuildInfo(QsRuntimeModuleTypeBuildInfo objInfo)
         {
-            QsRuntimeModuleObjectBuilder.BuildObject(this, objInfo);
+            QsRuntimeModuleTypeBuilder.BuildObject(this, objInfo);
         }
 
         public void AddType(
@@ -47,6 +47,7 @@ namespace QuickSC.Runtime
         }
 
         public void AddFunc(
+            QsMetaItemId? outerId,
             QsMetaItemId funcId,
             bool bSeqCall,
             bool bThisCall,
@@ -55,13 +56,13 @@ namespace QuickSC.Runtime
             ImmutableArray<QsTypeValue> paramTypeValues,
             Invoker invoker)
         {
-            funcInfos.Add(new QsFuncInfo(funcId, bSeqCall, bThisCall, typeParams, retTypeValue, paramTypeValues));
+            funcInfos.Add(new QsFuncInfo(outerId, funcId, bSeqCall, bThisCall, typeParams, retTypeValue, paramTypeValues));
             funcInstantiators.Add(new QsNativeFuncInstantiator(funcId, bThisCall, invoker));
         }
 
-        public void AddVar(QsMetaItemId varId, bool bStatic, QsTypeValue typeValue)
+        public void AddVar(QsMetaItemId? outerId, QsMetaItemId varId, bool bStatic, QsTypeValue typeValue)
         {
-            varInfos.Add(new QsVarInfo(varId, bStatic, typeValue));
+            varInfos.Add(new QsVarInfo(outerId, varId, bStatic, typeValue));
         }
         
         public IEnumerable<QsTypeInfo> GetAllTypeInfos() => typeInfos;

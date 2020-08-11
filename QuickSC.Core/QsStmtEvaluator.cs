@@ -63,9 +63,9 @@ namespace QuickSC
 
                 var condValueTypeValue = testObjValue.GetTypeInst().GetTypeValue();
 
-                Debug.Assert(condValueTypeValue is QsTypeValue_Normal);
-                Debug.Assert(ifStmtInfo.TestTypeValue is QsTypeValue_Normal);
-                bTestPassed = evaluator.IsType((QsTypeValue_Normal)condValueTypeValue, (QsTypeValue_Normal)ifStmtInfo.TestTypeValue, context);
+                Debug.Assert(condValueTypeValue is QsTypeValue.Normal);
+                Debug.Assert(ifStmtInfo.TestTypeValue is QsTypeValue.Normal);
+                bTestPassed = evaluator.IsType((QsTypeValue.Normal)condValueTypeValue, (QsTypeValue.Normal)ifStmtInfo.TestTypeValue, context);
             }
 
             if (bTestPassed)
@@ -119,22 +119,24 @@ namespace QuickSC
                 await foreach (var value in EvaluateStmtAsync(forStmt.Body, context))
                     yield return value;
 
-                if (context.FlowControl == QsEvalFlowControl.Break)
+                var flowControl = context.GetFlowControl();
+
+                if (flowControl == QsEvalFlowControl.Break)
                 {
-                    context.FlowControl = QsEvalFlowControl.None;
+                    context.SetFlowControl(QsEvalFlowControl.None);
                     break;
                 }
-                else if (context.FlowControl == QsEvalFlowControl.Continue)
+                else if (flowControl == QsEvalFlowControl.Continue)
                 {
-                    context.FlowControl = QsEvalFlowControl.None;
+                    context.SetFlowControl(QsEvalFlowControl.None);
                 }
-                else if (context.FlowControl == QsEvalFlowControl.Return)
+                else if (flowControl == QsEvalFlowControl.Return)
                 {
                     break;
                 }
                 else
                 {
-                    Debug.Assert(context.FlowControl == QsEvalFlowControl.None);
+                    Debug.Assert(context.GetFlowControl() == QsEvalFlowControl.None);
                 }
 
                 if (forStmt.ContinueExp != null)
@@ -146,20 +148,23 @@ namespace QuickSC
 
         internal void EvaluateContinueStmt(QsContinueStmt continueStmt, QsEvalContext context)
         {
-            context.FlowControl = QsEvalFlowControl.Continue;
+            context.SetFlowControl(QsEvalFlowControl.Continue);
         }
 
         internal void EvaluateBreakStmt(QsBreakStmt breakStmt, QsEvalContext context)
         {
-            context.FlowControl = QsEvalFlowControl.Break;
+            context.SetFlowControl(QsEvalFlowControl.Break);
         }
 
         internal async ValueTask EvaluateReturnStmtAsync(QsReturnStmt returnStmt, QsEvalContext context)
         {
             if (returnStmt.Value != null)
-                await evaluator.EvalExpAsync(returnStmt.Value, context.RetValue!, context);
+            {
+                var retValue = context.GetRetValue();
+                await evaluator.EvalExpAsync(returnStmt.Value, retValue, context);
+            }
 
-            context.FlowControl = QsEvalFlowControl.Return;
+            context.SetFlowControl(QsEvalFlowControl.Return);
         }
 
         internal async IAsyncEnumerable<QsValue> EvaluateBlockStmtAsync(QsBlockStmt blockStmt, QsEvalContext context)
@@ -171,10 +176,10 @@ namespace QuickSC
                     yield return value;
 
                     // 확실하지 않아서 걸어둔다
-                    Debug.Assert(context.FlowControl == QsEvalFlowControl.None);
+                    Debug.Assert(context.GetFlowControl() == QsEvalFlowControl.None);
                 }
 
-                if (context.FlowControl != QsEvalFlowControl.None)
+                if (context.GetFlowControl() != QsEvalFlowControl.None)
                     break;
             }            
         }
@@ -197,7 +202,7 @@ namespace QuickSC
             var funcInst = new QsScriptFuncInst(
                 null,
                 false,
-                info.CaptureInfo.bCaptureThis ? context.ThisValue : null,
+                info.CaptureInfo.bCaptureThis ? context.GetThisValue() : null,
                 captures,
                 info.LocalVarCount,
                 taskStmt.Body);
@@ -213,17 +218,17 @@ namespace QuickSC
             context.AddTask(task);
         }
 
-        async IAsyncEnumerable<QsValue> EvaluateAwaitStmtAsync(QsAwaitStmt stmt, QsEvalContext context)
+        IAsyncEnumerable<QsValue> EvaluateAwaitStmtAsync(QsAwaitStmt stmt, QsEvalContext context)
         {
-            var prevTasks = context.Tasks;
-            context.SetTasks(ImmutableArray<Task>.Empty);            
+            async IAsyncEnumerable<QsValue> EvaluateAsync()
+            {
+                await foreach (var value in EvaluateStmtAsync(stmt.Body, context))
+                    yield return value;
 
-            await foreach (var value in EvaluateStmtAsync(stmt.Body, context))
-                yield return value;
-            
-            await Task.WhenAll(context.Tasks.ToArray());
+                await Task.WhenAll(context.GetTasks());
+            }
 
-            context.SetTasks(prevTasks);
+            return context.ExecInNewTasks(EvaluateAsync);
         }
 
         internal void EvaluateAsyncStmt(QsAsyncStmt asyncStmt, QsEvalContext context)
@@ -235,7 +240,7 @@ namespace QuickSC
             var funcInst = new QsScriptFuncInst(
                 null,
                 false,
-                info.CaptureInfo.bCaptureThis ? context.ThisValue : null,
+                info.CaptureInfo.bCaptureThis ? context.GetThisValue() : null,
                 captures,
                 info.LocalVarCount,
                 asyncStmt.Body);
@@ -267,7 +272,7 @@ namespace QuickSC
             var getCurrentInst = context.DomainService.GetFuncInst(info.GetCurrentValue);
 
             var elemTypeInst = context.DomainService.GetTypeInst(info.ElemTypeValue);
-            context.LocalVars[info.ElemLocalIndex] = elemTypeInst.MakeDefaultValue();
+            context.InitLocalVar(info.ElemLocalIndex, elemTypeInst.MakeDefaultValue());
 
             while (true)
             {
@@ -275,37 +280,39 @@ namespace QuickSC
                 if (!context.RuntimeModule.GetBool(moveNextResult)) break;
 
                 // GetCurrent
-                await evaluator.EvaluateFuncInstAsync(enumeratorValue, getCurrentInst, ImmutableArray<QsValue>.Empty, context.LocalVars[info.ElemLocalIndex]!, context);
+                await evaluator.EvaluateFuncInstAsync(enumeratorValue, getCurrentInst, ImmutableArray<QsValue>.Empty, context.GetLocalVar(info.ElemLocalIndex), context);
 
                 await foreach (var value in EvaluateStmtAsync(foreachStmt.Body, context))
                 {
                     yield return value;
                 }
 
-                if (context.FlowControl == QsEvalFlowControl.Break)
+                var flowControl = context.GetFlowControl();
+
+                if (flowControl == QsEvalFlowControl.Break)
                 {
-                    context.FlowControl = QsEvalFlowControl.None;
+                    context.SetFlowControl(QsEvalFlowControl.None);
                     break;
                 }
-                else if (context.FlowControl == QsEvalFlowControl.Continue)
+                else if (flowControl == QsEvalFlowControl.Continue)
                 {
-                    context.FlowControl = QsEvalFlowControl.None;
+                    context.SetFlowControl(QsEvalFlowControl.None);
                 }
-                else if (context.FlowControl == QsEvalFlowControl.Return)
+                else if (flowControl == QsEvalFlowControl.Return)
                 {
                     break;
                 }
                 else
                 {
-                    Debug.Assert(context.FlowControl == QsEvalFlowControl.None);
+                    Debug.Assert(flowControl == QsEvalFlowControl.None);
                 }
             }
         }
 
         async IAsyncEnumerable<QsValue> EvaluateYieldStmtAsync(QsYieldStmt yieldStmt, QsEvalContext context)
         {
-            await evaluator.EvalExpAsync(yieldStmt.Value, context.RetValue!, context);
-            yield return context.RetValue!;
+            await evaluator.EvalExpAsync(yieldStmt.Value, context.GetRetValue(), context);
+            yield return context.GetRetValue();
         }
         
         internal async IAsyncEnumerable<QsValue> EvaluateStmtAsync(QsStmt stmt, QsEvalContext context)

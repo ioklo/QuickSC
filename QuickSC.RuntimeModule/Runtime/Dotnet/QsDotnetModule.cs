@@ -29,27 +29,29 @@ namespace QuickSC.Runtime.Dotnet
         private QsTypeValue MakeTypeValue(Type baseType)
         {
             throw new NotImplementedException();
-        }
+        }        
 
         string MakeDotnetName(QsMetaItemId typeId)
         {
             var sb = new StringBuilder();
 
-            bool bFirst = true;
-            foreach (var elem in typeId.Elems)
+            void MakeNameInner(QsMetaItemId typeId)
             {
-                if (bFirst) bFirst = false;
-                else sb.Append('.');
+                if (typeId.Outer != null)
+                    MakeNameInner(typeId.Outer);
 
-                sb.Append(elem.Name);
+                sb.Append('.');
 
-                if (elem.TypeParamCount != 0)
+                sb.Append(typeId.Name);
+
+                if (typeId.TypeParamCount != 0)
                 {
                     sb.Append('`');
-                    sb.Append(elem.TypeParamCount);
+                    sb.Append(typeId.TypeParamCount);
                 }
             }
 
+            MakeNameInner(typeId);
             return sb.ToString();
         }
 
@@ -84,10 +86,8 @@ namespace QuickSC.Runtime.Dotnet
             throw new NotImplementedException();
         }
 
-        public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue_Normal ntv)
+        public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue.Normal ntv)
         {
-            var typeEnv = domainService.MakeTypeEnv(ntv);
-
             var dotnetType = assembly.GetType(MakeDotnetName(ntv.TypeId));
             var dotnetTypeInfo = dotnetType.GetTypeInfo();
 

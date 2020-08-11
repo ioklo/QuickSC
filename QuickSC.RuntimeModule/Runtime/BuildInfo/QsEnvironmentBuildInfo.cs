@@ -1,0 +1,53 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Text;
+
+namespace QuickSC.Runtime
+{
+    class QsEnvironmentBuildInfo : QsRuntimeModuleTypeBuildInfo
+    {
+        public QsEnvironmentBuildInfo()
+            : base(null, QsMetaItemId.Make("Environment"), Enumerable.Empty<string>(), null, () => new QsObjectValue(null))
+        {
+        }
+
+        public override void Build(QsRuntimeModuleTypeBuilder builder)
+        {
+            var stringTypeValue = QsTypeValue.MakeNormal(QsRuntimeModule.StringId);
+
+            builder.AddMemberVar(QsName.MakeText("HomeDir"), false, stringTypeValue);
+            builder.AddMemberVar(QsName.MakeText("ScriptDir"), false, stringTypeValue);
+        }
+    }
+
+    class QsEnvironmentObject : QsObject
+    {
+        QsValue homeDir;
+        QsValue scriptDir;
+
+        public string this[string varName]
+        {
+            get { return Environment.GetEnvironmentVariable(varName); }
+            set { Environment.SetEnvironmentVariable(varName, value); }
+        }
+
+        public QsEnvironmentObject(QsValue homeDir, QsValue scriptDir)
+        {
+            this.homeDir = homeDir;
+            this.scriptDir = scriptDir;
+        }
+
+        public override QsValue GetMemberValue(QsName varName)
+        {
+            if (varName.Name == "HomeDir")
+                return homeDir;
+
+            if (varName.Name == "ScriptDir")
+                return scriptDir;
+
+            throw new InvalidOperationException();
+        }
+    }
+}

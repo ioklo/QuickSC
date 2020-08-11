@@ -28,7 +28,7 @@ namespace QuickSC.ModuleTest
             throw new NotImplementedException();
         }
 
-        public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue_Normal typeValue)
+        public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue.Normal typeValue)
         {
             throw new NotImplementedException();
         }
@@ -55,7 +55,7 @@ namespace QuickSC.ModuleTest
             domainService.LoadModule(testModule);
 
             // globalVariable x
-            // var x = domainService.GetValue(new QsMetaItemId(new QsMetaItemIdElem("x", 0)));
+            // var x = domainService.GetValue(QsMetaItemId.Make(new QsMetaItemIdElem("x", 0)));
         }
     }
 }

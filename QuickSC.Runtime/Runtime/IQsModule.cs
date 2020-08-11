@@ -9,7 +9,7 @@ namespace QuickSC.Runtime
     {
         void OnLoad(QsDomainService domainService);
 
-        QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue_Normal typeValue);
+        QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue.Normal typeValue);
         QsFuncInst GetFuncInst(QsDomainService domainService, QsFuncValue funcValue);
     }
 }
