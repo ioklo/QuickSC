@@ -27,9 +27,8 @@ namespace QuickSC.StaticAnalyzer
             this.expAnalyzer = new QsExpAnalyzer(this);
             this.stmtAnalyzer = new QsStmtAnalyzer(this);
         }
-
         
-        internal bool AnalyzeVarDecl(QsVarDecl varDecl, QsAnalyzer.Context context)
+        internal bool AnalyzeVarDecl(QsVarDecl varDecl, Context context)
         {
             // 1. int x  // x를 추가
             // 2. int x = initExp // x 추가, initExp가 int인지 검사
@@ -55,17 +54,20 @@ namespace QuickSC.StaticAnalyzer
                 }
                 else
                 {
-                    if (!AnalyzeExp(elem.InitExp, context, out var initExpTypeValue))
-                        return false;
-
                     // var 처리
                     QsTypeValue typeValue;
                     if (declTypeValue is QsTypeValue.Var)
                     {
+                        if (!AnalyzeExp(elem.InitExp, null, context, out var initExpTypeValue))
+                            return false;
+
                         typeValue = initExpTypeValue;
                     }
                     else
                     {
+                        if (!AnalyzeExp(elem.InitExp, declTypeValue, context, out var initExpTypeValue))
+                            return false;
+
                         typeValue = declTypeValue;
 
                         if (!IsAssignable(declTypeValue, initExpTypeValue, context))
@@ -79,7 +81,7 @@ namespace QuickSC.StaticAnalyzer
             context.AddNodeInfo(varDecl, new QsVarDeclInfo(elemsBuilder.MoveToImmutable()));
             return true;
 
-            void AddElement(string name, QsTypeValue typeValue, QsAnalyzer.Context context)
+            void AddElement(string name, QsTypeValue typeValue, Context context)
             {
                 // TODO: globalScope에서 public인 경우는, globalStorage로 
                 if (context.IsGlobalScope())
@@ -95,14 +97,14 @@ namespace QuickSC.StaticAnalyzer
             }
         }        
 
-        public bool AnalyzeStringExpElement(QsStringExpElement elem, QsAnalyzer.Context context)
+        public bool AnalyzeStringExpElement(QsStringExpElement elem, Context context)
         {
             bool bResult = true;
 
             if (elem is QsExpStringExpElement expElem)
             {
                 // TODO: exp의 결과 string으로 변환 가능해야 하는 조건도 고려해야 한다
-                if (AnalyzeExp(expElem.Exp, context, out var expTypeValue))
+                if (AnalyzeExp(expElem.Exp, null, context, out var expTypeValue))
                 {
                     context.AddNodeInfo(elem, new QsExpStringExpElementInfo(expTypeValue));
                 }
@@ -118,7 +120,7 @@ namespace QuickSC.StaticAnalyzer
         public bool AnalyzeLambda(
             QsStmt body,
             ImmutableArray<QsLambdaExpParam> parameters,
-            QsAnalyzer.Context context,
+            Context context,
             [NotNullWhen(returnValue: true)] out QsCaptureInfo? outCaptureInfo,
             [NotNullWhen(returnValue: true)] out QsTypeValue.Func? outFuncTypeValue,
             out int outLocalVarCount)
@@ -144,9 +146,9 @@ namespace QuickSC.StaticAnalyzer
             var elemsBuilder = ImmutableArray.CreateBuilder<QsCaptureInfo.Element>();
             foreach (var needCapture in captureResult.NeedCaptures)
             {
-                if (context.GetIdentifierInfo(needCapture.VarName, ImmutableArray<QsTypeValue>.Empty, out var idInfo))
+                if (context.GetIdentifierInfo(needCapture.VarName, ImmutableArray<QsTypeValue>.Empty, null, out var idInfo))
                 {
-                    if (idInfo is QsAnalyzerIdentifierInfo.Var varIdInfo)
+                    if (idInfo is IdentifierInfo.Var varIdInfo)
                     {
                         switch (varIdInfo.StorageInfo)
                         {
@@ -203,19 +205,19 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        internal bool AnalyzeExp(QsExp exp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        public bool AnalyzeExp(QsExp exp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
-            return expAnalyzer.AnalyzeExp(exp, context, out typeValue);
+            return expAnalyzer.AnalyzeExp(exp, hintTypeValue, context, out typeValue);
         }
 
-        public bool AnalyzeStmt(QsStmt stmt, QsAnalyzer.Context context)
+        public bool AnalyzeStmt(QsStmt stmt, Context context)
         {
             return stmtAnalyzer.AnalyzeStmt(stmt, context);
         }
         
-        public bool AnalyzeFuncDecl(QsFuncDecl funcDecl, QsAnalyzer.Context context)
+        public bool AnalyzeFuncDecl(QsFuncDecl funcDecl, Context context)
         {
-            var funcInfo = context.GetFuncInfoByFuncDecl(funcDecl);
+            var funcInfo = context.GetFuncInfoByDecl(funcDecl);
 
             var bResult = true;
             
@@ -237,7 +239,7 @@ namespace QuickSC.StaticAnalyzer
                 bResult &= AnalyzeStmt(funcDecl.Body, context);
 
                 // TODO: Body가 실제로 리턴을 제대로 하는지 확인해야 할 필요가 있다
-                context.AddFuncTemplate(new QsScriptFuncTemplate.FuncDecl(
+                context.AddTemplate(QsScriptTemplate.MakeFunc(
                     funcInfo.FuncId,
                     funcDecl.FuncKind == QsFuncKind.Sequence ? funcInfo.RetTypeValue : null,
                     funcInfo.bThisCall, context.GetLocalVarCount(), funcDecl.Body));
@@ -246,7 +248,15 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeScript(QsScript script, QsAnalyzer.Context context)
+        public bool AnalyzeEnumDecl(QsEnumDecl enumDecl, Context context)
+        {
+            var enumInfo = context.GetEnumInfoByDecl(enumDecl);
+            context.AddTemplate(QsScriptTemplate.MakeEnum(enumInfo.TypeId, enumInfo.GetDefaultElemInfo().Name));
+
+            return true;
+        }
+
+        bool AnalyzeScript(QsScript script, Context context)
         {
             bool bResult = true;
 
@@ -270,6 +280,10 @@ namespace QuickSC.StaticAnalyzer
                     case QsFuncDeclScriptElement funcElem: 
                         bResult &= AnalyzeFuncDecl(funcElem.FuncDecl, context);
                         break;
+
+                    case QsEnumDeclScriptElement enumElem:
+                        bResult &= AnalyzeEnumDecl(enumElem.EnumDecl, context);
+                        break;
                 }
             }
 
@@ -280,7 +294,7 @@ namespace QuickSC.StaticAnalyzer
 
         public (int PrivateGlobalVarCount, 
             ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> InfosByNode,
-            ImmutableArray<QsScriptFuncTemplate> FuncTemplates,
+            ImmutableArray<QsScriptTemplate> Templates,
             QsTypeValueService TypeValueService,
             QsScriptMetadata ScriptMetadata)? 
 
@@ -299,11 +313,12 @@ namespace QuickSC.StaticAnalyzer
             var typeValueApplier = new QsTypeValueApplier(metadataService);
             var typeValueService = new QsTypeValueService(metadataService, typeValueApplier);
 
-            var context = new QsAnalyzer.Context(
+            var context = new Context(
                 metadataService,
                 typeValueService,
                 buildResult.TypeExpTypeValueService,
-                buildResult.FuncsByFuncDecl,
+                buildResult.FuncInfosByDecl,
+                buildResult.EnumInfosByDecl,
                 errorCollector);
 
             bool bResult = AnalyzeScript(script, context);
@@ -316,11 +331,11 @@ namespace QuickSC.StaticAnalyzer
             return (
                 context.GetPrivateGlobalVarCount(),
                 context.MakeInfosByNode(),
-                context.GetFuncTemplates().ToImmutableArray(), 
+                context.GetTemplates().ToImmutableArray(), 
                 typeValueService, buildResult.ScriptMetadata);
         }
 
-        public bool IsAssignable(QsTypeValue toTypeValue, QsTypeValue fromTypeValue, QsAnalyzer.Context context)
+        public bool IsAssignable(QsTypeValue toTypeValue, QsTypeValue fromTypeValue, Context context)
         {
             // B <- D
             // 지금은 fromType의 base들을 찾아가면서 toTypeValue와 맞는 것이 있는지 본다
@@ -359,7 +374,7 @@ namespace QuickSC.StaticAnalyzer
         public bool CheckInstanceMember(
             QsMemberExp memberExp,
             QsTypeValue objTypeValue,
-            QsAnalyzer.Context context,
+            Context context,
             [NotNullWhen(returnValue: true)] out QsVarValue? outVarValue)
         {
             outVarValue = null;
@@ -387,18 +402,11 @@ namespace QuickSC.StaticAnalyzer
 
         public bool CheckStaticMember(
             QsMemberExp memberExp,
-            QsTypeValue objTypeValue,
-            QsAnalyzer.Context context,
+            QsTypeValue.Normal objNormalTypeValue,
+            Context context,
             [NotNullWhen(returnValue: true)] out QsVarValue? outVarValue)
         {
             outVarValue = null;
-            QsTypeValue.Normal? objNormalTypeValue = objTypeValue as QsTypeValue.Normal;
-
-            if (objNormalTypeValue == null)
-            {
-                context.ErrorCollector.Add(memberExp, "멤버를 가져올 수 없습니다");
-                return false;
-            }
 
             if (!context.TypeValueService.GetMemberVarValue(objNormalTypeValue, QsName.MakeText(memberExp.MemberName), out outVarValue))
             {
@@ -421,7 +429,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public bool CheckParamTypes(object objForErrorMsg, ImmutableArray<QsTypeValue> parameters, IReadOnlyList<QsTypeValue> args, QsAnalyzer.Context context)
+        public bool CheckParamTypes(object objForErrorMsg, ImmutableArray<QsTypeValue> parameters, IReadOnlyList<QsTypeValue> args, Context context)
         {
             if (parameters.Length != args.Count)
             {

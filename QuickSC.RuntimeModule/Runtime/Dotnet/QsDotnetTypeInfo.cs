@@ -7,31 +7,30 @@ using System.Reflection;
 
 namespace QuickSC.Runtime.Dotnet
 {
-    public class QsDotnetTypeInfo : QsTypeInfo
+    public class QsDotnetTypeInfo : IQsTypeInfo
     {
+        public QsMetaItemId? OuterTypeId { get; }
+        public QsMetaItemId TypeId { get; }
+
         // it must be open type
         TypeInfo typeInfo;
 
         public QsDotnetTypeInfo(QsMetaItemId typeId, TypeInfo typeInfo)
-            : base(typeId)
-        {
-            this.typeInfo = typeInfo;
-        }
-
-        public override QsMetaItemId? GetOuterTypeId()
         {
             if (typeInfo.DeclaringType != null)
-                return QsDotnetMisc.MakeTypeId(typeInfo.DeclaringType);
+                OuterTypeId = QsDotnetMisc.MakeTypeId(typeInfo.DeclaringType);
 
-            return null;
-        }
+            TypeId = typeId;
 
-        public override QsTypeValue? GetBaseTypeValue()
+            this.typeInfo = typeInfo;
+        }        
+
+        public QsTypeValue? GetBaseTypeValue()
         {
             throw new NotImplementedException();
         }
 
-        public override bool GetMemberFuncId(QsName memberFuncId, [NotNullWhen(true)] out QsMetaItemId? outFuncId)
+        public bool GetMemberFuncId(QsName memberFuncId, [NotNullWhen(true)] out QsMetaItemId? outFuncId)
         {
             if (memberFuncId.Kind != QsSpecialName.Normal)
                 throw new NotImplementedException();
@@ -51,7 +50,7 @@ namespace QuickSC.Runtime.Dotnet
             }
         }
 
-        public override bool GetMemberTypeId(string name, [NotNullWhen(true)] out QsMetaItemId? outTypeId)
+        public bool GetMemberTypeId(string name, [NotNullWhen(true)] out QsMetaItemId? outTypeId)
         {
             var memberType = typeInfo.GetNestedType(name);
             if (memberType == null)
@@ -64,7 +63,7 @@ namespace QuickSC.Runtime.Dotnet
             return true;
         }
 
-        public override bool GetMemberVarId(QsName varName, [NotNullWhen(true)] out QsMetaItemId? outVarId)
+        public bool GetMemberVarId(QsName varName, [NotNullWhen(true)] out QsMetaItemId? outVarId)
         {
             var candidates = new List<MemberInfo>();
             var memberInfos = typeInfo.GetMember(varName.Name!, MemberTypes.Field, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
@@ -79,7 +78,7 @@ namespace QuickSC.Runtime.Dotnet
             return true;
         }
 
-        public override ImmutableArray<string> GetTypeParams()
+        public IReadOnlyList<string> GetTypeParams()
         {
             return typeInfo.GenericTypeParameters.Select(typeInfo => typeInfo.Name).ToImmutableArray();                
         }

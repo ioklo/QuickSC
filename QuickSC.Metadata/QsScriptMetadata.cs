@@ -8,11 +8,11 @@ namespace QuickSC
     {
         public string ModuleName { get; }
 
-        private ImmutableDictionary<QsMetaItemId, QsTypeInfo> typeInfos;
+        private ImmutableDictionary<QsMetaItemId, IQsTypeInfo> typeInfos;
         private ImmutableDictionary<QsMetaItemId, QsFuncInfo> funcInfos;
         private ImmutableDictionary<QsMetaItemId, QsVarInfo> varInfos;
 
-        public QsScriptMetadata(string moduleName, IEnumerable<QsTypeInfo> typeInfos, IEnumerable<QsFuncInfo> funcInfos, IEnumerable<QsVarInfo> varInfos)
+        public QsScriptMetadata(string moduleName, IEnumerable<IQsTypeInfo> typeInfos, IEnumerable<QsFuncInfo> funcInfos, IEnumerable<QsVarInfo> varInfos)
         {
             ModuleName = moduleName;
 
@@ -26,7 +26,7 @@ namespace QuickSC
             return funcInfos.TryGetValue(id, out funcInfo);
         }
 
-        public bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(true)] out QsTypeInfo? typeInfo)
+        public bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(true)] out IQsTypeInfo? typeInfo)
         {
             return typeInfos.TryGetValue(id, out typeInfo);
         }

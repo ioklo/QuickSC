@@ -36,23 +36,26 @@ namespace QuickSC.StaticAnalyzer
 
             // CurFunc와 bGlobalScope를 나누는 이유는, globalScope에서 BlockStmt 안으로 들어가면 global이 아니기 때문이다
             private bool bGlobalScope;
-            private ImmutableDictionary<QsFuncDecl, QsFuncInfo> funcsByFuncDecl;
+            private ImmutableDictionary<QsFuncDecl, QsFuncInfo> funcInfosByDecl;
+            private ImmutableDictionary<QsEnumDecl, QsEnumInfo> enumInfosByDecl;
             private QsTypeExpTypeValueService typeExpTypeValueService;
             private Dictionary<string, PrivateGlobalVarInfo> privateGlobalVarInfos;
             private Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo> infosByNode;
-            private List<QsScriptFuncTemplate> funcTemplates;
+            private List<QsScriptTemplate> templates;
 
             public Context(
                 QsMetadataService metadataService,
                 QsTypeValueService typeValueService,
                 QsTypeExpTypeValueService typeExpTypeValueService,
-                ImmutableDictionary<QsFuncDecl, QsFuncInfo> funcsByFuncDecl,
+                ImmutableDictionary<QsFuncDecl, QsFuncInfo> funcInfosByDecl,
+                ImmutableDictionary<QsEnumDecl, QsEnumInfo> enumInfosByDecl,
                 IQsErrorCollector errorCollector)
             {
                 MetadataService = metadataService;
                 TypeValueService = typeValueService;
 
-                this.funcsByFuncDecl = funcsByFuncDecl;
+                this.funcInfosByDecl = funcInfosByDecl;
+                this.enumInfosByDecl = enumInfosByDecl;
                 this.typeExpTypeValueService = typeExpTypeValueService;
 
                 ErrorCollector = errorCollector;
@@ -62,7 +65,7 @@ namespace QuickSC.StaticAnalyzer
                 privateGlobalVarInfos = new Dictionary<string, PrivateGlobalVarInfo>();
 
                 infosByNode = new Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo>(QsRefEqComparer<IQsSyntaxNode>.Instance);
-                funcTemplates = new List<QsScriptFuncTemplate>();
+                templates = new List<QsScriptTemplate>();
             }
 
             public void AddNodeInfo(IQsSyntaxNode node, QsSyntaxNodeInfo info)
@@ -127,10 +130,16 @@ namespace QuickSC.StaticAnalyzer
                 throw new NotImplementedException();
             }
 
-            public QsFuncInfo GetFuncInfoByFuncDecl(QsFuncDecl funcDecl)
+            public QsFuncInfo GetFuncInfoByDecl(QsFuncDecl funcDecl)
             {
-                return funcsByFuncDecl[funcDecl];
+                return funcInfosByDecl[funcDecl];
             }
+
+            public QsEnumInfo GetEnumInfoByDecl(QsEnumDecl enumDecl)
+            {
+                return enumInfosByDecl[enumDecl];
+            }
+
             public bool IsGlobalScope()
             {
                 return bGlobalScope;
@@ -151,23 +160,23 @@ namespace QuickSC.StaticAnalyzer
                 return infosByNode.ToImmutableWithComparer();
             }
 
-            public void AddFuncTemplate(QsScriptFuncTemplate funcTempl)
+            public void AddTemplate(QsScriptTemplate funcTempl)
             {
-                funcTemplates.Add(funcTempl);
+                templates.Add(funcTempl);
             }
 
-            private QsAnalyzerIdentifierInfo MakeVarIdentifierInfo(QsStorageInfo storageInfo, QsTypeValue typeValue)
+            private IdentifierInfo MakeVarIdentifierInfo(QsStorageInfo storageInfo, QsTypeValue typeValue)
             {
                 if (curFunc.ShouldOverrideTypeValue(storageInfo, typeValue, out var overriddenTypeValue))
-                    return QsAnalyzerIdentifierInfo.MakeVar(storageInfo, overriddenTypeValue);
+                    return IdentifierInfo.MakeVar(storageInfo, overriddenTypeValue);
 
-                return QsAnalyzerIdentifierInfo.MakeVar(storageInfo, typeValue);
+                return IdentifierInfo.MakeVar(storageInfo, typeValue);
             }
 
             // 지역 스코프에서 
             private bool GetLocalIdentifierInfo(
                 string idName, IReadOnlyList<QsTypeValue> typeArgs,
-                [NotNullWhen(returnValue: true)] out QsAnalyzerIdentifierInfo? outIdInfo)
+                [NotNullWhen(returnValue: true)] out IdentifierInfo? outIdInfo)
             {
                 // 지역 스코프에는 변수만 있고, 함수, 타입은 없으므로 이름이 겹치는 것이 있는지 검사하지 않아도 된다
                 if (typeArgs.Count == 0)
@@ -186,7 +195,7 @@ namespace QuickSC.StaticAnalyzer
 
             private bool GetThisIdentifierInfo(
                 string idName, IReadOnlyList<QsTypeValue> typeArgs,
-                [NotNullWhen(returnValue: true)] out QsAnalyzerIdentifierInfo? idInfo)
+                [NotNullWhen(returnValue: true)] out IdentifierInfo? idInfo)
             {
                 // TODO: implementation
 
@@ -196,7 +205,7 @@ namespace QuickSC.StaticAnalyzer
 
             private bool GetPrivateGlobalVarIdentifierInfo(
                 string idName, IReadOnlyList<QsTypeValue> typeArgs,
-                [NotNullWhen(returnValue: true)] out QsAnalyzerIdentifierInfo? outIdInfo)
+                [NotNullWhen(returnValue: true)] out IdentifierInfo? outIdInfo)
             {
                 if (typeArgs.Count == 0)
                     if (privateGlobalVarInfos.TryGetValue(idName, out var privateGlobalVarInfo))
@@ -214,11 +223,12 @@ namespace QuickSC.StaticAnalyzer
 
             private bool GetModuleGlobalIdentifierInfo(
                 string idName, IReadOnlyList<QsTypeValue> typeArgs,
-                [NotNullWhen(returnValue: true)] out QsAnalyzerIdentifierInfo? outIdInfo)
+                QsTypeValue? hintTypeValue,
+                [NotNullWhen(returnValue: true)] out IdentifierInfo? outIdInfo)
             {
                 var itemId = QsMetaItemId.Make(idName, typeArgs.Count);
 
-                var candidates = new List<QsAnalyzerIdentifierInfo>();
+                var candidates = new List<IdentifierInfo>();
 
                 // id에 typeCount가 들어가므로 typeArgs.Count검사는 하지 않는다
                 foreach (var varInfo in MetadataService.GetVarInfos(itemId))
@@ -235,16 +245,34 @@ namespace QuickSC.StaticAnalyzer
 
                 foreach (var funcInfo in MetadataService.GetFuncInfos(itemId))
                 {
-                    var idInfo = QsAnalyzerIdentifierInfo.MakeFunc(new QsFuncValue(funcInfo.FuncId, typeArgList));
+                    var idInfo = IdentifierInfo.MakeFunc(new QsFuncValue(funcInfo.FuncId, typeArgList));
                     candidates.Add(idInfo);
                 }
 
                 foreach (var typeInfo in MetadataService.GetTypeInfos(itemId))
                 {
-                    var idInfo = QsAnalyzerIdentifierInfo.MakeType(QsTypeValue.MakeNormal(typeInfo.TypeId, typeArgList));
+                    var idInfo = IdentifierInfo.MakeType(QsTypeValue.MakeNormal(typeInfo.TypeId, typeArgList));
                     candidates.Add(idInfo);
                 }
 
+                // enum 힌트 사용, typeArgs가 있으면 지나간다
+                if (hintTypeValue is QsTypeValue.Normal hintNTV && typeArgs.Count == 0)
+                {
+                    // hintNTV가 최상위 타입이라는 것을 확인하기 위해 TypeArgList의 Outer를 확인했다.
+                    if (hintNTV.TypeArgList.Outer == null)
+                    {
+                        var hintTypeInfo = MetadataService.GetTypeInfos(hintNTV.TypeId).Single();
+                        if( hintTypeInfo is IQsEnumInfo enumTypeInfo)
+                        {
+                            if (enumTypeInfo.GetElemInfo(idName, out var elemInfo))
+                            {
+                                var idInfo = IdentifierInfo.MakeEnumElem(hintNTV, elemInfo.Value);
+                                candidates.Add(idInfo);
+                            }
+                        }
+                    }
+                }
+                
                 if (candidates.Count == 1)
                 {
                     outIdInfo = candidates[0];
@@ -257,22 +285,26 @@ namespace QuickSC.StaticAnalyzer
 
             public bool GetIdentifierInfo(
                 string idName, IReadOnlyList<QsTypeValue> typeArgs,
-                [NotNullWhen(returnValue: true)] out QsAnalyzerIdentifierInfo? idInfo)
+                QsTypeValue? hintTypeValue,
+                [NotNullWhen(returnValue: true)] out IdentifierInfo? idInfo)
             {
-                // 1. local 변수
+                // 1. local 변수, local 변수에서는 힌트를 쓸 일이 없다
                 if (GetLocalIdentifierInfo(idName, typeArgs, out idInfo))
                     return true;
 
                 // 2. thisType의 {{instance, static} * {변수, 함수}}, 타입. 아직 지원 안함
+                // 힌트는 오버로딩 함수 선택에 쓰일수도 있고,
+                // 힌트가 thisType안의 enum인 경우 elem을 선택할 수도 있다
                 if (GetThisIdentifierInfo(idName, typeArgs, out idInfo))
                     return true;
 
-                // 3. private global 'variable'
+                // 3. private global 'variable', 변수이므로 힌트를 쓸 일이 없다
                 if (GetPrivateGlobalVarIdentifierInfo(idName, typeArgs, out idInfo))
                     return true;
 
-                // 4. module global, 변수, 함수, 타입
-                if (GetModuleGlobalIdentifierInfo(idName, typeArgs, out idInfo))
+                // 4. module global, 변수, 함수, 타입, 
+                // 오버로딩 함수 선택, hint가 global enum인 경우, elem선택
+                if (GetModuleGlobalIdentifierInfo(idName, typeArgs, hintTypeValue, out idInfo))
                     return true;
 
                 idInfo = null;
@@ -285,9 +317,9 @@ namespace QuickSC.StaticAnalyzer
                 return curFunc.MakeLambdaFuncId();
             }
 
-            internal IEnumerable<QsScriptFuncTemplate> GetFuncTemplates()
+            internal IEnumerable<QsScriptTemplate> GetTemplates()
             {
-                return funcTemplates;
+                return templates;
             }
 
             // curFunc

@@ -8,34 +8,45 @@ namespace QuickSC
 {
     public class QsEnumValue : QsValue
     {
-        private Dictionary<QsName, QsValue> valueLocations;
-
-        public QsTypeInst TypeInst { get; }
-
-        // memberValues will be copied
-        public QsEnumValue(QsTypeInst typeInst, IEnumerable<(QsName Name, QsValue Value)> memberValues)
+        public string ElemName { get; private set; }
+        private Dictionary<string, QsValue> values;
+        
+        public QsEnumValue(string elemName, IEnumerable<(string Name, QsValue Value)> memberValues)
         {
-            TypeInst = typeInst;
+            ElemName = elemName;
 
-            valueLocations = new Dictionary<QsName, QsValue>();
+            values = new Dictionary<string, QsValue>();
             foreach (var memberValue in memberValues)
-                valueLocations.Add(memberValue.Name, memberValue.Value.MakeCopy());
+                values.Add(memberValue.Name, memberValue.Value);
         }        
         
         public override QsValue MakeCopy()
         {
-            var copiedMembers = valueLocations.Select(e => (e.Key, e.Value));
-            return new QsEnumValue(TypeInst, copiedMembers);
+            var copiedMembers = values.Select(e => (e.Key, e.Value));
+            return new QsEnumValue(ElemName, copiedMembers);
         }
 
         public override void SetValue(QsValue fromValue)
         {
-            this.valueLocations = ((QsEnumValue)fromValue).valueLocations;
+            QsEnumValue enumValue = (QsEnumValue)fromValue;
+
+            SetValue(enumValue.ElemName, enumValue.values.Select(tv => (tv.Key, tv.Value)));
         }
 
-        public QsTypeInst GetTypeInst()
+        public void SetValue(string elemName, IEnumerable<(string Name, QsValue Value)> memberValues)
         {
-            return TypeInst;
+            if (ElemName != elemName)
+            {
+                ElemName = elemName;
+                values.Clear();
+                foreach (var memberValue in memberValues)
+                    values[memberValue.Name] = memberValue.Value.MakeCopy();
+            }
+            else
+            {
+                foreach (var memberValue in memberValues)
+                    values[memberValue.Name].SetValue(memberValue.Value);
+            }
         }
     }
     

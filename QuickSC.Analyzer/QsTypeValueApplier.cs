@@ -21,15 +21,14 @@ namespace QuickSC
             if (typeInfo == null)
                 Debug.Assert(false);
 
-            var outerId = typeInfo.GetOuterTypeId();
-            if (outerId != null)
-                MakeTypeEnv_Type(outerId, typeArgList.Outer!, typeEnv);
+            if (typeInfo.OuterTypeId != null)
+                MakeTypeEnv_Type(typeInfo.OuterTypeId, typeArgList.Outer!, typeEnv);
 
             var typeParams = typeInfo.GetTypeParams();
 
-            Debug.Assert(typeParams.Length == typeArgList.Args.Length);
+            Debug.Assert(typeParams.Count == typeArgList.Args.Length);
 
-            for (int i = 0; i < typeParams.Length; i++)
+            for (int i = 0; i < typeParams.Count; i++)
                 typeEnv[QsTypeValue.MakeTypeVar(typeId, typeParams[i])] = typeArgList.Args[i];
         }
 

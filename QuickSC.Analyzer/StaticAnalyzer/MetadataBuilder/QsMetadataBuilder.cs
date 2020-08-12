@@ -17,60 +17,7 @@ namespace QuickSC.StaticAnalyzer
         public QsMetadataBuilder(QsTypeExpEvaluator typeExpEvaluator)
         {
             this.typeExpEvaluator = typeExpEvaluator;
-        }
-        
-        void BuildEnumDeclElement(QsMetaItemId outerTypeId, QsEnumDeclElement elem, Context context)
-        {
-            // TODO: 새로 기획한 방식대로 다시 작성할 것
-            //var thisTypeValue = context.TypeBuilder!.ThisTypeValue;
-
-            //// 타입 추가
-            //var elemType = new QsDefaultTypeInfo(
-            //    outerTypeId,
-            //    context.GetTypeId(elem), 
-            //    ImmutableArray<string>.Empty,                
-            //    thisTypeValue, // enum E<T>{ First } => E<T>.First : E<T>
-            //    ImmutableArray<QsMetaItemId>.Empty,
-            //    ImmutableArray<QsMetaItemId>.Empty,
-            //    ImmutableArray<QsMetaItemId>.Empty);
-
-            //context.TypeBuilder.MemberTypeIds.Add(QsName.Text(elem.Name), elemType.TypeId);
-
-            //if (0 < elem.Params.Length)
-            //{
-            //    var argTypes = ImmutableArray.CreateBuilder<QsTypeValue>(elem.Params.Length);
-            //    foreach (var param in elem.Params)
-            //    {
-            //        var typeValue = context.GetTypeValue(param.Type);
-            //        argTypes.Add(typeValue);
-            //    }
-
-            //    // Func를 만들까 FuncSkeleton을 만들까
-            //    var func = MakeFunc(
-            //        null,
-            //        outerTypeId,
-            //        context.GetFuncId(elem),
-            //        false,
-            //        false, 
-            //        ImmutableArray<string>.Empty, 
-            //        thisTypeValue, 
-            //        argTypes.MoveToImmutable(), 
-            //        context);
-
-            //    context.TypeBuilder.MemberFuncIds.Add(QsName.Text(elem.Name), func.FuncId);
-            //}
-            //else
-            //{
-            //    // NOTICE : E.First 타입이 아니라 E 타입이다 var x = E.First; 에서 x는 E여야 하기 떄문
-            //    var variable = MakeVar(
-            //        QsMetaItemId.Make(new QsMetaItemIdElem(elem.Name, 0)),
-            //        bStatic: true,
-            //        thisTypeValue,
-            //        context);
-
-            //    context.TypeBuilder.MemberVarIds.Add(QsName.Text(elem.Name), variable.VarId); 
-            //}
-        }
+        }        
 
         private QsFuncInfo MakeFunc(
             QsFuncDecl? funcDecl,
@@ -103,32 +50,27 @@ namespace QuickSC.StaticAnalyzer
 
         void BuildEnumDecl(QsEnumDecl enumDecl, Context context)
         {
-            // TODO: Enum다시 만들기
-            //var typeId = context.GetTypeId(enumDecl);
+            QsEnumElemInfo MakeElemInfo(QsMetaItemId enumTypeId, QsEnumDeclElement elem, Context context)
+            {
+                var fieldInfos = elem.Params.Select(parameter =>
+                {
+                    var typeValue = context.GetTypeValue(parameter.Type);
+                    return new QsEnumElemFieldInfo(typeValue, parameter.Name);
+                });
+
+                return new QsEnumElemInfo(elem.Name, fieldInfos);
+            }
             
-            //var thisTypeValue = QsTypeValue.MakeNormal(
-            //    context.TypeBuilder?.ThisTypeValue,
-            //    typeId,
-            //    enumDecl.TypeParams.Select(typeParam => (QsTypeValue)QsTypeValue.MakeTypeVar(typeId, typeParam)).ToImmutableArray());
+            var typeId = context.GetTypeId(enumDecl);
+            
+            var elemInfos = enumDecl.Elems.Select(elem => MakeElemInfo(typeId, elem, context));
 
-            //var prevTypeBuilder = context.TypeBuilder;
-            //context.TypeBuilder = new TypeBuilder(thisTypeValue);
+            var enumType = new QsEnumInfo(
+                context.GetThisTypeValue()?.TypeId,
+                typeId,
+                enumDecl.TypeParams, elemInfos);
 
-            //foreach (var elem in enumDecl.Elems)
-            //    BuildEnumDeclElement(typeId, elem, context);
-
-            //var enumType = new QsDefaultTypeInfo(
-            //    null, // TODO: 일단 최상위
-            //    typeId,
-            //    enumDecl.TypeParams,
-            //    null, // TODO: Enum이던가 Object여야 한다,
-            //    context.TypeBuilder.MemberTypeIds.Values.ToImmutableArray(),
-            //    context.TypeBuilder.MemberFuncIds.Values.ToImmutableArray(),
-            //    context.TypeBuilder.MemberVarIds.Values.ToImmutableArray());
-
-            //context.TypeBuilder = prevTypeBuilder;
-
-            //context.TypeInfos.Add(enumType);
+            context.AddEnumInfo(enumDecl, enumType);
         }
 
         void BuildFuncDecl(QsFuncDecl funcDecl, Context context)
@@ -213,7 +155,8 @@ namespace QuickSC.StaticAnalyzer
             return new Result(
                 scriptMetadata,
                 typeEvalResult.Value.TypeExpTypeValueService,
-                context.GetFuncsByFuncDecl());
+                context.GetFuncsByFuncDecl(),
+                context.GetEnumInfosByDecl());
         }
     }
 }

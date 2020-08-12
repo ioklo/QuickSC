@@ -13,7 +13,7 @@ namespace QuickSC.Runtime
 {   
     public class QsRuntimeModule : IQsRuntimeModule
     {
-        private ImmutableDictionary<QsMetaItemId, QsTypeInfo> typeInfos;
+        private ImmutableDictionary<QsMetaItemId, IQsTypeInfo> typeInfos;
         private ImmutableDictionary<QsMetaItemId, QsFuncInfo> funcInfos;
         private ImmutableDictionary<QsMetaItemId, QsVarInfo> varInfos;
         private ImmutableDictionary<QsMetaItemId, QsNativeTypeInstantiator> typeInstantiators;
@@ -36,7 +36,7 @@ namespace QuickSC.Runtime
         public static QsMetaItemId envId = QsMetaItemId.Make("env");
 
         // TODO: localId와 globalId를 나눠야 할 것 같다. 내부에서는 LocalId를 쓰고, Runtime은 GlobalId로 구분해야 할 것 같다
-        public bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(returnValue: true)] out QsTypeInfo? outTypeInfo)
+        public bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(returnValue: true)] out IQsTypeInfo? outTypeInfo)
         {
             return typeInfos.TryGetValue(id, out outTypeInfo);
         }
@@ -57,9 +57,9 @@ namespace QuickSC.Runtime
 
             var moduleBuilder = new QsRuntimeModuleBuilder();
 
-            moduleBuilder.AddBuildInfo(new QsEmptyBuildInfo(BoolId, () => new QsValue<bool>(false)));
+            moduleBuilder.AddBuildInfo(new QsEmptyStructBuildInfo(BoolId, () => new QsValue<bool>(false)));
             moduleBuilder.AddBuildInfo(new QsIntBuildInfo(this));
-            moduleBuilder.AddBuildInfo(new QsEmptyBuildInfo(StringId, () => new QsObjectValue(null)));
+            moduleBuilder.AddBuildInfo(new QsEmptyClassBuildInfo(StringId, () => new QsObjectValue(null)));
             moduleBuilder.AddBuildInfo(new QsEnumerableBuildInfo());
             moduleBuilder.AddBuildInfo(new QsEnumeratorBuildInfo());
             moduleBuilder.AddBuildInfo(new QsListBuildInfo());
@@ -79,9 +79,9 @@ namespace QuickSC.Runtime
             this.scriptDir = scriptDir;
         }
 
-        class QsEmptyBuildInfo : QsRuntimeModuleTypeBuildInfo
+        class QsEmptyStructBuildInfo : QsRuntimeModuleTypeBuildInfo.Struct
         {
-            public QsEmptyBuildInfo(QsMetaItemId typeId, Func<QsValue> defaultValueFactory)
+            public QsEmptyStructBuildInfo(QsMetaItemId typeId, Func<QsValue> defaultValueFactory)
                 : base(null, typeId, Enumerable.Empty<string>(), null, defaultValueFactory)
             {
             }
@@ -89,7 +89,19 @@ namespace QuickSC.Runtime
             public override void Build(QsRuntimeModuleTypeBuilder builder) 
             { 
             }
-        }   
+        }
+
+        class QsEmptyClassBuildInfo : QsRuntimeModuleTypeBuildInfo.Class
+        {
+            public QsEmptyClassBuildInfo(QsMetaItemId typeId, Func<QsValue> defaultValueFactory)
+                : base(null, typeId, Enumerable.Empty<string>(), null, defaultValueFactory)
+            {
+            }
+
+            public override void Build(QsRuntimeModuleTypeBuilder builder)
+            {
+            }
+        }
 
         public string GetString(QsValue value)
         {

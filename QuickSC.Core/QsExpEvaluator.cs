@@ -39,6 +39,10 @@ namespace QuickSC
                 case QsStorageInfo.Local ls:
                     return context.GetLocalVar(ls.Index);
 
+                // enum값
+                case QsStorageInfo.EnumElem ees:
+                    return new QsEnumValue(ees.Name, Enumerable.Empty<(string, QsValue)>());
+
                 case QsStorageInfo.StaticMember sms:
                     {
                         if (sms.ObjectInfo != null)
@@ -836,6 +840,10 @@ namespace QuickSC
 
                 // object와는 별개로 static value를 가져온다
                 result.SetValue(context.GetStaticValue(staticKind.VarValue));
+            }
+            else if (info is QsMemberExpInfo.EnumElem enumElemKind)
+            {
+                ((QsEnumValue)result).SetValue(enumElemKind.Name, Enumerable.Empty<(string, QsValue)>());
             }
             else
             {

@@ -100,7 +100,6 @@ namespace QuickSC.StaticAnalyzer
                 return false;
             }
         }
-
         
         bool EvaluateMemberTypeExp(QsMemberTypeExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
@@ -141,21 +140,28 @@ namespace QuickSC.StaticAnalyzer
             QsTypeValue.Normal parent, 
             string memberName, 
             ImmutableArray<QsTypeValue> typeArgs, 
-            [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+            [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
-            typeValue = null;
+            outTypeValue = null;
             
             if (!(parent is QsTypeValue.Normal normalParent))
                 return false;
             
             if (!context.GetSkeleton(normalParent.TypeId, out var parentSkeleton))
-                return false;                
-
-            if (!parentSkeleton.GetMemberTypeId(memberName, typeArgs.Length, out var childTypeId))
                 return false;
 
-            typeValue = QsTypeValue.MakeNormal(childTypeId, QsTypeArgumentList.Make(parent.TypeArgList, typeArgs));
-            return true;
+            if (parentSkeleton.GetMemberTypeId(memberName, typeArgs.Length, out var childTypeId))
+            {
+                outTypeValue = QsTypeValue.MakeNormal(childTypeId, QsTypeArgumentList.Make(parent.TypeArgList, typeArgs));
+                return true;
+            }
+            else if (parentSkeleton.ContainsEnumElem(memberName))
+            {
+                outTypeValue = QsTypeValue.MakeEnumElem(parent, memberName);
+                return true;
+            }
+
+            return false;
         }
 
         bool EvaluateTypeExp(QsTypeExp exp, Context context, [NotNullWhen(returnValue:true)] out QsTypeValue? typeValue)

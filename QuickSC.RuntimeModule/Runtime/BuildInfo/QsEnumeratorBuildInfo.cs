@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    class QsEnumeratorBuildInfo : QsRuntimeModuleTypeBuildInfo
+    class QsEnumeratorBuildInfo : QsRuntimeModuleTypeBuildInfo.Class
     {
         public QsEnumeratorBuildInfo()
             : base(null, QsRuntimeModule.EnumeratorId, ImmutableArray.Create("T"), null, () => new QsObjectValue(null))

@@ -9,16 +9,19 @@ namespace QuickSC.StaticAnalyzer
         {
             public QsScriptMetadata ScriptMetadata { get; }
             public QsTypeExpTypeValueService TypeExpTypeValueService { get; }
-            public ImmutableDictionary<QsFuncDecl, QsFuncInfo> FuncsByFuncDecl { get; }
+            public ImmutableDictionary<QsFuncDecl, QsFuncInfo> FuncInfosByDecl { get; }
+            public ImmutableDictionary<QsEnumDecl, QsEnumInfo> EnumInfosByDecl{ get; }
 
             public Result(
                 QsScriptMetadata scriptMetadata,
                 QsTypeExpTypeValueService typeExpTypeValueService,
-                ImmutableDictionary<QsFuncDecl, QsFuncInfo> funcsByFuncDecl)
+                ImmutableDictionary<QsFuncDecl, QsFuncInfo> funcInfosbyDecl,
+                ImmutableDictionary<QsEnumDecl, QsEnumInfo> enumInfosByDecl)
             {
                 ScriptMetadata = scriptMetadata;
                 TypeExpTypeValueService = typeExpTypeValueService;
-                FuncsByFuncDecl = funcsByFuncDecl;
+                FuncInfosByDecl = funcInfosbyDecl;
+                EnumInfosByDecl = enumInfosByDecl;
             }
         }
     }

@@ -10,7 +10,7 @@ namespace QuickSC.Runtime
 
     class QsRuntimeModuleBuilder
     {
-        List<QsTypeInfo> typeInfos;
+        List<IQsTypeInfo> typeInfos;
         List<QsFuncInfo> funcInfos;
         List<QsVarInfo> varInfos;
 
@@ -19,7 +19,7 @@ namespace QuickSC.Runtime
 
         public QsRuntimeModuleBuilder()
         {
-            typeInfos = new List<QsTypeInfo>();
+            typeInfos = new List<IQsTypeInfo>();
             funcInfos = new List<QsFuncInfo>();
             varInfos = new List<QsVarInfo>();
 
@@ -27,13 +27,13 @@ namespace QuickSC.Runtime
             funcInstantiators = new List<QsNativeFuncInstantiator>();
         }
 
-        public void AddBuildInfo(QsRuntimeModuleTypeBuildInfo objInfo)
+        public void AddBuildInfo(QsRuntimeModuleTypeBuildInfo buildInfo)
         {
-            QsRuntimeModuleTypeBuilder.BuildObject(this, objInfo);
+            QsRuntimeModuleTypeBuilder.BuildObject(this, buildInfo);
         }
 
-        public void AddType(
-            QsMetaItemId? outerTypeId, 
+        public void AddClassType(
+            QsMetaItemId? outerTypeId,
             QsMetaItemId typeId,
             IEnumerable<string> typeParams,
             QsTypeValue? baseTypeValue,
@@ -42,7 +42,21 @@ namespace QuickSC.Runtime
             IEnumerable<QsMetaItemId> memberVarIds,
             Func<QsValue> defaultValueFactory)
         {
-            typeInfos.Add(new QsDefaultTypeInfo(outerTypeId, typeId, typeParams, baseTypeValue, memberTypeIds, memberFuncIds, memberVarIds));
+            typeInfos.Add(new QsClassInfo(outerTypeId, typeId, typeParams, baseTypeValue, memberTypeIds, memberFuncIds, memberVarIds));
+            typeInstantiators.Add(new QsNativeTypeInstantiator(typeId, defaultValueFactory));
+        }
+
+        public void AddStructType(
+            QsMetaItemId? outerTypeId,
+            QsMetaItemId typeId,
+            IEnumerable<string> typeParams,
+            QsTypeValue? baseTypeValue,
+            IEnumerable<QsMetaItemId> memberTypeIds,
+            IEnumerable<QsMetaItemId> memberFuncIds,
+            IEnumerable<QsMetaItemId> memberVarIds,
+            Func<QsValue> defaultValueFactory)
+        {
+            typeInfos.Add(new QsStructInfo(outerTypeId, typeId, typeParams, baseTypeValue, memberTypeIds, memberFuncIds, memberVarIds));
             typeInstantiators.Add(new QsNativeTypeInstantiator(typeId, defaultValueFactory));
         }
 
@@ -65,7 +79,7 @@ namespace QuickSC.Runtime
             varInfos.Add(new QsVarInfo(outerId, varId, bStatic, typeValue));
         }
         
-        public IEnumerable<QsTypeInfo> GetAllTypeInfos() => typeInfos;
+        public IEnumerable<IQsTypeInfo> GetAllTypeInfos() => typeInfos;
         public IEnumerable<QsFuncInfo> GetAllFuncInfos() => funcInfos;
         public IEnumerable<QsVarInfo> GetAllVarInfos() => varInfos;
         public IEnumerable<QsNativeTypeInstantiator> GetAllTypeInstantiators() => typeInstantiators;

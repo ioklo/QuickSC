@@ -18,7 +18,7 @@ namespace QuickSC
             this.metadatas = metadatas;
         }
         
-        public IEnumerable<QsTypeInfo> GetTypeInfos(QsMetaItemId typeId)
+        public IEnumerable<IQsTypeInfo> GetTypeInfos(QsMetaItemId typeId)
         {
             foreach (var metadata in metadatas)
             {

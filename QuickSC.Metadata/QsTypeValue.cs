@@ -98,12 +98,25 @@ namespace QuickSC
             }
         }
 
+        public class EnumElem : QsTypeValue
+        {
+            public Normal EnumTypeValue { get; }
+            public string Name { get; }
+
+            public EnumElem(Normal enumTypeValue, string name)
+            {
+                EnumTypeValue = enumTypeValue;
+                Name = name;
+            }
+        }
+
         public static Var MakeVar() => Var.Instance;
         public static TypeVar MakeTypeVar(QsMetaItemId parentId, string name) => new TypeVar(parentId, name);
         public static Normal MakeNormal(QsMetaItemId typeId, QsTypeArgumentList args) => new Normal(typeId, args);
         public static Normal MakeNormal(QsMetaItemId typeId) => new Normal(typeId, QsTypeArgumentList.Empty);
         public static Void MakeVoid() => Void.Instance;
         public static Func MakeFunc(QsTypeValue ret, IEnumerable<QsTypeValue> parameters) => new Func(ret, parameters);
+        public static EnumElem MakeEnumElem(Normal enumTypeValue, string name) => new EnumElem(enumTypeValue, name);
 
         // opeator
         public static bool operator ==(QsTypeValue? left, QsTypeValue? right)
@@ -115,6 +128,8 @@ namespace QuickSC
         {
             return !(left == right);
         }
+
+        
     }
     
 #pragma warning restore CS0660, CS0661

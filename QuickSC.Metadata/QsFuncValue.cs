@@ -30,7 +30,7 @@ namespace QuickSC
 
         public static bool operator ==(QsFuncValue? left, QsFuncValue? right)
         {
-            return EqualityComparer<QsFuncValue>.Default.Equals(left, right);
+            return EqualityComparer<QsFuncValue?>.Default.Equals(left, right);
         }
 
         public static bool operator !=(QsFuncValue? left, QsFuncValue? right)

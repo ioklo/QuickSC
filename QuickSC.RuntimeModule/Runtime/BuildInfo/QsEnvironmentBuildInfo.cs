@@ -6,7 +6,7 @@ using System.Text;
 
 namespace QuickSC.Runtime
 {
-    class QsEnvironmentBuildInfo : QsRuntimeModuleTypeBuildInfo
+    class QsEnvironmentBuildInfo : QsRuntimeModuleTypeBuildInfo.Class
     {
         public QsEnvironmentBuildInfo()
             : base(null, QsMetaItemId.Make("Environment"), Enumerable.Empty<string>(), null, () => new QsObjectValue(null))

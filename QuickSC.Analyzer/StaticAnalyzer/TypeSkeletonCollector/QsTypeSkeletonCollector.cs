@@ -3,6 +3,7 @@ using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
 
@@ -12,7 +13,9 @@ namespace QuickSC.StaticAnalyzer
     {   
         bool CollectEnumDecl(QsEnumDecl enumDecl, Context context)
         {
-            context.AddTypeSkeleton(enumDecl, enumDecl.Name, enumDecl.TypeParams.Length);
+            var enumElemNames = enumDecl.Elems.Select(elem => elem.Name);
+
+            context.AddTypeSkeleton(enumDecl, enumDecl.Name, enumDecl.TypeParams.Length, enumElemNames);
             return true;
         }
 

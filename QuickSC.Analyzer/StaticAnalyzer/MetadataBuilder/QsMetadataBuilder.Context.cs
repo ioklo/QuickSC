@@ -13,10 +13,11 @@ namespace QuickSC.StaticAnalyzer
             private QsTypeExpTypeValueService typeExpTypeValueService;
 
             private TypeBuilder? typeBuilder;
-            private List<QsTypeInfo> typeInfos; // All Types
+            private List<IQsTypeInfo> typeInfos; // All Types
             private List<QsFuncInfo> funcInfos; // All Funcs
             private List<QsVarInfo> varInfos; // Type의 Variable
-            private Dictionary<QsFuncDecl, QsFuncInfo> funcsByFuncDecl;
+            private Dictionary<QsFuncDecl, QsFuncInfo> funcInfosByDecl;
+            private Dictionary<QsEnumDecl, QsEnumInfo> enumInfosByDecl;
 
             public Context(
                 QsSyntaxNodeMetaItemService syntaxNodeMetaItemService,
@@ -26,10 +27,11 @@ namespace QuickSC.StaticAnalyzer
                 this.typeExpTypeValueService = typeExpTypeValueService;
 
                 typeBuilder = null;
-                typeInfos = new List<QsTypeInfo>();
+                typeInfos = new List<IQsTypeInfo>();
                 funcInfos = new List<QsFuncInfo>();
                 varInfos = new List<QsVarInfo>();
-                funcsByFuncDecl = new Dictionary<QsFuncDecl, QsFuncInfo>(QsRefEqComparer<QsFuncDecl>.Instance);
+                funcInfosByDecl = new Dictionary<QsFuncDecl, QsFuncInfo>(QsRefEqComparer<QsFuncDecl>.Instance);
+                enumInfosByDecl = new Dictionary<QsEnumDecl, QsEnumInfo>(QsRefEqComparer<QsEnumDecl>.Instance);
             }
 
             public QsMetaItemId GetTypeId(IQsSyntaxNode node)
@@ -55,11 +57,17 @@ namespace QuickSC.StaticAnalyzer
                 return typeBuilder.GetThisTypeValue();
             }
 
+            public void AddEnumInfo(QsEnumDecl enumDecl, QsEnumInfo enumInfo)
+            {
+                typeInfos.Add(enumInfo);
+                enumInfosByDecl[enumDecl] = enumInfo;
+            }
+
             public void AddFuncInfo(QsFuncDecl? funcDecl, QsFuncInfo funcInfo)
             {
                 funcInfos.Add(funcInfo);
                 if (funcDecl != null)
-                    funcsByFuncDecl[funcDecl] = funcInfo;
+                    funcInfosByDecl[funcDecl] = funcInfo;
             }
 
             public void AddVarInfo(QsVarInfo varInfo)
@@ -67,7 +75,7 @@ namespace QuickSC.StaticAnalyzer
                 varInfos.Add(varInfo);
             }
 
-            public ImmutableArray<QsTypeInfo> GetTypeInfos()
+            public ImmutableArray<IQsTypeInfo> GetTypeInfos()
             {
                 return typeInfos.ToImmutableArray();
             }
@@ -84,8 +92,15 @@ namespace QuickSC.StaticAnalyzer
 
             public ImmutableDictionary<QsFuncDecl, QsFuncInfo> GetFuncsByFuncDecl()
             {
-                return funcsByFuncDecl.ToImmutableWithComparer();
+                return funcInfosByDecl.ToImmutableWithComparer();
             }
+
+            public ImmutableDictionary<QsEnumDecl, QsEnumInfo> GetEnumInfosByDecl()
+            {
+                return enumInfosByDecl.ToImmutableWithComparer();
+            }
+
+            
         }
     }
 }

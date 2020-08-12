@@ -33,7 +33,7 @@ namespace QuickSC.StaticAnalyzer
                 typeEnv = ImmutableDictionary<string, QsTypeValue.TypeVar>.Empty;
             }            
 
-            public IEnumerable<QsTypeInfo> GetTypeInfos(QsMetaItemId metaItemId)
+            public IEnumerable<IQsTypeInfo> GetTypeInfos(QsMetaItemId metaItemId)
             {
                 return metadataService.GetTypeInfos(metaItemId);
             }

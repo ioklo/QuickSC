@@ -55,7 +55,7 @@ namespace QuickSC.Runtime.Dotnet
             return sb.ToString();
         }
 
-        public bool GetTypeInfo(QsMetaItemId typeId, [NotNullWhen(true)] out QsTypeInfo? outType)
+        public bool GetTypeInfo(QsMetaItemId typeId, [NotNullWhen(true)] out IQsTypeInfo? outType)
         {
             var dotnetType = assembly.GetType(MakeDotnetName(typeId)); 
 

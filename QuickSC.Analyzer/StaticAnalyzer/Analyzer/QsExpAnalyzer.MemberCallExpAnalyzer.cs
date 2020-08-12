@@ -1,6 +1,7 @@
 ﻿using QuickSC.Syntax;
 using System;
 using System.Collections.Immutable;
+using static QuickSC.StaticAnalyzer.QsAnalyzer;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
 
 namespace QuickSC.StaticAnalyzer
@@ -25,10 +26,10 @@ namespace QuickSC.StaticAnalyzer
 
             QsExpAnalyzer expAnalyzer;
             QsMemberCallExp exp;
-            QsAnalyzer.Context context;
+            Context context;
             ImmutableArray<QsTypeValue> args;
 
-            public MemberCallExpAnalyzer(QsExpAnalyzer expAnalyzer, QsMemberCallExp exp, QsAnalyzer.Context context)
+            public MemberCallExpAnalyzer(QsExpAnalyzer expAnalyzer, QsMemberCallExp exp, Context context)
             {
                 this.expAnalyzer = expAnalyzer;
                 this.exp = exp;
@@ -47,7 +48,7 @@ namespace QuickSC.StaticAnalyzer
                 }
                 else
                 {
-                    if (!expAnalyzer.AnalyzeExp(exp.Object, context, out var objTypeValue))
+                    if (!expAnalyzer.AnalyzeExp(exp.Object, null, context, out var objTypeValue))
                         return null;
 
                     return Analyze_Instance(objTypeValue);
@@ -58,19 +59,19 @@ namespace QuickSC.StaticAnalyzer
             {
                 var typeArgs = GetTypeValues(objIdExp.TypeArgs, context);
 
-                if (!context.GetIdentifierInfo(objIdExp.Value, typeArgs, out var idInfo))
+                if (!context.GetIdentifierInfo(objIdExp.Value, typeArgs, null, out var idInfo))
                     return null;
 
-                if (idInfo is QsAnalyzerIdentifierInfo.Type typeIdInfo)
+                if (idInfo is IdentifierInfo.Type typeIdInfo)
                 {
                     return Analyze_Type(typeIdInfo);
                 }
-                else if (idInfo is QsAnalyzerIdentifierInfo.Func funcIdInfo)
+                else if (idInfo is IdentifierInfo.Func funcIdInfo)
                 {
                     var objTypeValue = context.TypeValueService.GetTypeValue(funcIdInfo.FuncValue);
                     return Analyze_Instance(objTypeValue);
                 }
-                else if (idInfo is QsAnalyzerIdentifierInfo.Var varIdInfo)
+                else if (idInfo is IdentifierInfo.Var varIdInfo)
                 {
                     var objTypeValue = varIdInfo.TypeValue;
                     return Analyze_Instance(objTypeValue);
@@ -123,7 +124,7 @@ namespace QuickSC.StaticAnalyzer
                 return null;
             }
 
-            private Result? Analyze_Type(QsAnalyzerIdentifierInfo.Type typeIdInfo)
+            private Result? Analyze_Type(IdentifierInfo.Type typeIdInfo)
             {
                 var objTypeValue = typeIdInfo.TypeValue;
                 var memberTypeArgs = GetTypeValues(exp.MemberTypeArgs, context);

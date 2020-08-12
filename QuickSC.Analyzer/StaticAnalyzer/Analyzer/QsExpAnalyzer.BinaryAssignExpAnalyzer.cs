@@ -5,6 +5,7 @@ using System.Text;
 using System.Linq;
 using System.Diagnostics.CodeAnalysis;
 using QuickSC.Syntax;
+using static QuickSC.StaticAnalyzer.QsAnalyzer;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
 
 namespace QuickSC.StaticAnalyzer
@@ -14,10 +15,10 @@ namespace QuickSC.StaticAnalyzer
         class BinaryAssignExpAnalyzer : AssignExpAnalyzer
         {
             QsAnalyzer analyzer;
-            QsAnalyzer.Context context;
+            Context context;
             QsBinaryOpExp exp;
 
-            public BinaryAssignExpAnalyzer(QsAnalyzer analyzer, QsBinaryOpExp exp, QsAnalyzer.Context context)
+            public BinaryAssignExpAnalyzer(QsAnalyzer analyzer, QsBinaryOpExp exp, Context context)
                 : base(analyzer, context)
             {
                 this.analyzer = analyzer;
@@ -33,7 +34,7 @@ namespace QuickSC.StaticAnalyzer
             protected override QsTypeValue? AnalyzeDirect(QsTypeValue typeValue0, QsStorageInfo storageInfo)
             {
                 // operand1 검사
-                if (!analyzer.AnalyzeExp(exp.Operand1, context, out var typeValue1))
+                if (!analyzer.AnalyzeExp(exp.Operand1, typeValue0, context, out var typeValue1))
                     return null;
 
                 if (!analyzer.IsAssignable(typeValue0, typeValue1, context))
@@ -70,7 +71,7 @@ namespace QuickSC.StaticAnalyzer
 
                 var setterTypeValue = context.TypeValueService.GetTypeValue(setter);
 
-                if (!analyzer.AnalyzeExp(exp.Operand1, context, out var operandTypeValue1))
+                if (!analyzer.AnalyzeExp(exp.Operand1, null, context, out var operandTypeValue1))
                     return null;
 
                 var setterArgTypeValues = args.Select(a => a.TypeValue).Append(operandTypeValue1).ToImmutableArray();
@@ -105,7 +106,7 @@ namespace QuickSC.StaticAnalyzer
         // 4. CallSetter는 일단 Indexer일때만 
         internal bool AnalyzeBinaryAssignExp(
             QsBinaryOpExp binaryOpExp,
-            QsAnalyzer.Context context,
+            Context context,
             [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             var assignAnalyzer = new BinaryAssignExpAnalyzer(analyzer, binaryOpExp, context);

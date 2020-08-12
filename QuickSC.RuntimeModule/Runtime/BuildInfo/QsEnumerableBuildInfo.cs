@@ -10,7 +10,7 @@ namespace QuickSC.Runtime
 {
     using Invoker = Func<QsDomainService, QsTypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
 
-    class QsEnumerableBuildInfo : QsRuntimeModuleTypeBuildInfo
+    class QsEnumerableBuildInfo : QsRuntimeModuleTypeBuildInfo.Class
     {
         public QsEnumerableBuildInfo()
             : base(null, QsRuntimeModule.EnumerableId, ImmutableArray.Create("T"), null, () => new QsObjectValue(null))

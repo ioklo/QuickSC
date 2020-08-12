@@ -62,13 +62,28 @@ namespace QuickSC
                 ObjectTypeValue = objectTypeValue;
                 VarValue = varValue;
             }
-        }        
+        }
+
+        public class EnumElem : QsMemberExpInfo
+        {
+            public QsTypeValue.Normal EnumTypeValue { get; }
+            public string Name { get; }
+
+            public EnumElem(QsTypeValue.Normal enumTypeValue, string name)
+            {
+                EnumTypeValue = enumTypeValue;
+                Name = name;
+            }
+        }
 
         public static QsMemberExpInfo MakeInstance(QsTypeValue objectTypeValue, QsName varName) 
             => new Instance(objectTypeValue, varName);
 
         public static QsMemberExpInfo MakeStatic(QsTypeValue? objectTypeValue, QsVarValue varValue)
             => new Static(objectTypeValue, varValue);
+
+        public static QsMemberExpInfo MakeEnumElem(QsTypeValue.Normal enumTypeValue, string name)
+            => new EnumElem(enumTypeValue, name);
     }
 
     public class QsBinaryOpExpInfo : QsSyntaxNodeInfo
@@ -317,14 +332,34 @@ namespace QuickSC
         }
     }
 
-    public class QsIfStmtInfo : QsSyntaxNodeInfo
+    public abstract class QsIfStmtInfo : QsSyntaxNodeInfo
     {
-        public QsTypeValue TestTypeValue { get; }
-
-        public QsIfStmtInfo(QsTypeValue testTypeValue)
+        public class TestEnum : QsIfStmtInfo
         {
-            TestTypeValue = testTypeValue;
+            public QsTypeValue TestTargetTypeValue { get; }
+            public string ElemName { get; }
+
+            public TestEnum(QsTypeValue testTargetTypeValue, string elemName)
+            {
+                TestTargetTypeValue = testTargetTypeValue;
+                ElemName = elemName;
+            }
         }
+
+        public class TestClass : QsIfStmtInfo
+        {
+            public QsTypeValue TestTargetTypeValue { get; }
+            public QsTypeValue TestTypeValue { get; }
+
+            public TestClass(QsTypeValue testTargetTypeValue, QsTypeValue testTypeValue)
+            {
+                TestTargetTypeValue = testTargetTypeValue;
+                TestTypeValue = testTypeValue;
+            }
+        }
+
+        public static TestEnum MakeTestEnum(QsTypeValue testTargetTypeValue, string elemName) => new TestEnum(testTargetTypeValue, elemName);
+        public static TestClass MakeTestClass(QsTypeValue testTargetTypeValue, QsTypeValue testTypeValue) => new TestClass(testTargetTypeValue, testTypeValue);
     }
 
     public class QsTaskStmtInfo : QsSyntaxNodeInfo

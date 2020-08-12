@@ -58,14 +58,27 @@ namespace QuickSC
                 // 분석기가 미리 계산해 놓은 TypeValue를 가져온다
                 var ifStmtInfo = context.GetNodeInfo<QsIfStmtInfo>(stmt);
 
-                var testObjValue = context.RuntimeModule.MakeNullObject();
-                await evaluator.EvalExpAsync(stmt.Cond, testObjValue, context);
+                if (ifStmtInfo is QsIfStmtInfo.TestEnum testEnumInfo)
+                {
+                    var tempEnumValue = (QsEnumValue)evaluator.GetDefaultValue(testEnumInfo.TestTargetTypeValue, context);
+                    await evaluator.EvalExpAsync(stmt.Cond, tempEnumValue, context);
 
-                var condValueTypeValue = testObjValue.GetTypeInst().GetTypeValue();
+                    bTestPassed = (tempEnumValue.ElemName == testEnumInfo.ElemName);
+                }
+                else if (ifStmtInfo is QsIfStmtInfo.TestClass testClassInfo)
+                {
+                    var tempValue = (QsObjectValue)evaluator.GetDefaultValue(testClassInfo.TestTargetTypeValue, context);
+                    await evaluator.EvalExpAsync(stmt.Cond, tempValue, context);
 
-                Debug.Assert(condValueTypeValue is QsTypeValue.Normal);
-                Debug.Assert(ifStmtInfo.TestTypeValue is QsTypeValue.Normal);
-                bTestPassed = evaluator.IsType((QsTypeValue.Normal)condValueTypeValue, (QsTypeValue.Normal)ifStmtInfo.TestTypeValue, context);
+                    var condValueTypeValue = tempValue.GetTypeInst().GetTypeValue();
+
+                    Debug.Assert(condValueTypeValue is QsTypeValue.Normal);
+                    bTestPassed = evaluator.IsType((QsTypeValue.Normal)condValueTypeValue, testClassInfo.TestTypeValue, context);
+                }
+                else
+                {
+                    throw new InvalidOperationException();
+                }
             }
 
             if (bTestPassed)

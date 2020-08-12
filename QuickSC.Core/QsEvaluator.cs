@@ -72,13 +72,14 @@ namespace QuickSC
             }            
         }
 
-        public bool IsType(QsTypeValue subTypeValue, QsTypeValue typeValue, QsEvalContext context)
+        // xType이 y타입인가 묻는 것
+        public bool IsType(QsTypeValue xTypeValue, QsTypeValue yTypeValue, QsEvalContext context)
         {
-            QsTypeValue? curTypeValue = subTypeValue;
+            QsTypeValue? curTypeValue = xTypeValue;
 
             while (curTypeValue != null)
             {
-                if (EqualityComparer<QsTypeValue?>.Default.Equals(curTypeValue, typeValue))
+                if (EqualityComparer<QsTypeValue?>.Default.Equals(curTypeValue, yTypeValue))
                     return true;
 
                 if (!context.TypeValueService.GetBaseTypeValue(curTypeValue, out var baseTypeValue))
@@ -295,7 +296,7 @@ namespace QuickSC
 
             var scriptModule = new QsScriptModule(
                 analyzeResult.ScriptMetadata,
-                analyzeResult.FuncTemplates);
+                analyzeResult.Templates);
 
             var domainService = new QsDomainService();
 

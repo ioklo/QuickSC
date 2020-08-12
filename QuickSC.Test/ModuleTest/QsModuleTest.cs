@@ -23,7 +23,7 @@ namespace QuickSC.ModuleTest
             throw new NotImplementedException();
         }
 
-        public bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(true)] out QsTypeInfo? typeInfo)
+        public bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(true)] out IQsTypeInfo? typeInfo)
         {
             throw new NotImplementedException();
         }

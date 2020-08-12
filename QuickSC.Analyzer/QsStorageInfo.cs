@@ -60,6 +60,23 @@ namespace QuickSC
             }
         }
 
+        public class EnumElem : QsStorageInfo
+        {
+            public string Name { get; }
+            public EnumElem(string name) { Name = name; }
+
+            public override bool Equals(object? obj)
+            {
+                return obj is EnumElem elem &&
+                       Name == elem.Name;
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(Name);
+            }
+        }
+
         public class StaticMember : QsStorageInfo
         {
             public (QsTypeValue TypeValue, QsExp Exp)? ObjectInfo { get; }
@@ -113,6 +130,9 @@ namespace QuickSC
 
         public static Local MakeLocal(int index) 
             => new Local(index);
+
+        public static EnumElem MakeEnumElem(string elemName)
+            => new EnumElem(elemName);
 
         public static StaticMember MakeStaticMember((QsTypeValue TypeValue, QsExp Exp)? objetInfo, QsVarValue varValue)
             => new StaticMember(objetInfo, varValue);

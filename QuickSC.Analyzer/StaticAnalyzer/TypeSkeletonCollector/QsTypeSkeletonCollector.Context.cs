@@ -22,8 +22,8 @@ namespace QuickSC.StaticAnalyzer
                 typeSkeletons = new List<QsTypeSkeleton>();
                 scopeSkeleton = null;
             }
-
-            internal void AddTypeSkeleton(IQsSyntaxNode node, string name, int typeParamCount)
+            
+            internal void AddTypeSkeleton(IQsSyntaxNode node, string name, int typeParamCount, IEnumerable<string> enumElemNames)
             {
                 QsMetaItemId typeId;                
                 
@@ -33,7 +33,7 @@ namespace QuickSC.StaticAnalyzer
                     typeId = QsMetaItemId.Make(name, typeParamCount);
 
                 typeIdsByNode.Add(node, typeId);
-                typeSkeletons.Add(new QsTypeSkeleton(typeId));
+                typeSkeletons.Add(new QsTypeSkeleton(typeId, enumElemNames));
 
                 if (scopeSkeleton != null)
                     scopeSkeleton.AddMemberTypeId(name, typeParamCount, typeId);

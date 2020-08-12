@@ -17,7 +17,7 @@ namespace QuickSC
                 => QsTypeValue.MakeNormal(QsMetaItemId.Make(name));
 
             // class X<T, U, V> { class Y<T, U> { V Func<T>(T t, U u); } }
-            var typeInfos = new List<QsTypeInfo>();
+            var typeInfos = new List<IQsTypeInfo>();
             var funcInfos = new List<QsFuncInfo>();
 
             var xId = QsMetaItemId.Make("X", 3);
@@ -28,8 +28,8 @@ namespace QuickSC
             var yUTypeVar = QsTypeValue.MakeTypeVar(yId, "U");
             var funcTTypeVar = QsTypeValue.MakeTypeVar(funcId, "T");
 
-            var xInfo = new QsDefaultTypeInfo(null, xId, new string[] { "T", "U", "V" }, null, new[] { yId }, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
-            var yInfo = new QsDefaultTypeInfo(xId, yId, new string[] { "T", "U" }, null, Enumerable.Empty<QsMetaItemId>(), new[] { funcId }, Enumerable.Empty<QsMetaItemId>());
+            var xInfo = new QsClassInfo(null, xId, new string[] { "T", "U", "V" }, null, new[] { yId }, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
+            var yInfo = new QsClassInfo(xId, yId, new string[] { "T", "U" }, null, Enumerable.Empty<QsMetaItemId>(), new[] { funcId }, Enumerable.Empty<QsMetaItemId>());
             var funcInfo = new QsFuncInfo(yId, funcId, false, true, new[] { "T" }, xVTypeVar, funcTTypeVar, yUTypeVar);
 
             typeInfos.Add(xInfo);
@@ -61,13 +61,13 @@ namespace QuickSC
         public void ApplyTest()
         {
             // class X<T> { class Y<T> { T x; } }
-            List<QsTypeInfo> typeInfos = new List<QsTypeInfo>();
+            List<IQsTypeInfo> typeInfos = new List<IQsTypeInfo>();
 
             var xId = QsMetaItemId.Make("X", 1);
             var yId = xId.Append("Y", 1);
 
-            var xInfo = new QsDefaultTypeInfo(null, xId, new string[] { "T" }, null, new[] { yId }, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
-            var yInfo = new QsDefaultTypeInfo(xId, yId, new string[] { "T" }, null, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
+            var xInfo = new QsClassInfo(null, xId, new string[] { "T" }, null, new[] { yId }, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
+            var yInfo = new QsClassInfo(xId, yId, new string[] { "T" }, null, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
 
             typeInfos.Add(xInfo);
             typeInfos.Add(yInfo);

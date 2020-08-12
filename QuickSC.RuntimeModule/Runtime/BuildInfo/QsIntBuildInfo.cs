@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    class QsIntBuildInfo : QsRuntimeModuleTypeBuildInfo
+    class QsIntBuildInfo : QsRuntimeModuleTypeBuildInfo.Struct
     {
         QsRuntimeModule runtimeModule;
 

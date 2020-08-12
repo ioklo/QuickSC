@@ -1,4 +1,7 @@
 ﻿using QuickSC.Syntax;
+using System;
+using System.Linq;
+using static QuickSC.StaticAnalyzer.QsAnalyzer;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
 
 namespace QuickSC.StaticAnalyzer
@@ -20,9 +23,9 @@ namespace QuickSC.StaticAnalyzer
 
             QsAnalyzer analyzer;
             QsMemberExp memberExp;
-            QsAnalyzer.Context context;
+            Context context;
 
-            public MemberExpAnalyzer(QsAnalyzer analyzer, QsMemberExp memberExp, QsAnalyzer.Context context)
+            public MemberExpAnalyzer(QsAnalyzer analyzer, QsMemberExp memberExp, Context context)
             {
                 this.analyzer = analyzer;
                 this.memberExp = memberExp;
@@ -34,14 +37,14 @@ namespace QuickSC.StaticAnalyzer
                 if (memberExp.Object is QsIdentifierExp objIdExp)
                 {
                     var typeArgs = GetTypeValues(objIdExp.TypeArgs, context);
-                    if (!context.GetIdentifierInfo(objIdExp.Value, typeArgs, out var idInfo))
+                    if (!context.GetIdentifierInfo(objIdExp.Value, typeArgs, null, out var idInfo))
                         return null;
 
-                    if (idInfo is QsAnalyzerIdentifierInfo.Type typeIdInfo)
+                    if (idInfo is IdentifierInfo.Type typeIdInfo)
                         return Analyze_Type(typeIdInfo.TypeValue); 
                 }
                 
-                if (!analyzer.AnalyzeExp(memberExp.Object, context, out var objTypeValue))
+                if (!analyzer.AnalyzeExp(memberExp.Object, null, context, out var objTypeValue))
                     return null;
 
                 return Analyze_Instance(objTypeValue);
@@ -62,15 +65,39 @@ namespace QuickSC.StaticAnalyzer
                 return new Result(nodeInfo, typeValue);
             }
 
-            private Result? Analyze_Type(QsTypeValue objTypeValue)
+            private Result? Analyze_Type(QsTypeValue.Normal objNTV)
             {
-                if (!analyzer.CheckStaticMember(memberExp, objTypeValue, context, out var varValue))
+                var typeInfo = context.MetadataService.GetTypeInfos(objNTV.TypeId).Single();                
+                if (typeInfo is IQsEnumInfo enumTypeInfo)
+                {
+                    if (enumTypeInfo.GetElemInfo(memberExp.MemberName, out var elemInfo))
+                    {                        
+                        if (elemInfo.Value.FieldInfos.Length == 0)
+                        {
+                            var nodeInfo = QsMemberExpInfo.MakeEnumElem(objNTV, memberExp.MemberName);
+                            var typeValue = objNTV;
+
+                            return new Result(nodeInfo, typeValue);
+                        }
+                        else
+                        {
+                            // TODO: FieldInfo가 있을 경우 함수로 감싸기
+                            throw new NotImplementedException();
+                        }
+                    }
+
                     return null;
-                
-                var nodeInfo = QsMemberExpInfo.MakeStatic(null, varValue);
-                var typeValue = context.TypeValueService.GetTypeValue(varValue);
-                    
-                return new Result(nodeInfo, typeValue);
+                }
+                else
+                {
+                    if (!analyzer.CheckStaticMember(memberExp, objNTV, context, out var varValue))
+                        return null;
+
+                    var nodeInfo = QsMemberExpInfo.MakeStatic(null, varValue);
+                    var typeValue = context.TypeValueService.GetTypeValue(varValue);
+
+                    return new Result(nodeInfo, typeValue);
+                }
             }
         }
     }

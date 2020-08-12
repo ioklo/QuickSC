@@ -9,29 +9,10 @@ using System.Threading.Tasks;
 namespace QuickSC
 {
     // Skeleton, StaticVariable은 QsTypeInst에서 얻을 수 있게 된다
-    public abstract class QsTypeInfo
+    public abstract class QsDefaultTypeInfo : IQsTypeInfo
     {
+        public QsMetaItemId? OuterTypeId { get; }
         public QsMetaItemId TypeId { get; }
-        
-        public QsTypeInfo(QsMetaItemId typeId) 
-        { 
-            TypeId = typeId; 
-        }
-
-        public abstract QsMetaItemId? GetOuterTypeId();
-        
-        public abstract ImmutableArray<string> GetTypeParams();
-        public abstract QsTypeValue? GetBaseTypeValue();
-
-        // TODO: 셋은 같은 이름공간을 공유한다. 서로 이름이 같은 것이 나오면 안된다 (체크하자)
-        public abstract bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsMetaItemId? outTypeId);
-        public abstract bool GetMemberFuncId(QsName memberFuncId, [NotNullWhen(returnValue: true)] out QsMetaItemId? outFuncId);
-        public abstract bool GetMemberVarId(QsName name, [NotNullWhen(returnValue: true)] out QsMetaItemId? outVarId);
-    }
-
-    public class QsDefaultTypeInfo : QsTypeInfo
-    {
-        QsMetaItemId? outerTypeId;
 
         ImmutableArray<string> typeParams;
         QsTypeValue? baseTypeValue;
@@ -42,38 +23,34 @@ namespace QuickSC
         // 거의 모든 TypeValue에서 thisTypeValue를 쓰기 때문에 lazy하게 선언해야 한다
         public QsDefaultTypeInfo(
             QsMetaItemId? outerTypeId,
-            QsMetaItemId typeId,            
+            QsMetaItemId typeId, 
             IEnumerable<string> typeParams,
             QsTypeValue? baseTypeValue,
             IEnumerable<QsMetaItemId> memberTypeIds,
             IEnumerable<QsMetaItemId> memberFuncIds,
             IEnumerable<QsMetaItemId> memberVarIds)
-            : base(typeId)
         {
-            this.outerTypeId = outerTypeId;
+            OuterTypeId = outerTypeId;
+            TypeId = typeId;
+
             this.typeParams = typeParams.ToImmutableArray();
             this.baseTypeValue = baseTypeValue;
             this.memberTypeIds = memberTypeIds.ToImmutableDictionary(memberTypeId => memberTypeId.Name);
             this.memberFuncIds = memberFuncIds.ToImmutableDictionary(memberFuncId => memberFuncId.Name);
             this.memberVarIds = memberVarIds.ToImmutableDictionary(memberVarId => memberVarId.Name);
         }
-
-        public override QsMetaItemId? GetOuterTypeId()
-        {
-            return outerTypeId;
-        }
-
-        public override ImmutableArray<string> GetTypeParams()
+        
+        public IReadOnlyList<string> GetTypeParams()
         {
             return typeParams;
         }
 
-        public override QsTypeValue? GetBaseTypeValue()
+        public QsTypeValue? GetBaseTypeValue()
         {
             return baseTypeValue;
         }
 
-        public override bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsMetaItemId? outTypeId)
+        public bool GetMemberTypeId(string name, [NotNullWhen(returnValue: true)] out QsMetaItemId? outTypeId)
         {
             if (memberTypeIds.TryGetValue(QsName.MakeText(name), out var typeId))
             {
@@ -87,7 +64,7 @@ namespace QuickSC
             }
         }
 
-        public override bool GetMemberFuncId(QsName memberFuncName, [NotNullWhen(returnValue: true)] out QsMetaItemId? outFuncId)
+        public bool GetMemberFuncId(QsName memberFuncName, [NotNullWhen(returnValue: true)] out QsMetaItemId? outFuncId)
         {
             // TODO: 같은 이름 체크?
             if (memberFuncIds.TryGetValue(memberFuncName, out var funcId))
@@ -100,7 +77,7 @@ namespace QuickSC
             return false;
         }
 
-        public override bool GetMemberVarId(QsName varName, [NotNullWhen(returnValue: true)] out QsMetaItemId? outVarId)
+        public bool GetMemberVarId(QsName varName, [NotNullWhen(returnValue: true)] out QsMetaItemId? outVarId)
         {
             // TODO: 같은 이름 체크
             if (memberVarIds.TryGetValue(varName, out var varId))
@@ -112,7 +89,7 @@ namespace QuickSC
             outVarId = null;
             return false;
         }
-    }
+    }    
 
     // 'Func' 객체에 대한 TypeValue가 아니라 호출가능한 값의 타입이다
     // void Func(int x) : int => void

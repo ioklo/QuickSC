@@ -10,49 +10,11 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Text;
+using static QuickSC.StaticAnalyzer.QsAnalyzer;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
 
 namespace QuickSC.StaticAnalyzer
 {
-    public class QsAnalyzerIdentifierInfo
-    {
-        public class Var : QsAnalyzerIdentifierInfo
-        {
-            public QsStorageInfo StorageInfo { get; }
-            public QsTypeValue TypeValue { get; }
-
-            public Var(QsStorageInfo storageInfo, QsTypeValue typeValue)
-            {
-                StorageInfo = storageInfo;
-                TypeValue = typeValue;
-            }
-        }
-
-        public class Func : QsAnalyzerIdentifierInfo
-        {
-            public QsFuncValue FuncValue { get; }
-            public Func(QsFuncValue funcValue)
-            {
-                FuncValue = funcValue;
-            }
-        }
-
-        public class Type : QsAnalyzerIdentifierInfo
-        {
-            public QsTypeValue TypeValue { get; }
-            public Type(QsTypeValue typeValue)
-            {
-                TypeValue = typeValue;
-            }
-        }
-
-        public static Var MakeVar(QsStorageInfo storageInfo, QsTypeValue typeValue) => new Var(storageInfo, typeValue);
-
-        public static Func MakeFunc(QsFuncValue funcValue) => new Func(funcValue);
-
-        public static Type MakeType(QsTypeValue typeValue) => new Type(typeValue);
-    }
-
     // 어떤 Exp에서 타입 정보 등을 알아냅니다
     partial class QsExpAnalyzer
     {
@@ -64,39 +26,54 @@ namespace QuickSC.StaticAnalyzer
         }
 
         // x
-        internal bool AnalyzeIdExp(QsIdentifierExp idExp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        internal bool AnalyzeIdExp(QsIdentifierExp idExp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             outTypeValue = null;
 
             var typeArgs = GetTypeValues(idExp.TypeArgs, context);
 
-            if (!context.GetIdentifierInfo(idExp.Value, typeArgs, out var idInfo))
+            if (!context.GetIdentifierInfo(idExp.Value, typeArgs, hintTypeValue, out var idInfo))
                 return false;
 
-            if (idInfo is QsAnalyzerIdentifierInfo.Var varIdInfo)
+            if (idInfo is IdentifierInfo.Var varIdInfo)
             {
                 outTypeValue = varIdInfo.TypeValue;
                 context.AddNodeInfo(idExp, new QsIdentifierExpInfo(varIdInfo.StorageInfo));
                 return true;
+            }
+            else if (idInfo is IdentifierInfo.EnumElem enumElemInfo)
+            {
+                if (enumElemInfo.ElemInfo.FieldInfos.Length == 0)
+                {
+                    outTypeValue = enumElemInfo.EnumTypeValue;
+                    // TODO: IdentifierExpInfo를 EnumElem에 맞게 분기시켜야 할 것 같다, EnumElem이 StorageInfo는 아니다
+                    context.AddNodeInfo(idExp, new QsIdentifierExpInfo(QsStorageInfo.MakeEnumElem(enumElemInfo.ElemInfo.Name)));
+                    return true;
+                }
+                else
+                {
+                    // TODO: Func일때 감싸기
+                    throw new NotImplementedException();
+                }
             }
 
             // TODO: Func
             return false;
         }
 
-        internal bool AnalyzeBoolLiteralExp(QsBoolLiteralExp boolExp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeBoolLiteralExp(QsBoolLiteralExp boolExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {   
             typeValue = analyzer.GetBoolTypeValue();
             return true;
         }
 
-        internal bool AnalyzeIntLiteralExp(QsIntLiteralExp intExp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeIntLiteralExp(QsIntLiteralExp intExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             typeValue = analyzer.GetIntTypeValue();
             return true;
         }
 
-        internal bool AnalyzeStringExp(QsStringExp stringExp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeStringExp(QsStringExp stringExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             foreach(var elem in stringExp.Elements)
                 analyzer.AnalyzeStringExpElement(elem, context);
@@ -105,14 +82,14 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        internal bool AnalyzeUnaryOpExp(QsUnaryOpExp unaryOpExp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeUnaryOpExp(QsUnaryOpExp unaryOpExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             typeValue = null;
 
             var boolTypeValue = analyzer.GetBoolTypeValue();
             var intTypeValue = analyzer.GetIntTypeValue();
             
-            if (!AnalyzeExp(unaryOpExp.Operand, context, out var operandTypeValue))            
+            if (!AnalyzeExp(unaryOpExp.Operand, null, context, out var operandTypeValue))            
                 return false; // AnalyzeExp에서 에러가 생겼으므로 내부에서 에러를 추가했을 것이다. 여기서는 더 추가 하지 않는다
 
             switch (unaryOpExp.Kind)
@@ -155,7 +132,7 @@ namespace QuickSC.StaticAnalyzer
 
         
 
-        internal bool AnalyzeBinaryOpExp(QsBinaryOpExp binaryOpExp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeBinaryOpExp(QsBinaryOpExp binaryOpExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {   
             if (binaryOpExp.Kind == QsBinaryOpKind.Assign)
                 return AnalyzeBinaryAssignExp(binaryOpExp, context, out typeValue);
@@ -166,10 +143,10 @@ namespace QuickSC.StaticAnalyzer
             var intTypeValue = analyzer.GetIntTypeValue();
             var stringTypeValue = analyzer.GetStringTypeValue();
 
-            if (!AnalyzeExp(binaryOpExp.Operand0, context, out var operandTypeValue0))
+            if (!AnalyzeExp(binaryOpExp.Operand0, null, context, out var operandTypeValue0))
                 return false;
 
-            if (!AnalyzeExp(binaryOpExp.Operand1, context, out var operandTypeValue1))
+            if (!AnalyzeExp(binaryOpExp.Operand1, null, context, out var operandTypeValue1))
                 return false;
 
             if (binaryOpExp.Kind == QsBinaryOpKind.Equal || binaryOpExp.Kind == QsBinaryOpKind.NotEqual)
@@ -289,7 +266,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         bool AnalyzeCallableIdentifierExp(
-            QsIdentifierExp exp, ImmutableArray<QsTypeValue> args, QsAnalyzer.Context context,
+            QsIdentifierExp exp, ImmutableArray<QsTypeValue> args, Context context,
             [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsTypeValue.Func TypeValue)? outValue)
         {
             // 1. this 검색
@@ -330,10 +307,10 @@ namespace QuickSC.StaticAnalyzer
 
 
         bool AnalyzeCallableElseExp(
-            QsExp exp, ImmutableArray<QsTypeValue> args, QsAnalyzer.Context context,
+            QsExp exp, ImmutableArray<QsTypeValue> args, Context context,
             [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsTypeValue.Func TypeValue)? outValue)
         {
-            if (!AnalyzeExp(exp, context, out var typeValue))
+            if (!AnalyzeExp(exp, null, context, out var typeValue))
             {
                 outValue = null;
                 return false;
@@ -363,7 +340,7 @@ namespace QuickSC.StaticAnalyzer
         //        -> FuncValue(
         bool AnalyzeCallableExp(
             QsExp exp, 
-            ImmutableArray<QsTypeValue> args, QsAnalyzer.Context context, 
+            ImmutableArray<QsTypeValue> args, Context context, 
             [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsTypeValue.Func TypeValue)? outValue)
         {
             if (exp is QsIdentifierExp idExp)
@@ -372,7 +349,7 @@ namespace QuickSC.StaticAnalyzer
                 return AnalyzeCallableElseExp(exp, args, context, out outValue);
         }
         
-        internal bool AnalyzeCallExp(QsCallExp exp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
+        internal bool AnalyzeCallExp(QsCallExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
         {
             // 여기서 분석해야 할 것은 
             // 1. 해당 Exp가 함수인지, 변수인지, 함수라면 FuncId를 넣어준다
@@ -393,7 +370,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
         
-        internal bool AnalyzeLambdaExp(QsLambdaExp lambdaExp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        internal bool AnalyzeLambdaExp(QsLambdaExp lambdaExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             if (!analyzer.AnalyzeLambda(lambdaExp.Body, lambdaExp.Params, context, out var captureInfo, out var funcTypeValue, out var localVarCount))
             {
@@ -406,14 +383,14 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool AnalyzeIndexerExp(QsIndexerExp exp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        bool AnalyzeIndexerExp(QsIndexerExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             outTypeValue = null;
 
-            if (!AnalyzeExp(exp.Object, context, out var objTypeValue))
+            if (!AnalyzeExp(exp.Object, null, context, out var objTypeValue))
                 return false;
 
-            if (!AnalyzeExp(exp.Index, context, out var indexTypeValue))
+            if (!AnalyzeExp(exp.Index, null, context, out var indexTypeValue))
                 return false;
 
             // objTypeValue에 indexTypeValue를 인자로 갖고 있는 indexer가 있는지
@@ -440,25 +417,26 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool AnalyzeExps(ImmutableArray<QsExp> exps, QsAnalyzer.Context context, out ImmutableArray<QsTypeValue> outTypeValues)
+        // TODO: Hint를 받을 수 있게 해야 한다
+        bool AnalyzeExps(IEnumerable<QsExp> exps, Context context, out ImmutableArray<QsTypeValue> outTypeValues)
         {
-            var builder = ImmutableArray.CreateBuilder<QsTypeValue>(exps.Length);
+            var typeValues = new List<QsTypeValue>();
             foreach (var exp in exps)
             {
-                if (!AnalyzeExp(exp, context, out var typeValue))
+                if (!AnalyzeExp(exp, null, context, out var typeValue))
                 {
                     outTypeValues = ImmutableArray<QsTypeValue>.Empty;
                     return false;
                 }
 
-                builder.Add(typeValue);
+                typeValues.Add(typeValue);
             }
 
-            outTypeValues = builder.MoveToImmutable();
+            outTypeValues = typeValues.ToImmutableArray();
             return true;
         }
 
-        internal bool AnalyzeMemberCallExp(QsMemberCallExp exp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        internal bool AnalyzeMemberCallExp(QsMemberCallExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             outTypeValue = null;
 
@@ -473,7 +451,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        internal bool AnalyzeMemberExp(QsMemberExp memberExp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
+        internal bool AnalyzeMemberExp(QsMemberExp memberExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
         {
             var memberExpAnalyzer = new MemberExpAnalyzer(analyzer, memberExp, context);
             var result = memberExpAnalyzer.Analyze();
@@ -491,14 +469,14 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        internal bool AnalyzeListExp(QsListExp listExp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeListExp(QsListExp listExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             typeValue = null;
             QsTypeValue? curElemTypeValue = null;
 
             foreach (var elem in listExp.Elems)
             {
-                if (!AnalyzeExp(elem, context, out var elemTypeValue))
+                if (!AnalyzeExp(elem, null, context, out var elemTypeValue))
                     return false;
 
                 if (curElemTypeValue == null)
@@ -534,11 +512,11 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public bool AnalyzeExp(QsExp exp, QsAnalyzer.Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        public bool AnalyzeExp(QsExp exp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             switch(exp)
             {
-                case QsIdentifierExp idExp: return AnalyzeIdExp(idExp, context, out typeValue);
+                case QsIdentifierExp idExp: return AnalyzeIdExp(idExp, hintTypeValue, context, out typeValue);
                 case QsBoolLiteralExp boolExp: return AnalyzeBoolLiteralExp(boolExp, context, out typeValue);
                 case QsIntLiteralExp intExp: return AnalyzeIntLiteralExp(intExp, context, out typeValue);
                 case QsStringExp stringExp: return AnalyzeStringExp(stringExp, context, out typeValue);

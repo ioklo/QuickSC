@@ -23,7 +23,7 @@ namespace QuickSC
         //    var intTypeValue = typeValueFactory.GetTypeValue("int");
 
         //    var expAnalyzer = new QsExpAnalyzer(typeValueFactory);
-        //    var context = new QsAnalyzer.Context();
+        //    var context = new Context();
 
         //    var result = expAnalyzer.AnalyzeIntLiteralExp(new Syntax.QsIntLiteralExp(3), context);
 

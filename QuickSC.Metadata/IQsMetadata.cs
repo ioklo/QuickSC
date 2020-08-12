@@ -10,7 +10,7 @@ namespace QuickSC
     {
         string ModuleName { get; }
         
-        bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(returnValue: true)] out QsTypeInfo? typeInfo);
+        bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(returnValue: true)] out IQsTypeInfo? typeInfo);
         bool GetFuncInfo(QsMetaItemId id, [NotNullWhen(returnValue: true)] out QsFuncInfo? funcInfo);
         bool GetVarInfo(QsMetaItemId id, [NotNullWhen(returnValue: true)] out QsVarInfo? varInfo);
     }

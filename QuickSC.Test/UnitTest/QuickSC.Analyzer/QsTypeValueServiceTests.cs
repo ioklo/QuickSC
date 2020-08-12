@@ -28,8 +28,8 @@ namespace QuickSC
             var gId = QsMetaItemId.Make("G", 1);
             var gtTypeValue = QsTypeValue.MakeNormal(gId, QsTypeArgumentList.Make(xtTypeVar));
 
-            var xInfo = new QsDefaultTypeInfo(null, xId, new[] { "T", "U" }, null, new[] { yId }, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
-            var yInfo = new QsDefaultTypeInfo(xId, yId, new[] { "U" }, gtTypeValue, Enumerable.Empty<QsMetaItemId>(), new[] { fId }, new[] { vId });
+            var xInfo = new QsClassInfo(null, xId, new[] { "T", "U" }, null, new[] { yId }, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
+            var yInfo = new QsClassInfo(xId, yId, new[] { "U" }, gtTypeValue, Enumerable.Empty<QsMetaItemId>(), new[] { fId }, new[] { vId });
             var vInfo = new QsVarInfo(yId, vId, false, QsTypeValue.MakeNormal(dictId, QsTypeArgumentList.Make(xtTypeVar, yuTypeVar)));
             var fInfo = new QsFuncInfo(yId, fId, false, true, new[] { "V" }, xtTypeVar, fvTypeVar, QsTypeValue.MakeNormal(listId, QsTypeArgumentList.Make(yuTypeVar)));
 

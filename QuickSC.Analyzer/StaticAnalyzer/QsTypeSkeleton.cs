@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace QuickSC.StaticAnalyzer
 {
@@ -9,11 +12,13 @@ namespace QuickSC.StaticAnalyzer
     {
         public QsMetaItemId TypeId { get; }
         private Dictionary<QsMetaItemIdElem, QsMetaItemId> memberTypeIds;
+        private ImmutableHashSet<string> enumElemNames;
 
-        public QsTypeSkeleton(QsMetaItemId typeId)
+        public QsTypeSkeleton(QsMetaItemId typeId, IEnumerable<string> enumElemNames)
         {
             TypeId = typeId;
-            this.memberTypeIds = new Dictionary<QsMetaItemIdElem, QsMetaItemId>();
+            memberTypeIds = new Dictionary<QsMetaItemIdElem, QsMetaItemId>();
+            this.enumElemNames = enumElemNames.ToImmutableHashSet();
         }
 
         public bool GetMemberTypeId(string name, int typeParamCount, [NotNullWhen(returnValue: true)] out QsMetaItemId? outTypeId)
@@ -21,8 +26,14 @@ namespace QuickSC.StaticAnalyzer
             return memberTypeIds.TryGetValue(new QsMetaItemIdElem(name, typeParamCount), out outTypeId);
         }
 
+        public bool ContainsEnumElem(string name)
+        {
+            return enumElemNames.Contains(name);
+        }
+
         public void AddMemberTypeId(string name, int typeParamCount, QsMetaItemId typeId)
         {
+            Debug.Assert(!enumElemNames.Contains(name));
             memberTypeIds.Add(new QsMetaItemIdElem(name, typeParamCount), typeId);
         }
     }

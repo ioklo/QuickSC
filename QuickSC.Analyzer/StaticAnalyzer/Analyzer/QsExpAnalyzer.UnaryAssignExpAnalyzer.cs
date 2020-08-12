@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
+using static QuickSC.StaticAnalyzer.QsAnalyzer;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
 
 namespace QuickSC.StaticAnalyzer
@@ -14,10 +15,10 @@ namespace QuickSC.StaticAnalyzer
         class UnaryAssignExpAnalyzer : AssignExpAnalyzer
         {
             QsAnalyzer analyzer;
-            QsAnalyzer.Context context;
+            Context context;
             QsUnaryOpExp exp;
 
-            public UnaryAssignExpAnalyzer(QsAnalyzer analyzer, QsAnalyzer.Context context, QsUnaryOpExp exp)
+            public UnaryAssignExpAnalyzer(QsAnalyzer analyzer, Context context, QsUnaryOpExp exp)
                 : base(analyzer, context)
             {
                 this.analyzer = analyzer;
@@ -144,7 +145,7 @@ namespace QuickSC.StaticAnalyzer
 
         internal bool AnalyzeUnaryAssignExp(
             QsUnaryOpExp unaryOpExp,
-            QsAnalyzer.Context context,
+            Context context,
             [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             var assignAnalyzer = new UnaryAssignExpAnalyzer(analyzer, context, unaryOpExp);

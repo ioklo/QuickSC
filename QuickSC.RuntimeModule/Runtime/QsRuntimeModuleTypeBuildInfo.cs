@@ -26,7 +26,23 @@ namespace QuickSC.Runtime
             this.typeParams = typeParams;
             this.baseTypeValue = baseTypeValue;
             this.defaultValueFactory = defaultValueFactory;
-        }        
+        }
+
+        public abstract class Class : QsRuntimeModuleTypeBuildInfo
+        {   
+            public Class(QsMetaItemId? outerTypeId, QsMetaItemId id, IEnumerable<string> typeParams, QsTypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
+                : base(outerTypeId, id, typeParams, baseTypeValue, defaultValueFactory)
+            {   
+            }
+        }
+
+        public abstract class Struct : QsRuntimeModuleTypeBuildInfo
+        {
+            public Struct(QsMetaItemId? outerTypeId, QsMetaItemId id, IEnumerable<string> typeParams, QsTypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
+                : base(outerTypeId, id, typeParams, baseTypeValue, defaultValueFactory)
+            {
+            }
+        }
 
         public abstract void Build(QsRuntimeModuleTypeBuilder builder);
     }

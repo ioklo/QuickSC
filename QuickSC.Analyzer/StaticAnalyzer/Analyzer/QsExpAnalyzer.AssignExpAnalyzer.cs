@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
+using static QuickSC.StaticAnalyzer.QsAnalyzer;
 
 namespace QuickSC.StaticAnalyzer
 {
@@ -13,9 +14,9 @@ namespace QuickSC.StaticAnalyzer
         abstract class AssignExpAnalyzer
         {
             QsAnalyzer analyzer;
-            QsAnalyzer.Context context;
+            Context context;
 
-            public AssignExpAnalyzer(QsAnalyzer analyzer, QsAnalyzer.Context context)
+            public AssignExpAnalyzer(QsAnalyzer analyzer, Context context)
             {
                 this.analyzer = analyzer;
                 this.context = context;
@@ -34,10 +35,10 @@ namespace QuickSC.StaticAnalyzer
             {
                 var typeArgs = GetTypeValues(idExp.TypeArgs, context);
 
-                if (!context.GetIdentifierInfo(idExp.Value, typeArgs, out var idInfo))
+                if (!context.GetIdentifierInfo(idExp.Value, typeArgs, null, out var idInfo))
                     return null;
 
-                if (idInfo is QsAnalyzerIdentifierInfo.Var varIdInfo)
+                if (idInfo is IdentifierInfo.Var varIdInfo)
                     return AnalyzeDirect(varIdInfo.TypeValue, varIdInfo.StorageInfo);
 
                 // TODO: Func
@@ -50,23 +51,23 @@ namespace QuickSC.StaticAnalyzer
                 if (memberExp.Object is QsIdentifierExp objIdExp)
                 {
                     var typeArgs = GetTypeValues(objIdExp.TypeArgs, context);
-                    if (!context.GetIdentifierInfo(objIdExp.Value, typeArgs, out var idInfo))
+                    if (!context.GetIdentifierInfo(objIdExp.Value, typeArgs, null, out var idInfo))
                         return null;
 
                     // X.m = e1
-                    if (idInfo is QsAnalyzerIdentifierInfo.Type typeIdInfo)
+                    if (idInfo is IdentifierInfo.Type typeIdInfo)
                         return AnalyzeAssignToStaticMember(memberExp, typeIdInfo.TypeValue);
                 }
 
-                if (!analyzer.AnalyzeExp(memberExp.Object, context, out var objTypeValue))
+                if (!analyzer.AnalyzeExp(memberExp.Object, null, context, out var objTypeValue))
                     return null;
 
                 return AnalyzeAssignToInstanceMember(memberExp, objTypeValue);
             }
 
-            QsTypeValue? AnalyzeAssignToStaticMember(QsMemberExp memberExp, QsTypeValue objTypeValue)
+            QsTypeValue? AnalyzeAssignToStaticMember(QsMemberExp memberExp, QsTypeValue.Normal objNormalTypeValue)
             {
-                if (!analyzer.CheckStaticMember(memberExp, objTypeValue, context, out var varValue))
+                if (!analyzer.CheckStaticMember(memberExp, objNormalTypeValue, context, out var varValue))
                     return null;
 
                 var typeValue = context.TypeValueService.GetTypeValue(varValue);
@@ -93,10 +94,10 @@ namespace QuickSC.StaticAnalyzer
 
             QsTypeValue? AnalyzeAssignToIndexerExp(QsIndexerExp indexerExp0)
             {
-                if (!analyzer.AnalyzeExp(indexerExp0.Object, context, out var objTypeValue))
+                if (!analyzer.AnalyzeExp(indexerExp0.Object, null, context, out var objTypeValue))
                     return null;
 
-                if (!analyzer.AnalyzeExp(indexerExp0.Index, context, out var indexTypeValue))
+                if (!analyzer.AnalyzeExp(indexerExp0.Index, null, context, out var indexTypeValue))
                     return null;
 
                 context.TypeValueService.GetMemberFuncValue(

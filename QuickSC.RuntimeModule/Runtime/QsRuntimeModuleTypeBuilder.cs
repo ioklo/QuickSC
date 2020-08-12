@@ -38,8 +38,13 @@ namespace QuickSC.Runtime
         }
 
         private void BuildType(QsRuntimeModuleTypeBuildInfo buildInfo)
-        { 
-            moduleBuilder.AddType(outerTypeId, typeId, buildInfo.GetTypeParams(), buildInfo.GetBaseTypeValue(), memberTypeIds, memberFuncIds, memberVarIds, buildInfo.GetDefaultValueFactory());
+        {
+            if (buildInfo is QsRuntimeModuleTypeBuildInfo.Class classBuildInfo)
+                moduleBuilder.AddClassType(outerTypeId, typeId, classBuildInfo.GetTypeParams(), classBuildInfo.GetBaseTypeValue(), memberTypeIds, memberFuncIds, memberVarIds, classBuildInfo.GetDefaultValueFactory());
+            else if (buildInfo is QsRuntimeModuleTypeBuildInfo.Struct structBuildInfo)
+                moduleBuilder.AddStructType(outerTypeId, typeId, structBuildInfo.GetTypeParams(), structBuildInfo.GetBaseTypeValue(), memberTypeIds, memberFuncIds, memberVarIds, structBuildInfo.GetDefaultValueFactory());
+            else
+                throw new InvalidOperationException();
         }
 
         public void AddMemberFunc(

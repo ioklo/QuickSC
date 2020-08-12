@@ -10,12 +10,12 @@ namespace QuickSC
     internal class QsScriptModule : IQsModule
     {
         private QsScriptMetadata scriptMetadata;
-        private ImmutableDictionary<QsMetaItemId, QsScriptFuncTemplate> funcTemplatesById;
+        private ImmutableDictionary<QsMetaItemId, QsScriptTemplate> templatesById;
 
-        public QsScriptModule(QsScriptMetadata scriptMetadata, IEnumerable<QsScriptFuncTemplate> funcTemplates)
+        public QsScriptModule(QsScriptMetadata scriptMetadata, IEnumerable<QsScriptTemplate> templates)
         {
             this.scriptMetadata = scriptMetadata;
-            this.funcTemplatesById = funcTemplates.ToImmutableDictionary(ft => ft.FuncId);
+            this.templatesById = templates.ToImmutableDictionary(templ => templ.Id);
         }
 
         public string ModuleName => scriptMetadata.ModuleName;
@@ -25,7 +25,7 @@ namespace QuickSC
             return scriptMetadata.GetFuncInfo(id, out funcInfo);
         }       
 
-        public bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(true)] out QsTypeInfo? typeInfo)
+        public bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(true)] out IQsTypeInfo? typeInfo)
         {
             return scriptMetadata.GetTypeInfo(id, out typeInfo);
         }
@@ -37,22 +37,32 @@ namespace QuickSC
 
         public QsFuncInst GetFuncInst(QsDomainService domainService, QsFuncValue funcValue)
         {
-            var funcTempl = funcTemplatesById[funcValue.FuncId];
+            var templ = templatesById[funcValue.FuncId];
 
-            if (funcTempl is QsScriptFuncTemplate.FuncDecl funcDeclTempl)
+            if (templ is QsScriptTemplate.Func funcTempl)
             {
                 if (funcValue.TypeArgList.GetTotalLength() != 0)
                     throw new NotImplementedException();
 
-                return new QsScriptFuncInst(funcDeclTempl.SeqElemTypeValue, funcDeclTempl.bThisCall, null, ImmutableArray<QsValue>.Empty, funcDeclTempl.LocalVarCount, funcDeclTempl.Body);
+                return new QsScriptFuncInst(
+                    funcTempl.SeqElemTypeValue, 
+                    funcTempl.bThisCall, 
+                    null, ImmutableArray<QsValue>.Empty, funcTempl.LocalVarCount, funcTempl.Body);
             }
 
-            throw new NotImplementedException();
+            throw new InvalidOperationException();
         }
 
         public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue.Normal typeValue)
         {
-            throw new System.NotImplementedException();
+            var templ = templatesById[typeValue.TypeId];
+
+            if (templ is QsScriptTemplate.Enum enumTempl)
+            {
+                return new QsEnumTypeInst(typeValue, enumTempl.DefaultElemName);
+            }
+
+            throw new InvalidOperationException();
         }
 
         public void OnLoad(QsDomainService domainService)

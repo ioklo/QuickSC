@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
+using static QuickSC.StaticAnalyzer.QsAnalyzer;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
 
 namespace QuickSC.StaticAnalyzer
@@ -22,7 +23,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         // CommandStmt에 있는 expStringElement를 분석한다
-        bool AnalyzeCommandStmt(QsCommandStmt cmdStmt, QsAnalyzer.Context context)
+        bool AnalyzeCommandStmt(QsCommandStmt cmdStmt, Context context)
         {
             bool bResult = true;
 
@@ -33,18 +34,18 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeVarDeclStmt(QsVarDeclStmt varDeclStmt, QsAnalyzer.Context context)
+        bool AnalyzeVarDeclStmt(QsVarDeclStmt varDeclStmt, Context context)
         {
             return analyzer.AnalyzeVarDecl(varDeclStmt.VarDecl, context);
         }
 
-        bool AnalyzeIfStmt(QsIfStmt ifStmt, QsAnalyzer.Context context) 
+        bool AnalyzeIfStmt(QsIfStmt ifStmt, Context context) 
         {
             bool bResult = true;
 
             var boolTypeValue = analyzer.GetBoolTypeValue();
             
-            if (!analyzer.AnalyzeExp(ifStmt.Cond, context, out var condTypeValue))
+            if (!analyzer.AnalyzeExp(ifStmt.Cond, null, context, out var condTypeValue))
                 return false;            
             
             // 일반적인 경우,
@@ -67,38 +68,56 @@ namespace QuickSC.StaticAnalyzer
                 // if (exp is X) 구문은 exp가 identifier일때만 가능하다
                 if (ifStmt.Cond is QsIdentifierExp idExpCond)
                 {
-                    // TestType이 있을때만 넣는다
-                    var testTypeValue = context.GetTypeValueByTypeExp(ifStmt.TestType);
-                    context.AddNodeInfo(ifStmt, new QsIfStmtInfo(testTypeValue));
-
                     var typeArgs = GetTypeValues(idExpCond.TypeArgs, context);
-                    if (!context.GetIdentifierInfo(idExpCond.Value, typeArgs, out var idInfo))
+                    if (!context.GetIdentifierInfo(idExpCond.Value, typeArgs, null, out var idInfo))
                     {
                         context.ErrorCollector.Add(ifStmt.Cond, $"{idExpCond.Value}를 찾지 못했습니다");
                         return false;
                     }
 
-                    if (idInfo is QsAnalyzerIdentifierInfo.Var varIdInfo)
-                    {
-                        // Global일지, Static일지, This일지 모른다
-                        context.ExecInLocalScope(() =>
-                        {
-                            context.AddOverrideVarInfo(varIdInfo.StorageInfo, testTypeValue);
+                    var varIdInfo = idInfo as IdentifierInfo.Var;
 
-                            if (!AnalyzeStmt(ifStmt.Body, context))
-                                bResult = false;
-
-                            if (ifStmt.ElseBody != null)
-                                if (!AnalyzeStmt(ifStmt.ElseBody, context))
-                                    bResult = false;
-                        });
-                        return bResult;
-                    }
-                    else
+                    if (varIdInfo == null)
                     {
                         context.ErrorCollector.Add(ifStmt.Cond, "if (exp is Type) 구문은 exp가 변수여야 합니다");
                         return false;
                     }
+
+                    // testTypeValue, 따로 검사 안해도 될것 같다.. 동적 타입 검사
+                    // 1. 하위 타입 Base is Derived (Normal)
+                    // 2. 인터페이스 Type is Interface (Interface)
+                    // 3. enum 하위 타입 Enum is Enum.One (Enum)
+
+                    // TestType이 있을때만 넣는다
+                    var testTypeValue = context.GetTypeValueByTypeExp(ifStmt.TestType);
+
+                    if (testTypeValue is QsTypeValue.EnumElem enumElem)
+                    {
+                        context.AddNodeInfo(ifStmt, QsIfStmtInfo.MakeTestEnum(condTypeValue, enumElem.Name));
+                    }
+                    else if (testTypeValue is QsTypeValue.Normal normal)
+                    {
+                        context.AddNodeInfo(ifStmt, QsIfStmtInfo.MakeTestClass(condTypeValue, testTypeValue));
+                    }
+                    else
+                    {
+                        context.ErrorCollector.Add(ifStmt.TestType, "if (exp is Test) 구문은 Test부분이 타입이거나 enum값이어야 합니다");
+                        return false;
+                    }
+
+                    context.ExecInLocalScope(() =>
+                    {
+                        context.AddOverrideVarInfo(varIdInfo.StorageInfo, testTypeValue);
+
+                        if (!AnalyzeStmt(ifStmt.Body, context))
+                            bResult = false;
+
+                        if (ifStmt.ElseBody != null)
+                            if (!AnalyzeStmt(ifStmt.ElseBody, context))
+                                bResult = false;
+                    });
+
+                    return bResult;
                 }
                 else
                 {
@@ -108,7 +127,7 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        bool AnalyzeForStmtInitializer(QsForStmtInitializer forInit, QsAnalyzer.Context context)
+        bool AnalyzeForStmtInitializer(QsForStmtInitializer forInit, Context context)
         {
             switch(forInit)
             {
@@ -117,7 +136,7 @@ namespace QuickSC.StaticAnalyzer
 
                 case QsExpForStmtInitializer expInit:
                     {
-                        if (analyzer.AnalyzeExp(expInit.Exp, context, out var expTypeValue))
+                        if (analyzer.AnalyzeExp(expInit.Exp, null, context, out var expTypeValue))
                         {
                             context.AddNodeInfo(expInit, new QsExpForStmtInitializerInfo(expTypeValue));
                             return true;
@@ -131,7 +150,7 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        bool AnalyzeForStmt(QsForStmt forStmt, QsAnalyzer.Context context)
+        bool AnalyzeForStmt(QsForStmt forStmt, Context context)
         {
             bool bResult = true;
 
@@ -146,7 +165,7 @@ namespace QuickSC.StaticAnalyzer
                 if (forStmt.CondExp != null)
                 {
                     // 밑에서 쓰이므로 분석실패시 종료
-                    if (!analyzer.AnalyzeExp(forStmt.CondExp, context, out var condExpTypeValue))
+                    if (!analyzer.AnalyzeExp(forStmt.CondExp, null, context, out var condExpTypeValue))
                     {
                         bResult = false;
                         return;
@@ -159,7 +178,7 @@ namespace QuickSC.StaticAnalyzer
 
                 QsTypeValue? contTypeValue = null;
                 if (forStmt.ContinueExp != null)
-                    if (!analyzer.AnalyzeExp(forStmt.ContinueExp, context, out contTypeValue))
+                    if (!analyzer.AnalyzeExp(forStmt.ContinueExp, null, context, out contTypeValue))
                         bResult = false;
 
                 if (!AnalyzeStmt(forStmt.Body, context))
@@ -171,19 +190,19 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeContinueStmt(QsContinueStmt continueStmt, QsAnalyzer.Context context)
+        bool AnalyzeContinueStmt(QsContinueStmt continueStmt, Context context)
         {
             // TODO: loop안에 있는지 확인한다
             return true;
         }
 
-        bool AnalyzeBreakStmt(QsBreakStmt breakStmt, QsAnalyzer.Context context)
+        bool AnalyzeBreakStmt(QsBreakStmt breakStmt, Context context)
         {
             // loop안에 있는지 확인해야 한다
             return true;
         }
         
-        bool AnalyzeReturnStmt(QsReturnStmt returnStmt, QsAnalyzer.Context context)
+        bool AnalyzeReturnStmt(QsReturnStmt returnStmt, Context context)
         {   
             if (returnStmt.Value != null)
             {
@@ -191,13 +210,14 @@ namespace QuickSC.StaticAnalyzer
                 {
                     context.ErrorCollector.Add(returnStmt, $"seq 함수는 빈 return만 허용됩니다");
                     return false;
-                }
-
-                if (!analyzer.AnalyzeExp(returnStmt.Value, context, out var returnValueTypeValue))
-                    return false;
+                }                
 
                 var retTypeValue = context.GetRetTypeValue();
-                
+
+                // NOTICE: 리턴타입을 힌트로 넣었다
+                if (!analyzer.AnalyzeExp(returnStmt.Value, retTypeValue, context, out var returnValueTypeValue))
+                    return false;
+
                 if (retTypeValue != null)
                 {
                     // 현재 함수 시그니처랑 맞춰서 같은지 확인한다
@@ -218,7 +238,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool AnalyzeBlockStmt(QsBlockStmt blockStmt, QsAnalyzer.Context context)
+        bool AnalyzeBlockStmt(QsBlockStmt blockStmt, Context context)
         {
             bool bResult = true;
 
@@ -233,7 +253,7 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeExpStmt(QsExpStmt expStmt, QsAnalyzer.Context context)
+        bool AnalyzeExpStmt(QsExpStmt expStmt, Context context)
         {
             bool bResult = true;
 
@@ -249,7 +269,7 @@ namespace QuickSC.StaticAnalyzer
                 bResult = false;
             }
 
-            if (analyzer.AnalyzeExp(expStmt.Exp, context, out var expTypeValue))
+            if (analyzer.AnalyzeExp(expStmt.Exp, null, context, out var expTypeValue))
                 context.AddNodeInfo(expStmt, new QsExpStmtInfo(expTypeValue));
             else
                 bResult = false;
@@ -257,7 +277,7 @@ namespace QuickSC.StaticAnalyzer
             return bResult;            
         }
 
-        bool AnalyzeTaskStmt(QsTaskStmt taskStmt, QsAnalyzer.Context context)
+        bool AnalyzeTaskStmt(QsTaskStmt taskStmt, Context context)
         {
             if (!analyzer.AnalyzeLambda(taskStmt.Body, ImmutableArray<QsLambdaExpParam>.Empty, context, out var captureInfo, out var funcTypeValue, out int localVarCount))
                 return false;
@@ -266,7 +286,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool AnalyzeAwaitStmt(QsAwaitStmt awaitStmt, QsAnalyzer.Context context)
+        bool AnalyzeAwaitStmt(QsAwaitStmt awaitStmt, Context context)
         {
             bool bResult = true;
 
@@ -278,7 +298,7 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeAsyncStmt(QsAsyncStmt asyncStmt, QsAnalyzer.Context context)
+        bool AnalyzeAsyncStmt(QsAsyncStmt asyncStmt, Context context)
         {
             if (!analyzer.AnalyzeLambda(asyncStmt.Body, ImmutableArray<QsLambdaExpParam>.Empty, context, out var captureInfo, out var funcTypeValue, out int localVarCount))
                 return false;
@@ -287,11 +307,11 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
         
-        bool AnalyzeForeachStmt(QsForeachStmt foreachStmt, QsAnalyzer.Context context)
+        bool AnalyzeForeachStmt(QsForeachStmt foreachStmt, Context context)
         {
             var boolTypeValue = analyzer.GetBoolTypeValue();            
 
-            if (!analyzer.AnalyzeExp(foreachStmt.Obj, context, out var objTypeValue))
+            if (!analyzer.AnalyzeExp(foreachStmt.Obj, null, context, out var objTypeValue))
                 return false;
 
             var elemTypeValue = context.GetTypeValueByTypeExp(foreachStmt.Type);
@@ -375,20 +395,21 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeYieldStmt(QsYieldStmt yieldStmt, QsAnalyzer.Context context)
+        bool AnalyzeYieldStmt(QsYieldStmt yieldStmt, Context context)
         {
             if (!context.IsSeqFunc())
             {
                 context.ErrorCollector.Add(yieldStmt, "seq 함수 내부에서만 yield를 사용할 수 있습니다");
                 return false;
-            }
-
-            if (!analyzer.AnalyzeExp(yieldStmt.Value, context, out var yieldTypeValue))
-                return false;
+            }            
 
             // yield에서는 retType이 명시되는 경우만 있을 것이다
             var retTypeValue = context.GetRetTypeValue();
             Debug.Assert(retTypeValue != null);
+
+            // NOTICE: 리턴 타입을 힌트로 넣었다
+            if (!analyzer.AnalyzeExp(yieldStmt.Value, retTypeValue, context, out var yieldTypeValue))
+                return false;
 
             if (!analyzer.IsAssignable(retTypeValue, yieldTypeValue, context))
             {
@@ -399,7 +420,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public bool AnalyzeStmt(QsStmt stmt, QsAnalyzer.Context context)
+        public bool AnalyzeStmt(QsStmt stmt, Context context)
         {
             switch (stmt)
             {
