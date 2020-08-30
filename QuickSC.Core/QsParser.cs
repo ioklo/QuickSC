@@ -2,6 +2,7 @@
 using QuickSC.Token;
 using System;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -94,7 +95,7 @@ namespace QuickSC
             return false;
         }
 
-        bool Accept<TToken>(QsLexResult lexResult, ref QsParserContext context, out TToken? token) where TToken : QsToken
+        bool Accept<TToken>(QsLexResult lexResult, ref QsParserContext context, [NotNullWhen(returnValue:true)] out TToken? token) where TToken : QsToken
         {
             if (lexResult.HasValue && lexResult.Token is TToken resultToken)
             {
@@ -112,7 +113,10 @@ namespace QuickSC
             return lexResult.HasValue && lexResult.Token is TToken;
         }
 
-        bool Parse<TSyntaxElem>(QsParseResult<TSyntaxElem> parseResult, ref QsParserContext context, out TSyntaxElem? elem) where TSyntaxElem : class
+        bool Parse<TSyntaxElem>(
+            QsParseResult<TSyntaxElem> parseResult, 
+            ref QsParserContext context, 
+            [NotNullWhen(returnValue: true)] out TSyntaxElem? elem) where TSyntaxElem : class
         {
             if (!parseResult.HasValue)
             {
@@ -134,7 +138,21 @@ namespace QuickSC
             if (!Accept<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context, out var idToken))
                 return QsParseResult<QsTypeExp>.Invalid;
 
-            return new QsParseResult<QsTypeExp>(new QsIdTypeExp(idToken!.Value), context);
+            var typeArgsBuilder = ImmutableArray.CreateBuilder<QsTypeExp>();
+            if (Accept<QsLessThanToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                while(!Accept<QsGreaterThanToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                {
+                    if (0 < typeArgsBuilder.Count)
+                        if (!Accept<QsCommaToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                            return QsParseResult<QsTypeExp>.Invalid;
+
+                    if (!Parse(await ParseTypeExpAsync(context), ref context, out var typeArg))
+                        return QsParseResult<QsTypeExp>.Invalid;
+
+                    typeArgsBuilder.Add(typeArg);
+                }
+
+            return new QsParseResult<QsTypeExp>(new QsIdTypeExp(idToken.Value, typeArgsBuilder.ToImmutable()), context);
         }
 
         async ValueTask<QsParseResult<QsTypeExp>> ParsePrimaryTypeExpAsync(QsParserContext context)
@@ -142,7 +160,7 @@ namespace QuickSC
             if (!Parse(await ParseTypeIdExpAsync(context), ref context, out var typeIdExp))
                 return QsParseResult<QsTypeExp>.Invalid;
 
-            QsTypeExp exp = typeIdExp!;
+            QsTypeExp exp = typeIdExp;
             while(true)
             {
                 var lexResult = await lexer.LexNormalModeAsync(context.LexerContext, true);
@@ -154,7 +172,7 @@ namespace QuickSC
                         return QsParseResult<QsTypeExp>.Invalid;
 
                     // TODO: typeApp(T.S<>) 처리도 추가
-                    exp = new QsMemberTypeExp(exp, memberName!.Value, ImmutableArray<QsTypeExp>.Empty);
+                    exp = new QsMemberTypeExp(exp, memberName.Value, ImmutableArray<QsTypeExp>.Empty);
                     continue;
                 }
 
@@ -183,7 +201,7 @@ namespace QuickSC
             if (!Accept<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context, out var name))
                 return QsParseResult<(QsTypeAndName, bool)>.Invalid;
 
-            return new QsParseResult<(QsTypeAndName, bool)>((new QsTypeAndName(typeExpResult.Elem, name!.Value), bVariadic), context);
+            return new QsParseResult<(QsTypeAndName, bool)>((new QsTypeAndName(typeExpResult.Elem, name.Value), bVariadic), context);
         }
 
         internal async ValueTask<QsParseResult<QsFuncDecl>> ParseFuncDeclAsync(QsParserContext context)
@@ -239,7 +257,7 @@ namespace QuickSC
                 new QsFuncDecl(
                     funcKind, 
                     retTypeResult.Elem, 
-                    funcName!.Value,
+                    funcName.Value,
                     ImmutableArray<string>.Empty,
                     funcDeclParams.ToImmutable(), 
                     variadicParamIndex, 
@@ -251,12 +269,30 @@ namespace QuickSC
 
         internal async ValueTask<QsParseResult<QsEnumDecl>> ParseEnumDeclAsync(QsParserContext context)
         {
-            // enum x { a , b () } 
+            // enum E<T1, T2> { a , b () } 
             if (!Accept<QsEnumToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                 return QsParseResult<QsEnumDecl>.Invalid;
 
             if (!Accept<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context, out var enumName))
                 return QsParseResult<QsEnumDecl>.Invalid;
+            
+            // typeParams
+            var typeParamsBuilder = ImmutableArray.CreateBuilder<string>();
+            if (Accept<QsLessThanToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+            {
+                while(!Accept<QsGreaterThanToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                {
+                    if (0 < typeParamsBuilder.Count)
+                        if (!Accept<QsCommaToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
+                            return QsParseResult<QsEnumDecl>.Invalid;                    
+
+                    // 변수 이름만 받을 것이므로 TypeExp가 아니라 Identifier여야 한다
+                    if (!Accept<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context, out var typeParam))
+                        return QsParseResult<QsEnumDecl>.Invalid;
+
+                    typeParamsBuilder.Add(typeParam.Value);
+                }
+            }
 
             if (!Accept<QsLBraceToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
                 return QsParseResult<QsEnumDecl>.Invalid;
@@ -282,14 +318,14 @@ namespace QuickSC
                         if (!Accept<QsIdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context, out var paramName))
                             return QsParseResult<QsEnumDecl>.Invalid;
 
-                        parameters.Add(new QsTypeAndName(typeExp!, paramName!.Value));
+                        parameters.Add(new QsTypeAndName(typeExp!, paramName.Value));
                     }
                 }
 
-                elements.Add(new QsEnumDeclElement(elemName!.Value, parameters.ToImmutable()));
+                elements.Add(new QsEnumDeclElement(elemName.Value, parameters.ToImmutable()));
             }
 
-            return new QsParseResult<QsEnumDecl>(new QsEnumDecl(enumName!.Value, ImmutableArray<string>.Empty, elements.ToImmutable()), context);
+            return new QsParseResult<QsEnumDecl>(new QsEnumDecl(enumName.Value, typeParamsBuilder.ToImmutable(), elements.ToImmutable()), context);
         }
 
         async ValueTask<QsParseResult<QsScriptElement>> ParseScriptElementAsync(QsParserContext context)

@@ -1,6 +1,7 @@
 ﻿using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text;
 
 namespace QuickSC.StaticAnalyzer
@@ -29,10 +30,13 @@ namespace QuickSC.StaticAnalyzer
         public class Enum : QsScriptTemplate
         {
             public string DefaultElemName { get; }
-            public Enum(QsMetaItemId enumId, string defaultElemName)
+            public ImmutableArray<(string Name, QsTypeValue TypeValue)> DefaultFields { get; }
+
+            public Enum(QsMetaItemId enumId, string defaultElemName, IEnumerable<(string Name, QsTypeValue TypeValue)> defaultFields)
                 : base(enumId)
             {
                 DefaultElemName = defaultElemName;
+                DefaultFields = defaultFields.ToImmutableArray();
             }
         }
 
@@ -44,8 +48,8 @@ namespace QuickSC.StaticAnalyzer
         public static Func MakeFunc(QsMetaItemId funcId, QsTypeValue? seqElemTypeValue, bool bThisCall, int localVarCount, QsStmt body)
             => new Func(funcId, seqElemTypeValue, bThisCall, localVarCount, body);
 
-        public static Enum MakeEnum(QsMetaItemId enumId, string defaultElemName)
-            => new Enum(enumId, defaultElemName);
+        public static Enum MakeEnum(QsMetaItemId enumId, string defaultElemName, IEnumerable<(string Name, QsTypeValue TypeValue)> defaultFields)
+            => new Enum(enumId, defaultElemName, defaultFields);
     }
 
 }

@@ -10,6 +10,12 @@ namespace QuickSC
     {
         public string ElemName { get; private set; }
         private Dictionary<string, QsValue> values;
+
+        public QsEnumValue()
+        {
+            ElemName = string.Empty;
+            values = new Dictionary<string, QsValue>();
+        }
         
         public QsEnumValue(string elemName, IEnumerable<(string Name, QsValue Value)> memberValues)
         {
@@ -29,7 +35,6 @@ namespace QuickSC
         public override void SetValue(QsValue fromValue)
         {
             QsEnumValue enumValue = (QsEnumValue)fromValue;
-
             SetValue(enumValue.ElemName, enumValue.values.Select(tv => (tv.Key, tv.Value)));
         }
 
@@ -47,6 +52,11 @@ namespace QuickSC
                 foreach (var memberValue in memberValues)
                     values[memberValue.Name].SetValue(memberValue.Value);
             }
+        }
+
+        public QsValue GetValue(string memberName)
+        {
+            return values[memberName];
         }
     }
     

@@ -1,6 +1,7 @@
 ﻿using QuickSC.Syntax;
 using System;
 using System.Collections.Immutable;
+using System.Linq;
 using static QuickSC.StaticAnalyzer.QsAnalyzer;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
 
@@ -64,7 +65,7 @@ namespace QuickSC.StaticAnalyzer
 
                 if (idInfo is IdentifierInfo.Type typeIdInfo)
                 {
-                    return Analyze_Type(typeIdInfo);
+                    return Analyze_EnumOrType(typeIdInfo);
                 }
                 else if (idInfo is IdentifierInfo.Func funcIdInfo)
                 {
@@ -122,6 +123,44 @@ namespace QuickSC.StaticAnalyzer
                 // 변수에서 찾기 VarId도 같이 주는것이 좋을 것 같다
                 context.ErrorCollector.Add(exp, $"{exp.Object}에 {exp.MemberName} 함수가 없습니다");
                 return null;
+            }
+
+            private Result? Analyze_EnumOrType(IdentifierInfo.Type typeIdInfo)
+            {
+                var typeInfo = context.MetadataService.GetTypeInfos(typeIdInfo.TypeValue.TypeId).Single();
+                if (typeInfo is IQsEnumInfo enumTypeInfo)
+                {
+                    if (exp.MemberTypeArgs.Length != 0)
+                    {
+                        context.ErrorCollector.Add(exp, "enum 생성자는 타입인자를 가질 수 없습니다");
+                        return null;
+                    }
+
+                    if (!enumTypeInfo.GetElemInfo(exp.MemberName, out var elemInfo))
+                    {
+                        context.ErrorCollector.Add(exp, $"{exp.MemberName}에 해당하는 enum 생성자를 찾을 수 없습니다");
+                        return null;
+                    }
+
+
+                    if (elemInfo.Value.FieldInfos.Length == 0)
+                    {
+                        context.ErrorCollector.Add(exp, $"{exp.MemberName} enum 값은 인자를 받지 않습니다");
+                        return null;
+                    }
+
+                    // E<T>.Second(int i, T t);                    
+
+                    // (int, T) => E<T>
+                    var paramTypes = elemInfo.Value.FieldInfos.Select(fieldInfo => fieldInfo.TypeValue);
+                    var funcTypeValue = QsTypeValue.MakeFunc(typeIdInfo.TypeValue, paramTypes);
+                    var appliedFuncTypeValue = context.TypeValueService.Apply(typeIdInfo.TypeValue, funcTypeValue);
+
+                    var nodeInfo = QsMemberCallExpInfo.MakeEnumValue(null, args, elemInfo.Value);
+                    return new Result(funcTypeValue, nodeInfo, args);
+                }
+
+                return Analyze_Type(typeIdInfo);
             }
 
             private Result? Analyze_Type(IdentifierInfo.Type typeIdInfo)

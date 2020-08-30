@@ -100,6 +100,7 @@ namespace QuickSC
 
         public class EnumElem : QsTypeValue
         {
+            public QsEnumElemInfo elemInfo { get; }
             public Normal EnumTypeValue { get; }
             public string Name { get; }
 

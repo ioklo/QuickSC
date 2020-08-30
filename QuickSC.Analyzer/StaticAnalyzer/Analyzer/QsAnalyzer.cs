@@ -251,7 +251,10 @@ namespace QuickSC.StaticAnalyzer
         public bool AnalyzeEnumDecl(QsEnumDecl enumDecl, Context context)
         {
             var enumInfo = context.GetEnumInfoByDecl(enumDecl);
-            context.AddTemplate(QsScriptTemplate.MakeEnum(enumInfo.TypeId, enumInfo.GetDefaultElemInfo().Name));
+            var defaultElemInfo = enumInfo.GetDefaultElemInfo();
+            var defaultFields = defaultElemInfo.FieldInfos.Select(fieldInfo => (fieldInfo.Name, fieldInfo.TypeValue));
+
+            context.AddTemplate(QsScriptTemplate.MakeEnum(enumInfo.TypeId, enumInfo.GetDefaultElemInfo().Name, defaultFields));
 
             return true;
         }

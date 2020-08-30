@@ -296,6 +296,7 @@ namespace QuickSC
 
             var scriptModule = new QsScriptModule(
                 analyzeResult.ScriptMetadata,
+                scriptModule => new QsTypeValueApplier(new QsMetadataService(metadatas.Append(scriptModule))),
                 analyzeResult.Templates);
 
             var domainService = new QsDomainService();

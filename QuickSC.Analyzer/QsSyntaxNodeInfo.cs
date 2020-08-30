@@ -64,6 +64,7 @@ namespace QuickSC
             }
         }
 
+        // E.One
         public class EnumElem : QsMemberExpInfo
         {
             public QsTypeValue.Normal EnumTypeValue { get; }
@@ -76,14 +77,30 @@ namespace QuickSC
             }
         }
 
+        // e.i
+        public class EnumElemField : QsMemberExpInfo
+        {
+            public QsTypeValue.Normal ObjectTypeValue;
+            public string Name { get; }
+
+            public EnumElemField(QsTypeValue.Normal objTypeValue, string name)
+            {
+                ObjectTypeValue = objTypeValue;
+                Name = name;
+            }
+        }
+
         public static QsMemberExpInfo MakeInstance(QsTypeValue objectTypeValue, QsName varName) 
             => new Instance(objectTypeValue, varName);
 
         public static QsMemberExpInfo MakeStatic(QsTypeValue? objectTypeValue, QsVarValue varValue)
             => new Static(objectTypeValue, varValue);
 
-        public static QsMemberExpInfo MakeEnumElem(QsTypeValue.Normal enumTypeValue, string name)
-            => new EnumElem(enumTypeValue, name);
+        public static QsMemberExpInfo MakeEnumElem(QsTypeValue.Normal enumTypeValue, string elemName)
+            => new EnumElem(enumTypeValue, elemName);
+
+        public static QsMemberExpInfo MakeEnumElemField(QsTypeValue.Normal objTypeValue, string name)
+            => new EnumElemField(objTypeValue, name);
     }
 
     public class QsBinaryOpExpInfo : QsSyntaxNodeInfo
@@ -217,16 +234,34 @@ namespace QuickSC
             => new CallFunc(objectExp, objectTypeValue, valueTypeValue0, valueTypeValue1, bReturnPrevValue, arguments, getter, setter, op);
     }
 
-    public class QsCallExpInfo : QsSyntaxNodeInfo
+    public abstract class QsCallExpInfo : QsSyntaxNodeInfo
     {
-        public QsFuncValue? FuncValue { get; }
-        public ImmutableArray<QsTypeValue> ArgTypeValues { get; }
+        public class Normal : QsCallExpInfo
+        {
+            public QsFuncValue? FuncValue { get; }
+            public ImmutableArray<QsTypeValue> ArgTypeValues { get; }
 
-        public QsCallExpInfo(QsFuncValue? funcValue, ImmutableArray<QsTypeValue> argTypeValues) 
-        { 
-            FuncValue = funcValue;
-            ArgTypeValues = argTypeValues;
+            public Normal(QsFuncValue? funcValue, IEnumerable<QsTypeValue> argTypeValues)
+            {
+                FuncValue = funcValue;
+                ArgTypeValues = argTypeValues.ToImmutableArray();
+            }
         }
+
+        public class EnumValue : QsCallExpInfo
+        {
+            public  QsEnumElemInfo ElemInfo { get; }
+            public ImmutableArray<QsTypeValue> ArgTypeValues { get; }
+
+            public EnumValue(QsEnumElemInfo elemInfo, IEnumerable<QsTypeValue> argTypeValues)
+            {
+                ElemInfo = elemInfo;
+                ArgTypeValues = argTypeValues.ToImmutableArray();
+            }
+        }
+
+        public static Normal MakeNormal(QsFuncValue? funcValue, ImmutableArray<QsTypeValue> argTypeValues) => new Normal(funcValue, argTypeValues);
+        public static EnumValue MakeEnumValue(QsEnumElemInfo elemInfo, IEnumerable<QsTypeValue> argTypeValues) => new EnumValue(elemInfo, argTypeValues);
     }
 
     public class QsMemberCallExpInfo : QsSyntaxNodeInfo
@@ -280,6 +315,16 @@ namespace QuickSC
             }
         }
 
+        public class EnumValue : QsMemberCallExpInfo
+        {
+            public QsEnumElemInfo ElemInfo { get; }
+            public EnumValue(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsEnumElemInfo elemInfo)
+                : base(objectTypeValue, argTypeValues)
+            {
+                ElemInfo = elemInfo;
+            }
+        }
+
         // 네개 씩이나 나눠야 하다니
         public static QsMemberCallExpInfo MakeStaticFunc(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsFuncValue funcValue)
             => new StaticFuncCall(objectTypeValue, argTypeValues, funcValue);
@@ -292,6 +337,9 @@ namespace QuickSC
 
         public static QsMemberCallExpInfo MakeInstanceLambda(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsName varName)
             => new InstanceLambdaCall(objectTypeValue, argTypeValues, varName);
+
+        public static QsMemberCallExpInfo MakeEnumValue(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsEnumElemInfo elemInfo)
+            => new EnumValue(objectTypeValue, argTypeValues, elemInfo);
 
         // 왜 private 인데 base()가 먹는지;
         private QsMemberCallExpInfo(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues)

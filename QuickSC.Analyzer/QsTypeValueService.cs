@@ -188,6 +188,11 @@ namespace QuickSC
             return true;
         }
 
+        public QsTypeValue Apply(QsTypeValue context, QsTypeValue typeValue)
+        {
+            return typeValueApplier.Apply(context, typeValue);
+        }
+
         public bool GetMemberVarValue(
             QsTypeValue objTypeValue, 
             QsName varName,

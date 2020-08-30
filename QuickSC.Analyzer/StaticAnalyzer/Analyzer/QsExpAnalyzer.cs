@@ -33,7 +33,10 @@ namespace QuickSC.StaticAnalyzer
             var typeArgs = GetTypeValues(idExp.TypeArgs, context);
 
             if (!context.GetIdentifierInfo(idExp.Value, typeArgs, hintTypeValue, out var idInfo))
+            {
+                context.ErrorCollector.Add(idExp, $"{idExp.Value}을 찾을 수 없습니다");
                 return false;
+            }
 
             if (idInfo is IdentifierInfo.Var varIdInfo)
             {
@@ -349,24 +352,71 @@ namespace QuickSC.StaticAnalyzer
                 return AnalyzeCallableElseExp(exp, args, context, out outValue);
         }
         
-        internal bool AnalyzeCallExp(QsCallExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
+        internal bool AnalyzeCallExp(QsCallExp exp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
         {
+            (QsSyntaxNodeInfo NodeInfo, QsTypeValue TypeValue)? AnalyzeEnumValueOrNormal(ImmutableArray<QsTypeValue> args)
+            {
+                if (exp.Callable is QsIdentifierExp idExp)
+                {
+                    var typeArgs = GetTypeValues(idExp.TypeArgs, context);                    
+                    if (context.GetIdentifierInfo(idExp.Value, typeArgs, hintTypeValue, out var idInfo))
+                    {
+                        if (idInfo is IdentifierInfo.EnumElem enumElem)
+                        {
+                            // typeArgs가 있으면 enumElem을 주지 않는다
+                            Debug.Assert(idExp.TypeArgs.Length == 0);
+
+                            // 인자 개수가 맞는지 확인
+                            if (enumElem.ElemInfo.FieldInfos.Length != args.Length)
+                            {
+                                context.ErrorCollector.Add(exp, "enum인자 개수가 맞지 않습니다");
+                                return null;
+                            }
+
+                            var argTypeValues = new List<QsTypeValue>();
+                            foreach (var fieldInfo in enumElem.ElemInfo.FieldInfos)
+                            {
+                                var appliedTypeValue = context.TypeValueService.Apply(enumElem.EnumTypeValue, fieldInfo.TypeValue);
+                                argTypeValues.Add(appliedTypeValue);
+                            }
+
+                            var nodeInfo = QsCallExpInfo.MakeEnumValue(enumElem.ElemInfo, argTypeValues);
+                            var typeValue = enumElem.EnumTypeValue;
+
+                            return (nodeInfo, typeValue);
+                        }
+                    }
+                }
+
+                return AnalyzeNormal(args);
+            }
+
+            (QsSyntaxNodeInfo NodeInfo, QsTypeValue TypeValue)? AnalyzeNormal(ImmutableArray<QsTypeValue> args)
+            {
+                // 'f'(), 'F'(), 'GetFunc()'()
+                if (!AnalyzeCallableExp(exp.Callable, args, context, out var callableInfo))
+                    return null;
+
+                var nodeInfo = QsCallExpInfo.MakeNormal(callableInfo.Value.FuncValue, args);
+                var typeValue = callableInfo.Value.TypeValue.Return;
+                return (nodeInfo, typeValue);
+            }
+
             // 여기서 분석해야 할 것은 
             // 1. 해당 Exp가 함수인지, 변수인지, 함수라면 FuncId를 넣어준다
             // 2. Callable 인자에 맞게 잘 들어갔는지 -> 완료
             // 3. 잘 들어갔다면 리턴타입 -> 완료
-
-            outTypeValue = null;
+            outTypeValue = null;            
 
             if (!AnalyzeExps(exp.Args, context, out var args))
                 return false;
-            
-            // 'f'(), 'F'(), 'GetFunc()'()
-            if (!AnalyzeCallableExp(exp.Callable, args, context, out var callableInfo))
+
+            var result = AnalyzeEnumValueOrNormal(args);
+            if (result == null)
                 return false;
 
-            outTypeValue = callableInfo.Value.TypeValue.Return;
-            context.AddNodeInfo(exp, new QsCallExpInfo(callableInfo.Value.FuncValue, args));
+            context.AddNodeInfo(exp, result.Value.NodeInfo);
+            outTypeValue = result.Value.TypeValue;
             return true;
         }
         
@@ -522,7 +572,7 @@ namespace QuickSC.StaticAnalyzer
                 case QsStringExp stringExp: return AnalyzeStringExp(stringExp, context, out typeValue);
                 case QsUnaryOpExp unaryOpExp: return AnalyzeUnaryOpExp(unaryOpExp, context, out typeValue);
                 case QsBinaryOpExp binaryOpExp: return AnalyzeBinaryOpExp(binaryOpExp, context, out typeValue);
-                case QsCallExp callExp: return AnalyzeCallExp(callExp, context, out typeValue);        
+                case QsCallExp callExp: return AnalyzeCallExp(callExp, hintTypeValue, context, out typeValue);        
                 case QsLambdaExp lambdaExp: return AnalyzeLambdaExp(lambdaExp, context, out typeValue);
                 case QsIndexerExp indexerExp: return AnalyzeIndexerExp(indexerExp, context, out typeValue);
                 case QsMemberCallExp memberCallExp: return AnalyzeMemberCallExp(memberCallExp, context, out typeValue);

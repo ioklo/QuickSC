@@ -89,9 +89,6 @@ namespace QuickSC
 
         internal async ValueTask EvalStringExpAsync(QsStringExp stringExp, QsValue result, QsEvalContext context)
         {
-            // TODO: 분석기에서 지역변수로 하나를 등록시켜 놓자
-            var tempStr = context.RuntimeModule.MakeNullObject();
-
             // stringExp는 element들의 concatenation
             var sb = new StringBuilder();
             foreach (var elem in stringExp.Elements)
@@ -672,40 +669,59 @@ namespace QuickSC
 
         async ValueTask EvalCallExpAsync(QsCallExp exp, QsValue result, QsEvalContext context)
         {
-            var callExpInfo = context.GetNodeInfo<QsCallExpInfo>(exp);
+            var info = context.GetNodeInfo<QsCallExpInfo>(exp);
 
-            QsFuncInst funcInst;
-            if (callExpInfo.FuncValue != null)
+            if (info is QsCallExpInfo.EnumValue enumInfo)
             {
-                // TODO: 1. thisFunc, (TODO: 현재 class가 없으므로 virtual staticFunc 패스)            
+                var args = new List<QsValue>(exp.Args.Length);
 
-                // 2. globalFunc (localFunc는 없으므로 패스), or 
+                foreach (var (typeValue, argExp) in Zip(enumInfo.ArgTypeValues, exp.Args))
+                {
+                    // 타입을 통해서 value를 만들어 낼 수 있는가..
+                    var argValue = evaluator.GetDefaultValue(typeValue, context);
+                    args.Add(argValue);
 
-                // var typeInstArgs = MakeTypeInstArgs(funcValue, context.TypeEnv);
-                // TODO: 일단 QsTypeInst를 Empty로 둔다 .. List때문에 문제지만 List는 내부에서 TypeInst를 안쓴다
-                funcInst = context.DomainService.GetFuncInst(callExpInfo.FuncValue);
+                    await EvalAsync(argExp, argValue, context);
+                }
+
+                var fields = enumInfo.ElemInfo.FieldInfos.Zip(args, (fieldInfo, arg) => (fieldInfo.Name, arg));
+                ((QsEnumValue)result).SetValue(enumInfo.ElemInfo.Name, fields);
             }
-            else
+            else if (info is QsCallExpInfo.Normal normalInfo)
             {
-                // TODO: 이거 여기서 해도 되는 것인지 확인
-                var funcInstValue = new QsFuncInstValue();
+                QsFuncInst funcInst;
+                if (normalInfo.FuncValue != null)
+                {
+                    // TODO: 1. thisFunc, (TODO: 현재 class가 없으므로 virtual staticFunc 패스)            
 
-                await EvalAsync(exp.Callable, funcInstValue, context);
-                funcInst = funcInstValue.FuncInst!;
+                    // 2. globalFunc (localFunc는 없으므로 패스), or 
+
+                    // var typeInstArgs = MakeTypeInstArgs(funcValue, context.TypeEnv);
+                    // TODO: 일단 QsTypeInst를 Empty로 둔다 .. List때문에 문제지만 List는 내부에서 TypeInst를 안쓴다
+                    funcInst = context.DomainService.GetFuncInst(normalInfo.FuncValue);
+                }
+                else
+                {
+                    // TODO: 이거 여기서 해도 되는 것인지 확인
+                    var funcInstValue = new QsFuncInstValue();
+
+                    await EvalAsync(exp.Callable, funcInstValue, context);
+                    funcInst = funcInstValue.FuncInst!;
+                }
+
+                var args = new List<QsValue>(exp.Args.Length);
+
+                foreach (var (typeValue, argExp) in Zip(normalInfo.ArgTypeValues, exp.Args))
+                {
+                    // 타입을 통해서 value를 만들어 낼 수 있는가..
+                    var argValue = evaluator.GetDefaultValue(typeValue, context);
+                    args.Add(argValue);
+
+                    await EvalAsync(argExp, argValue, context);
+                }
+
+                await evaluator.EvaluateFuncInstAsync(funcInst.bThisCall ? context.GetThisValue() : null, funcInst, args, result, context);
             }
-
-            var argsBuilder = ImmutableArray.CreateBuilder<QsValue>(exp.Args.Length);
-
-            foreach(var (typeValue, argExp) in Zip(callExpInfo.ArgTypeValues, exp.Args))
-            {
-                // 타입을 통해서 value를 만들어 낼 수 있는가..
-                var argValue = evaluator.GetDefaultValue(typeValue, context);
-                argsBuilder.Add(argValue);
-
-                await EvalAsync(argExp, argValue, context);
-            }
-
-            await evaluator.EvaluateFuncInstAsync(funcInst.bThisCall ? context.GetThisValue() : null, funcInst, argsBuilder.MoveToImmutable(), result, context);
         }
         
         void EvalLambdaExp(QsLambdaExp exp, QsValue result, QsEvalContext context)
@@ -796,6 +812,14 @@ namespace QuickSC
                         return;
                     }
 
+                case QsMemberCallExpInfo.EnumValue enumValueInfo:
+                    {
+                        var args = await EvaluateArgsAsync(info.ArgTypeValues, exp.Args);
+                        var memberValues = enumValueInfo.ElemInfo.FieldInfos.Zip(args, (fieldInfo, arg) => (fieldInfo.Name, arg));
+                        ((QsEnumValue)result).SetValue(enumValueInfo.ElemInfo.Name, memberValues);
+                        return;
+                    }
+
                 default:
                     throw new NotImplementedException();
             }
@@ -844,6 +868,13 @@ namespace QuickSC
             else if (info is QsMemberExpInfo.EnumElem enumElemKind)
             {
                 ((QsEnumValue)result).SetValue(enumElemKind.Name, Enumerable.Empty<(string, QsValue)>());
+            }
+            else if (info is QsMemberExpInfo.EnumElemField enumElemField)
+            {
+                var objValue = evaluator.GetDefaultValue(enumElemField.ObjectTypeValue, context);
+                await EvalAsync(exp.Object, objValue, context);
+
+                result.SetValue(((QsEnumValue)objValue).GetValue(exp.MemberName));
             }
             else
             {

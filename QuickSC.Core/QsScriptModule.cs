@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace QuickSC
 {
@@ -11,10 +12,15 @@ namespace QuickSC
     {
         private QsScriptMetadata scriptMetadata;
         private ImmutableDictionary<QsMetaItemId, QsScriptTemplate> templatesById;
+        private QsTypeValueApplier typeValueApplier;
 
-        public QsScriptModule(QsScriptMetadata scriptMetadata, IEnumerable<QsScriptTemplate> templates)
+        public QsScriptModule(
+            QsScriptMetadata scriptMetadata, 
+            Func<QsScriptModule, QsTypeValueApplier> typeValueApplierConstructor, 
+            IEnumerable<QsScriptTemplate> templates)
         {
             this.scriptMetadata = scriptMetadata;
+            this.typeValueApplier = typeValueApplierConstructor.Invoke(this);
             this.templatesById = templates.ToImmutableDictionary(templ => templ.Id);
         }
 
@@ -59,7 +65,14 @@ namespace QuickSC
 
             if (templ is QsScriptTemplate.Enum enumTempl)
             {
-                return new QsEnumTypeInst(typeValue, enumTempl.DefaultElemName);
+                // E<int>
+                var defaultFieldInsts = enumTempl.DefaultFields.Select(field =>
+                {
+                    var fieldType = typeValueApplier.Apply(typeValue, field.TypeValue);
+                    return (field.Name, domainService.GetTypeInst(fieldType));
+                });
+
+                return new QsEnumTypeInst(typeValue, enumTempl.DefaultElemName, defaultFieldInsts);
             }
 
             throw new InvalidOperationException();
