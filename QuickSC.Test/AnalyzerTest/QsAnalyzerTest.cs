@@ -8,9 +8,10 @@ using Moq;
 using System.Collections;
 using System.IO;
 using System.IO.Enumeration;
-using QuickSC.Syntax;
 using System.Collections.Immutable;
 using QuickSC.Runtime;
+using Gum;
+using Gum.Syntax;
 
 namespace QuickSC
 {
@@ -35,16 +36,16 @@ namespace QuickSC
         [MemberData(nameof(GetScriptData))]
         public async Task TestAnalyzeScript(string file)
         {
-            QsParseResult<QsScript> scriptResult;
+            QsParseResult<Script> scriptResult;
 
             using (var streamReader = new StreamReader(file))
             {
-                var buffer = new QsBuffer(streamReader);
+                var buffer = new Gum.Buffer(streamReader);
                 var pos = await buffer.MakePosition().NextAsync();
 
-                var lexer = new QsLexer();
-                var parser = new QsParser(lexer);
-                var parserContext = QsParserContext.Make(QsLexerContext.Make(pos));
+                var lexer = new Lexer();
+                var parser = new Parser(lexer);
+                var parserContext = ParserContext.Make(LexerContext.Make(pos));
                 scriptResult = await parser.ParseScriptAsync(parserContext);
             }
 

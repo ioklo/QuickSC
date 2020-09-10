@@ -15,4 +15,13 @@
     <PackageReference Include="System.Collections.Immutable" Version="1.7.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\External\Gum.Syntax\Gum.Syntax.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="LexicalAnalysis\" />
+    <Folder Include="Syntax\" />
+  </ItemGroup>
+
 </Project>

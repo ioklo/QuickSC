@@ -4,9 +4,9 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Linq;
 using System.Diagnostics.CodeAnalysis;
-using QuickSC.Syntax;
 using static QuickSC.StaticAnalyzer.QsAnalyzer;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
+using Gum.Syntax;
 
 namespace QuickSC.StaticAnalyzer
 {
@@ -16,9 +16,9 @@ namespace QuickSC.StaticAnalyzer
         {
             QsAnalyzer analyzer;
             Context context;
-            QsBinaryOpExp exp;
+            BinaryOpExp exp;
 
-            public BinaryAssignExpAnalyzer(QsAnalyzer analyzer, QsBinaryOpExp exp, Context context)
+            public BinaryAssignExpAnalyzer(QsAnalyzer analyzer, BinaryOpExp exp, Context context)
                 : base(analyzer, context)
             {
                 this.analyzer = analyzer;
@@ -26,7 +26,7 @@ namespace QuickSC.StaticAnalyzer
                 this.exp = exp;
             }
 
-            protected override QsExp GetTargetExp()
+            protected override Exp GetTargetExp()
             {
                 return exp.Operand0;
             }
@@ -51,10 +51,10 @@ namespace QuickSC.StaticAnalyzer
 
             protected override QsTypeValue? AnalyzeCall(
                 QsTypeValue objTypeValue,
-                QsExp objExp,
+                Exp objExp,
                 QsFuncValue? getter,
                 QsFuncValue? setter,
-                IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> args)
+                IEnumerable<(Exp Exp, QsTypeValue TypeValue)> args)
             {
                 // setter만 쓴다
                 if (setter == null)
@@ -105,7 +105,7 @@ namespace QuickSC.StaticAnalyzer
         // 3. Normal의 나머지 케이스에 대해서는 에러를 낸다
         // 4. CallSetter는 일단 Indexer일때만 
         internal bool AnalyzeBinaryAssignExp(
-            QsBinaryOpExp binaryOpExp,
+            BinaryOpExp binaryOpExp,
             Context context,
             [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {

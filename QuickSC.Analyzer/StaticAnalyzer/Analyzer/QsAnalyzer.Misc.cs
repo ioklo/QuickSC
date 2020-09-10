@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -11,7 +11,7 @@ namespace QuickSC.StaticAnalyzer
     {
         public static class Misc
         {
-            public static ImmutableArray<QsTypeValue> GetTypeValues(ImmutableArray<QsTypeExp> typeExps, Context context)
+            public static ImmutableArray<QsTypeValue> GetTypeValues(ImmutableArray<TypeExp> typeExps, Context context)
             {
                 return ImmutableArray.CreateRange(typeExps, typeExp => context.GetTypeValueByTypeExp(typeExp));
             }

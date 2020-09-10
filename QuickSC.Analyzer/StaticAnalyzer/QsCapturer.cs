@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -77,15 +77,15 @@ namespace QuickSC.StaticAnalyzer
 
     public class QsCapturer
     {
-        bool CaptureStringExpElements(ImmutableArray<QsStringExpElement> elems, QsCaptureContext context)
+        bool CaptureStringExpElements(ImmutableArray<StringExpElement> elems, QsCaptureContext context)
         {
             foreach (var elem in elems)
             {
-                if (elem is QsTextStringExpElement)
+                if (elem is TextStringExpElement)
                 {
                     continue;
                 }
-                else if (elem is QsExpStringExpElement expElem)
+                else if (elem is ExpStringExpElement expElem)
                 {
                     if (!CaptureExp(expElem.Exp, context))
                         return false;
@@ -100,7 +100,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureCommandStmt(QsCommandStmt cmdStmt, QsCaptureContext context)
+        bool CaptureCommandStmt(CommandStmt cmdStmt, QsCaptureContext context)
         {
             foreach (var command in cmdStmt.Commands)
             {
@@ -111,18 +111,18 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureVarDecl(QsVarDecl varDecl, QsCaptureContext context)
+        bool CaptureVarDecl(VarDecl varDecl, QsCaptureContext context)
         {
             context.AddBinds(varDecl.Elems.Select(elem => elem.VarName));
             return true;
         }
 
-        bool CaptureVarDeclStmt(QsVarDeclStmt varDeclStmt, QsCaptureContext context)
+        bool CaptureVarDeclStmt(VarDeclStmt varDeclStmt, QsCaptureContext context)
         {
             return CaptureVarDecl(varDeclStmt.VarDecl, context);
         }
 
-        bool CaptureIfStmt(QsIfStmt ifStmt, QsCaptureContext context) 
+        bool CaptureIfStmt(IfStmt ifStmt, QsCaptureContext context) 
         {
             if (!CaptureExp(ifStmt.Cond, context))
                 return false;
@@ -141,17 +141,17 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureForStmtInitialize(QsForStmtInitializer forInitStmt, QsCaptureContext context)
+        bool CaptureForStmtInitialize(ForStmtInitializer forInitStmt, QsCaptureContext context)
         {
             return forInitStmt switch
             {
-                QsVarDeclForStmtInitializer varDeclInit => CaptureVarDecl(varDeclInit.VarDecl, context),
-                QsExpForStmtInitializer expInit => CaptureExp(expInit.Exp, context),
+                VarDeclForStmtInitializer varDeclInit => CaptureVarDecl(varDeclInit.VarDecl, context),
+                ExpForStmtInitializer expInit => CaptureExp(expInit.Exp, context),
                 _ => throw new NotImplementedException()
             };
         }
 
-        bool CaptureForStmt(QsForStmt forStmt, QsCaptureContext context)         
+        bool CaptureForStmt(ForStmt forStmt, QsCaptureContext context)         
         {
             var prevBoundVars = context.GetBoundVars();
 
@@ -180,10 +180,10 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureContinueStmt(QsContinueStmt continueStmt, QsCaptureContext context) { return true; }
-        bool CaptureBreakStmt(QsBreakStmt breakStmt, QsCaptureContext context) { return true; }
+        bool CaptureContinueStmt(ContinueStmt continueStmt, QsCaptureContext context) { return true; }
+        bool CaptureBreakStmt(BreakStmt breakStmt, QsCaptureContext context) { return true; }
 
-        bool CaptureReturnStmt(QsReturnStmt returnStmt, QsCaptureContext context)
+        bool CaptureReturnStmt(ReturnStmt returnStmt, QsCaptureContext context)
         {
             if (returnStmt.Value != null)
                 return CaptureExp(returnStmt.Value, context);
@@ -191,7 +191,7 @@ namespace QuickSC.StaticAnalyzer
                 return true;
         }
 
-        bool CaptureBlockStmt(QsBlockStmt blockStmt, QsCaptureContext context) 
+        bool CaptureBlockStmt(BlockStmt blockStmt, QsCaptureContext context) 
         {
             var prevBoundVars = context.GetBoundVars();
 
@@ -205,12 +205,12 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureExpStmt(QsExpStmt expStmt, QsCaptureContext context)
+        bool CaptureExpStmt(ExpStmt expStmt, QsCaptureContext context)
         {
             return CaptureExp(expStmt.Exp, context);
         }
 
-        bool CaptureTaskStmt(QsTaskStmt stmt, QsCaptureContext context)
+        bool CaptureTaskStmt(TaskStmt stmt, QsCaptureContext context)
         {
             var prevBoundVars = context.GetBoundVars();
 
@@ -221,7 +221,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureAwaitStmt(QsAwaitStmt stmt, QsCaptureContext context)
+        bool CaptureAwaitStmt(AwaitStmt stmt, QsCaptureContext context)
         {
             var prevBoundVars = context.GetBoundVars();
 
@@ -232,7 +232,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureAsyncStmt(QsAsyncStmt stmt, QsCaptureContext context)
+        bool CaptureAsyncStmt(AsyncStmt stmt, QsCaptureContext context)
         {
             var prevBoundVars = context.GetBoundVars();
 
@@ -243,7 +243,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureForeachStmt(QsForeachStmt foreachStmt, QsCaptureContext context)
+        bool CaptureForeachStmt(ForeachStmt foreachStmt, QsCaptureContext context)
         {
             var prevBoundVars = context.GetBoundVars();
 
@@ -259,36 +259,36 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureYieldStmt(QsYieldStmt yieldStmt, QsCaptureContext context)
+        bool CaptureYieldStmt(YieldStmt yieldStmt, QsCaptureContext context)
         {
             return CaptureExp(yieldStmt.Value, context);
         }
 
-        bool CaptureStmt(QsStmt stmt, QsCaptureContext context)
+        bool CaptureStmt(Stmt stmt, QsCaptureContext context)
         {
             return stmt switch
             {
-                QsCommandStmt cmdStmt => CaptureCommandStmt(cmdStmt, context),
-                QsVarDeclStmt varDeclStmt => CaptureVarDeclStmt(varDeclStmt, context),
-                QsIfStmt ifStmt => CaptureIfStmt(ifStmt, context),
-                QsForStmt forStmt => CaptureForStmt(forStmt, context),
-                QsContinueStmt continueStmt => CaptureContinueStmt(continueStmt, context),
-                QsBreakStmt breakStmt => CaptureBreakStmt(breakStmt, context),
-                QsReturnStmt returnStmt => CaptureReturnStmt(returnStmt, context),
-                QsBlockStmt blockStmt => CaptureBlockStmt(blockStmt, context),
-                QsBlankStmt blankStmt => true,
-                QsExpStmt expStmt => CaptureExpStmt(expStmt, context),
-                QsTaskStmt taskStmt => CaptureTaskStmt(taskStmt, context),
-                QsAwaitStmt awaitStmt => CaptureAwaitStmt(awaitStmt, context),
-                QsAsyncStmt asyncStmt => CaptureAsyncStmt(asyncStmt, context),
-                QsForeachStmt foreachStmt => CaptureForeachStmt(foreachStmt, context),
-                QsYieldStmt yieldStmt => CaptureYieldStmt(yieldStmt, context),
+                CommandStmt cmdStmt => CaptureCommandStmt(cmdStmt, context),
+                VarDeclStmt varDeclStmt => CaptureVarDeclStmt(varDeclStmt, context),
+                IfStmt ifStmt => CaptureIfStmt(ifStmt, context),
+                ForStmt forStmt => CaptureForStmt(forStmt, context),
+                ContinueStmt continueStmt => CaptureContinueStmt(continueStmt, context),
+                BreakStmt breakStmt => CaptureBreakStmt(breakStmt, context),
+                ReturnStmt returnStmt => CaptureReturnStmt(returnStmt, context),
+                BlockStmt blockStmt => CaptureBlockStmt(blockStmt, context),
+                BlankStmt blankStmt => true,
+                ExpStmt expStmt => CaptureExpStmt(expStmt, context),
+                TaskStmt taskStmt => CaptureTaskStmt(taskStmt, context),
+                AwaitStmt awaitStmt => CaptureAwaitStmt(awaitStmt, context),
+                AsyncStmt asyncStmt => CaptureAsyncStmt(asyncStmt, context),
+                ForeachStmt foreachStmt => CaptureForeachStmt(foreachStmt, context),
+                YieldStmt yieldStmt => CaptureYieldStmt(yieldStmt, context),
 
                 _ => throw new NotImplementedException()
             };
         }
 
-        bool RefCaptureIdExp(QsIdentifierExp idExp, QsCaptureContext context)
+        bool RefCaptureIdExp(IdentifierExp idExp, QsCaptureContext context)
         {
             var varName = idExp.Value;
 
@@ -302,27 +302,27 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool RefCaptureExp(QsExp exp, QsCaptureContext context)
+        bool RefCaptureExp(Exp exp, QsCaptureContext context)
         {
             return exp switch
             {
-                QsIdentifierExp idExp => RefCaptureIdExp(idExp, context),
-                QsBoolLiteralExp boolExp => throw new InvalidOperationException(),
-                QsIntLiteralExp intExp => throw new InvalidOperationException(),
-                QsStringExp stringExp => throw new InvalidOperationException(),
-                QsUnaryOpExp unaryOpExp => throw new InvalidOperationException(),
-                QsBinaryOpExp binaryOpExp => throw new InvalidOperationException(),
-                QsCallExp callExp => throw new InvalidOperationException(),
-                QsLambdaExp lambdaExp => throw new InvalidOperationException(),
-                QsMemberCallExp memberCallExp => throw new InvalidOperationException(),
-                QsMemberExp memberExp => CaptureMemberExp(memberExp, context),
-                QsListExp listExp => throw new InvalidOperationException(),
+                IdentifierExp idExp => RefCaptureIdExp(idExp, context),
+                BoolLiteralExp boolExp => throw new InvalidOperationException(),
+                IntLiteralExp intExp => throw new InvalidOperationException(),
+                StringExp stringExp => throw new InvalidOperationException(),
+                UnaryOpExp unaryOpExp => throw new InvalidOperationException(),
+                BinaryOpExp binaryOpExp => throw new InvalidOperationException(),
+                CallExp callExp => throw new InvalidOperationException(),
+                LambdaExp lambdaExp => throw new InvalidOperationException(),
+                MemberCallExp memberCallExp => throw new InvalidOperationException(),
+                MemberExp memberExp => CaptureMemberExp(memberExp, context),
+                ListExp listExp => throw new InvalidOperationException(),
 
                 _ => throw new NotImplementedException()
             };
         }
 
-        bool CaptureIdExp(QsIdentifierExp idExp, QsCaptureContext context) 
+        bool CaptureIdExp(IdentifierExp idExp, QsCaptureContext context) 
         {            
             var varName = idExp.Value;
 
@@ -336,28 +336,28 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureBoolLiteralExp(QsBoolLiteralExp boolExp, QsCaptureContext context) => true;
-        bool CaptureIntLiteralExp(QsIntLiteralExp intExp, QsCaptureContext context) => true;
-        bool CaptureStringExp(QsStringExp stringExp, QsCaptureContext context)
+        bool CaptureBoolLiteralExp(BoolLiteralExp boolExp, QsCaptureContext context) => true;
+        bool CaptureIntLiteralExp(IntLiteralExp intExp, QsCaptureContext context) => true;
+        bool CaptureStringExp(StringExp stringExp, QsCaptureContext context)
         {
             return CaptureStringExpElements(stringExp.Elements, context);
         }
 
-        bool CaptureUnaryOpExp(QsUnaryOpExp unaryOpExp, QsCaptureContext context) 
+        bool CaptureUnaryOpExp(UnaryOpExp unaryOpExp, QsCaptureContext context) 
         {
             // ++i, i++은 ref를 유발한다
-            if (unaryOpExp.Kind == QsUnaryOpKind.PostfixInc ||
-                unaryOpExp.Kind == QsUnaryOpKind.PostfixDec ||
-                unaryOpExp.Kind == QsUnaryOpKind.PrefixInc ||
-                unaryOpExp.Kind == QsUnaryOpKind.PrefixDec)
+            if (unaryOpExp.Kind == UnaryOpKind.PostfixInc ||
+                unaryOpExp.Kind == UnaryOpKind.PostfixDec ||
+                unaryOpExp.Kind == UnaryOpKind.PrefixInc ||
+                unaryOpExp.Kind == UnaryOpKind.PrefixDec)
                 return RefCaptureExp(unaryOpExp.Operand, context);
             else
                 return CaptureExp(unaryOpExp.Operand, context);
         }
 
-        bool CaptureBinaryOpExp(QsBinaryOpExp binaryOpExp, QsCaptureContext context) 
+        bool CaptureBinaryOpExp(BinaryOpExp binaryOpExp, QsCaptureContext context) 
         { 
-            if (binaryOpExp.Kind == QsBinaryOpKind.Assign)
+            if (binaryOpExp.Kind == BinaryOpKind.Assign)
             {
                 if (!RefCaptureExp(binaryOpExp.Operand0, context))
                     return false;
@@ -374,7 +374,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureCallExp(QsCallExp callExp, QsCaptureContext context) 
+        bool CaptureCallExp(CallExp callExp, QsCaptureContext context) 
         {
             if (!CaptureExp(callExp.Callable, context))
                 return false;
@@ -388,7 +388,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureLambdaExp(QsLambdaExp exp, QsCaptureContext context)
+        bool CaptureLambdaExp(LambdaExp exp, QsCaptureContext context)
         {
             var prevBoundVars = context.GetBoundVars();
 
@@ -401,18 +401,18 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureMemberCallExp(QsMemberCallExp exp, QsCaptureContext context)
+        bool CaptureMemberCallExp(MemberCallExp exp, QsCaptureContext context)
         {
             // a.b.c(); 라면 a만 캡쳐하면 된다
             return CaptureExp(exp.Object, context);
         }
 
-        bool CaptureMemberExp(QsMemberExp exp, QsCaptureContext context)
+        bool CaptureMemberExp(MemberExp exp, QsCaptureContext context)
         {
             return CaptureExp(exp.Object, context);
         }
 
-        bool CaptureListExp(QsListExp exp, QsCaptureContext context)
+        bool CaptureListExp(ListExp exp, QsCaptureContext context)
         {
             foreach(var elem in exp.Elems)
             {
@@ -423,28 +423,28 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool CaptureExp(QsExp exp, QsCaptureContext context)
+        bool CaptureExp(Exp exp, QsCaptureContext context)
         {
             return exp switch
             {
-                QsIdentifierExp idExp => CaptureIdExp(idExp, context),
-                QsBoolLiteralExp boolExp => CaptureBoolLiteralExp(boolExp, context),
-                QsIntLiteralExp intExp => CaptureIntLiteralExp(intExp, context),
-                QsStringExp stringExp => CaptureStringExp(stringExp, context),
-                QsUnaryOpExp unaryOpExp => CaptureUnaryOpExp(unaryOpExp, context),
-                QsBinaryOpExp binaryOpExp => CaptureBinaryOpExp(binaryOpExp, context),
-                QsCallExp callExp => CaptureCallExp(callExp, context),
-                QsLambdaExp lambdaExp => CaptureLambdaExp(lambdaExp, context),
-                QsMemberCallExp memberCallExp => CaptureMemberCallExp(memberCallExp, context),
-                QsMemberExp memberExp => CaptureMemberExp(memberExp, context),
-                QsListExp listExp => CaptureListExp(listExp, context),
+                IdentifierExp idExp => CaptureIdExp(idExp, context),
+                BoolLiteralExp boolExp => CaptureBoolLiteralExp(boolExp, context),
+                IntLiteralExp intExp => CaptureIntLiteralExp(intExp, context),
+                StringExp stringExp => CaptureStringExp(stringExp, context),
+                UnaryOpExp unaryOpExp => CaptureUnaryOpExp(unaryOpExp, context),
+                BinaryOpExp binaryOpExp => CaptureBinaryOpExp(binaryOpExp, context),
+                CallExp callExp => CaptureCallExp(callExp, context),
+                LambdaExp lambdaExp => CaptureLambdaExp(lambdaExp, context),
+                MemberCallExp memberCallExp => CaptureMemberCallExp(memberCallExp, context),
+                MemberExp memberExp => CaptureMemberExp(memberExp, context),
+                ListExp listExp => CaptureListExp(listExp, context),
 
                 _ => throw new NotImplementedException()
             };
         }
 
         // entry
-        public bool Capture(IEnumerable<string> initBoundVars, QsStmt stmt, [NotNullWhen(returnValue: true)] out QsCaptureResult? outCaptureResult)
+        public bool Capture(IEnumerable<string> initBoundVars, Stmt stmt, [NotNullWhen(returnValue: true)] out QsCaptureResult? outCaptureResult)
         {
             var context = new QsCaptureContext(initBoundVars);
 

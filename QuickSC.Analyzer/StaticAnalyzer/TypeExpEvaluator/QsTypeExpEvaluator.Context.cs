@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -15,7 +15,7 @@ namespace QuickSC.StaticAnalyzer
             private ImmutableDictionary<QsMetaItemId, QsTypeSkeleton> typeSkeletonsByTypeId;
             private IQsErrorCollector errorCollector;
 
-            private Dictionary<QsTypeExp, QsTypeValue> typeValuesByTypeExp;
+            private Dictionary<TypeExp, QsTypeValue> typeValuesByTypeExp;
             private ImmutableDictionary<string, QsTypeValue.TypeVar> typeEnv;
 
             public Context(
@@ -29,7 +29,7 @@ namespace QuickSC.StaticAnalyzer
                 this.typeSkeletonsByTypeId = typeSkeletons.ToImmutableDictionary(skeleton => skeleton.TypeId);
                 this.errorCollector = errorCollector;
 
-                typeValuesByTypeExp = new Dictionary<QsTypeExp, QsTypeValue>(QsRefEqComparer<QsTypeExp>.Instance);
+                typeValuesByTypeExp = new Dictionary<TypeExp, QsTypeValue>(QsRefEqComparer<TypeExp>.Instance);
                 typeEnv = ImmutableDictionary<string, QsTypeValue.TypeVar>.Empty;
             }            
 
@@ -38,12 +38,12 @@ namespace QuickSC.StaticAnalyzer
                 return metadataService.GetTypeInfos(metaItemId);
             }
 
-            public QsMetaItemId GetTypeId(IQsSyntaxNode node)
+            public QsMetaItemId GetTypeId(ISyntaxNode node)
             {
                 return syntaxNodeMetaItemService.GetTypeId(node);
             }
 
-            public QsMetaItemId GetFuncId(IQsSyntaxNode node)
+            public QsMetaItemId GetFuncId(ISyntaxNode node)
             {
                 return syntaxNodeMetaItemService.GetFuncId(node);
             }
@@ -53,17 +53,17 @@ namespace QuickSC.StaticAnalyzer
                 return typeSkeletonsByTypeId.TryGetValue(metaItemId, out outTypeSkeleton);
             }
 
-            public void AddError(IQsSyntaxNode node, string msg)
+            public void AddError(ISyntaxNode node, string msg)
             {
                 errorCollector.Add(node, msg);
             }
 
-            public void AddTypeValue(QsTypeExp exp, QsTypeValue typeValue)
+            public void AddTypeValue(TypeExp exp, QsTypeValue typeValue)
             {
                 typeValuesByTypeExp.Add(exp, typeValue);
             }
 
-            public ImmutableDictionary<QsTypeExp, QsTypeValue> GetTypeValuesByTypeExp()
+            public ImmutableDictionary<TypeExp, QsTypeValue> GetTypeValuesByTypeExp()
             {
                 return typeValuesByTypeExp.ToImmutableWithComparer();
             }

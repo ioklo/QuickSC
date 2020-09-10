@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System.Collections.Immutable;
 
 namespace QuickSC.StaticAnalyzer
@@ -9,14 +9,14 @@ namespace QuickSC.StaticAnalyzer
         {
             public QsScriptMetadata ScriptMetadata { get; }
             public QsTypeExpTypeValueService TypeExpTypeValueService { get; }
-            public ImmutableDictionary<QsFuncDecl, QsFuncInfo> FuncInfosByDecl { get; }
-            public ImmutableDictionary<QsEnumDecl, QsEnumInfo> EnumInfosByDecl{ get; }
+            public ImmutableDictionary<FuncDecl, QsFuncInfo> FuncInfosByDecl { get; }
+            public ImmutableDictionary<EnumDecl, QsEnumInfo> EnumInfosByDecl{ get; }
 
             public Result(
                 QsScriptMetadata scriptMetadata,
                 QsTypeExpTypeValueService typeExpTypeValueService,
-                ImmutableDictionary<QsFuncDecl, QsFuncInfo> funcInfosbyDecl,
-                ImmutableDictionary<QsEnumDecl, QsEnumInfo> enumInfosByDecl)
+                ImmutableDictionary<FuncDecl, QsFuncInfo> funcInfosbyDecl,
+                ImmutableDictionary<EnumDecl, QsEnumInfo> enumInfosByDecl)
             {
                 ScriptMetadata = scriptMetadata;
                 TypeExpTypeValueService = typeExpTypeValueService;

@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -20,7 +20,7 @@ namespace QuickSC.StaticAnalyzer
         }        
 
         private QsFuncInfo MakeFunc(
-            QsFuncDecl? funcDecl,
+            FuncDecl? funcDecl,
             QsMetaItemId? outerId,
             QsMetaItemId funcId,
             bool bSeqCall,
@@ -48,9 +48,9 @@ namespace QuickSC.StaticAnalyzer
             return varInfo;
         }
 
-        void BuildEnumDecl(QsEnumDecl enumDecl, Context context)
+        void BuildEnumDecl(EnumDecl enumDecl, Context context)
         {
-            QsEnumElemInfo MakeElemInfo(QsMetaItemId enumTypeId, QsEnumDeclElement elem, Context context)
+            QsEnumElemInfo MakeElemInfo(QsMetaItemId enumTypeId, EnumDeclElement elem, Context context)
             {
                 var fieldInfos = elem.Params.Select(parameter =>
                 {
@@ -73,7 +73,7 @@ namespace QuickSC.StaticAnalyzer
             context.AddEnumInfo(enumDecl, enumType);
         }
 
-        void BuildFuncDecl(QsFuncDecl funcDecl, Context context)
+        void BuildFuncDecl(FuncDecl funcDecl, Context context)
         {
             var thisTypeValue = context.GetThisTypeValue();            
 
@@ -90,7 +90,7 @@ namespace QuickSC.StaticAnalyzer
                 funcDecl,
                 outerId,                
                 context.GetFuncId(funcDecl),
-                funcDecl.FuncKind == QsFuncKind.Sequence,
+                funcDecl.FuncKind == FuncKind.Sequence,
                 bThisCall,
                 funcDecl.TypeParams,
                 context.GetTypeValue(funcDecl.RetType),
@@ -98,7 +98,7 @@ namespace QuickSC.StaticAnalyzer
                 context);
         }
 
-        void BuildGlobalStmt(QsStmt stmt, Context context)
+        void BuildGlobalStmt(Stmt stmt, Context context)
         {
             // TODO: public int x; 형식만 모듈단위 외부 전역변수로 노출시킨다
 
@@ -114,28 +114,28 @@ namespace QuickSC.StaticAnalyzer
             //}
         }
         
-        void BuildScript(QsScript script, Context context)
+        void BuildScript(Script script, Context context)
         {
             foreach (var elem in script.Elements)
             {
                 switch (elem)
                 {
-                    case QsEnumDeclScriptElement enumElem:
+                    case EnumDeclScriptElement enumElem:
                         BuildEnumDecl(enumElem.EnumDecl, context);
                         break;
 
-                    case QsFuncDeclScriptElement funcElem:
+                    case FuncDeclScriptElement funcElem:
                         BuildFuncDecl(funcElem.FuncDecl, context);
                         break;
 
-                    case QsStmtScriptElement stmtElem:
+                    case StmtScriptElement stmtElem:
                         BuildGlobalStmt(stmtElem.Stmt, context);
                         break;
                 }
             }
         }
 
-        public Result? BuildScript(string moduleName, IEnumerable<IQsMetadata> metadatas, QsScript script, IQsErrorCollector errorCollector)
+        public Result? BuildScript(string moduleName, IEnumerable<IQsMetadata> metadatas, Script script, IQsErrorCollector errorCollector)
         {
             // 2. skeleton과 metadata로 트리의 모든 TypeExp들을 TypeValue로 변환하기            
             var typeEvalResult = typeExpEvaluator.EvaluateScript(script, metadatas, errorCollector);

@@ -1,11 +1,11 @@
-﻿using QuickSC.Syntax;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
 using static QuickSC.StaticAnalyzer.QsAnalyzer;
+using Gum.Syntax;
 
 namespace QuickSC.StaticAnalyzer
 {
@@ -22,16 +22,16 @@ namespace QuickSC.StaticAnalyzer
                 this.context = context;
             }
 
-            protected abstract QsExp GetTargetExp();
+            protected abstract Exp GetTargetExp();
             protected abstract QsTypeValue? AnalyzeDirect(QsTypeValue typeValue, QsStorageInfo storageInfo);
             protected abstract QsTypeValue? AnalyzeCall(
                 QsTypeValue objTypeValue,
-                QsExp objExp,
+                Exp objExp,
                 QsFuncValue? getter,
                 QsFuncValue? setter,
-                IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> args);
+                IEnumerable<(Exp Exp, QsTypeValue TypeValue)> args);
 
-            QsTypeValue? AnalyzeAssignToIdExp(QsIdentifierExp idExp)
+            QsTypeValue? AnalyzeAssignToIdExp(IdentifierExp idExp)
             {
                 var typeArgs = GetTypeValues(idExp.TypeArgs, context);
 
@@ -45,10 +45,10 @@ namespace QuickSC.StaticAnalyzer
                 return null;
             }
 
-            QsTypeValue? AnalyzeAssignToMemberExp(QsMemberExp memberExp)
+            QsTypeValue? AnalyzeAssignToMemberExp(MemberExp memberExp)
             {
                 // i.m = e1
-                if (memberExp.Object is QsIdentifierExp objIdExp)
+                if (memberExp.Object is IdentifierExp objIdExp)
                 {
                     var typeArgs = GetTypeValues(objIdExp.TypeArgs, context);
                     if (!context.GetIdentifierInfo(objIdExp.Value, typeArgs, null, out var idInfo))
@@ -65,7 +65,7 @@ namespace QuickSC.StaticAnalyzer
                 return AnalyzeAssignToInstanceMember(memberExp, objTypeValue);
             }
 
-            QsTypeValue? AnalyzeAssignToStaticMember(QsMemberExp memberExp, QsTypeValue.Normal objNormalTypeValue)
+            QsTypeValue? AnalyzeAssignToStaticMember(MemberExp memberExp, QsTypeValue.Normal objNormalTypeValue)
             {
                 if (!analyzer.CheckStaticMember(memberExp, objNormalTypeValue, context, out var varValue))
                     return null;
@@ -75,7 +75,7 @@ namespace QuickSC.StaticAnalyzer
                 return AnalyzeDirect(typeValue, QsStorageInfo.MakeStaticMember(null, varValue));
             }
 
-            QsTypeValue? AnalyzeAssignToInstanceMember(QsMemberExp memberExp, QsTypeValue objTypeValue)
+            QsTypeValue? AnalyzeAssignToInstanceMember(MemberExp memberExp, QsTypeValue objTypeValue)
             {
                 if (!analyzer.CheckInstanceMember(memberExp, objTypeValue, context, out var varValue))
                     return null;
@@ -92,7 +92,7 @@ namespace QuickSC.StaticAnalyzer
                 return AnalyzeDirect(typeValue, storageInfo);
             }
 
-            QsTypeValue? AnalyzeAssignToIndexerExp(QsIndexerExp indexerExp0)
+            QsTypeValue? AnalyzeAssignToIndexerExp(IndexerExp indexerExp0)
             {
                 if (!analyzer.AnalyzeExp(indexerExp0.Object, null, context, out var objTypeValue))
                     return null;
@@ -120,17 +120,17 @@ namespace QuickSC.StaticAnalyzer
                 var locExp = GetTargetExp();
 
                 // x = e1, x++
-                if (locExp is QsIdentifierExp idExp)
+                if (locExp is IdentifierExp idExp)
                 {
                     outTypeValue = AnalyzeAssignToIdExp(idExp);
                 }
                 // eo.m = e1, eo.m++
-                else if (locExp is QsMemberExp memberExp)
+                else if (locExp is MemberExp memberExp)
                 {
                     outTypeValue = AnalyzeAssignToMemberExp(memberExp);
                 }
                 // eo[ei] = e1
-                else if (locExp is QsIndexerExp indexerExp)
+                else if (locExp is IndexerExp indexerExp)
                 {
                     outTypeValue = AnalyzeAssignToIndexerExp(indexerExp);
                 }

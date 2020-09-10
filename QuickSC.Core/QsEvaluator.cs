@@ -5,9 +5,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Gum.Syntax;
 using QuickSC.Runtime;
 using QuickSC.StaticAnalyzer;
-using QuickSC.Syntax;
 
 namespace QuickSC
 {
@@ -26,7 +26,7 @@ namespace QuickSC
             this.stmtEvaluator = new QsStmtEvaluator(this, commandProvider);
         }        
         
-        public ValueTask EvaluateStringExpAsync(QsStringExp command, QsValue result, QsEvalContext context)
+        public ValueTask EvaluateStringExpAsync(StringExp command, QsValue result, QsEvalContext context)
         {
             return expValueEvaluator.EvalStringExpAsync(command, result, context);
         }
@@ -144,7 +144,7 @@ namespace QuickSC
             }
         }
 
-        public async ValueTask EvaluateVarDeclAsync(QsVarDecl varDecl, QsEvalContext context)
+        public async ValueTask EvaluateVarDeclAsync(VarDecl varDecl, QsEvalContext context)
         {
             var info = context.GetNodeInfo<QsVarDeclInfo>(varDecl);
 
@@ -238,23 +238,23 @@ namespace QuickSC
             }
         }
 
-        public ValueTask EvalExpAsync(QsExp exp, QsValue result, QsEvalContext context)
+        public ValueTask EvalExpAsync(Exp exp, QsValue result, QsEvalContext context)
         {
             return expValueEvaluator.EvalAsync(exp, result, context);
         }
 
-        public IAsyncEnumerable<QsValue> EvaluateStmtAsync(QsStmt stmt, QsEvalContext context)
+        public IAsyncEnumerable<QsValue> EvaluateStmtAsync(Stmt stmt, QsEvalContext context)
         {
             return stmtEvaluator.EvaluateStmtAsync(stmt, context);
         }
         
-        async ValueTask<int> EvaluateScriptAsync(QsScript script, QsEvalContext context)
+        async ValueTask<int> EvaluateScriptAsync(Script script, QsEvalContext context)
         {
             async ValueTask InnerBodyAsync()
             {
                 foreach (var elem in script.Elements)
                 {
-                    if (elem is QsStmtScriptElement statementElem)
+                    if (elem is StmtScriptElement statementElem)
                     {
                         await foreach (var value in stmtEvaluator.EvaluateStmtAsync(statementElem.Stmt, context))
                         {
@@ -282,7 +282,7 @@ namespace QuickSC
 
         public async ValueTask<int?> EvaluateScriptAsync(
             string moduleName,
-            QsScript script,             
+            Script script,             
             IQsRuntimeModule runtimeModule,
             IEnumerable<IQsMetadata> metadatas,
             IQsErrorCollector errorCollector)

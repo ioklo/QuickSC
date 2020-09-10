@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Text;
-using QuickSC.Syntax;
+using Gum.Syntax;
 
 namespace QuickSC.StaticAnalyzer
 {
@@ -28,7 +28,7 @@ namespace QuickSC.StaticAnalyzer
             this.stmtAnalyzer = new QsStmtAnalyzer(this);
         }
         
-        internal bool AnalyzeVarDecl(QsVarDecl varDecl, Context context)
+        internal bool AnalyzeVarDecl(VarDecl varDecl, Context context)
         {
             // 1. int x  // x를 추가
             // 2. int x = initExp // x 추가, initExp가 int인지 검사
@@ -97,11 +97,11 @@ namespace QuickSC.StaticAnalyzer
             }
         }        
 
-        public bool AnalyzeStringExpElement(QsStringExpElement elem, Context context)
+        public bool AnalyzeStringExpElement(StringExpElement elem, Context context)
         {
             bool bResult = true;
 
-            if (elem is QsExpStringExpElement expElem)
+            if (elem is ExpStringExpElement expElem)
             {
                 // TODO: exp의 결과 string으로 변환 가능해야 하는 조건도 고려해야 한다
                 if (AnalyzeExp(expElem.Exp, null, context, out var expTypeValue))
@@ -118,8 +118,8 @@ namespace QuickSC.StaticAnalyzer
         }
 
         public bool AnalyzeLambda(
-            QsStmt body,
-            ImmutableArray<QsLambdaExpParam> parameters,
+            Stmt body,
+            ImmutableArray<LambdaExpParam> parameters,
             Context context,
             [NotNullWhen(returnValue: true)] out QsCaptureInfo? outCaptureInfo,
             [NotNullWhen(returnValue: true)] out QsTypeValue.Func? outFuncTypeValue,
@@ -205,17 +205,17 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        public bool AnalyzeExp(QsExp exp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        public bool AnalyzeExp(Exp exp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             return expAnalyzer.AnalyzeExp(exp, hintTypeValue, context, out typeValue);
         }
 
-        public bool AnalyzeStmt(QsStmt stmt, Context context)
+        public bool AnalyzeStmt(Stmt stmt, Context context)
         {
             return stmtAnalyzer.AnalyzeStmt(stmt, context);
         }
         
-        public bool AnalyzeFuncDecl(QsFuncDecl funcDecl, Context context)
+        public bool AnalyzeFuncDecl(FuncDecl funcDecl, Context context)
         {
             var funcInfo = context.GetFuncInfoByDecl(funcDecl);
 
@@ -241,14 +241,14 @@ namespace QuickSC.StaticAnalyzer
                 // TODO: Body가 실제로 리턴을 제대로 하는지 확인해야 할 필요가 있다
                 context.AddTemplate(QsScriptTemplate.MakeFunc(
                     funcInfo.FuncId,
-                    funcDecl.FuncKind == QsFuncKind.Sequence ? funcInfo.RetTypeValue : null,
+                    funcDecl.FuncKind == FuncKind.Sequence ? funcInfo.RetTypeValue : null,
                     funcInfo.bThisCall, context.GetLocalVarCount(), funcDecl.Body));
             });
 
             return bResult;
         }
 
-        public bool AnalyzeEnumDecl(QsEnumDecl enumDecl, Context context)
+        public bool AnalyzeEnumDecl(EnumDecl enumDecl, Context context)
         {
             var enumInfo = context.GetEnumInfoByDecl(enumDecl);
             var defaultElemInfo = enumInfo.GetDefaultElemInfo();
@@ -259,7 +259,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool AnalyzeScript(QsScript script, Context context)
+        bool AnalyzeScript(Script script, Context context)
         {
             bool bResult = true;
 
@@ -268,7 +268,7 @@ namespace QuickSC.StaticAnalyzer
             {
                 switch (elem)
                 {
-                    case QsStmtScriptElement stmtElem: 
+                    case StmtScriptElement stmtElem: 
                         bResult &= AnalyzeStmt(stmtElem.Stmt, context); 
                         break;
                 }
@@ -280,11 +280,11 @@ namespace QuickSC.StaticAnalyzer
                 switch (elem)
                 {
                     // TODO: classDecl
-                    case QsFuncDeclScriptElement funcElem: 
+                    case FuncDeclScriptElement funcElem: 
                         bResult &= AnalyzeFuncDecl(funcElem.FuncDecl, context);
                         break;
 
-                    case QsEnumDeclScriptElement enumElem:
+                    case EnumDeclScriptElement enumElem:
                         bResult &= AnalyzeEnumDecl(enumElem.EnumDecl, context);
                         break;
                 }
@@ -296,14 +296,14 @@ namespace QuickSC.StaticAnalyzer
         }
 
         public (int PrivateGlobalVarCount, 
-            ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> InfosByNode,
+            ImmutableDictionary<ISyntaxNode, QsSyntaxNodeInfo> InfosByNode,
             ImmutableArray<QsScriptTemplate> Templates,
             QsTypeValueService TypeValueService,
             QsScriptMetadata ScriptMetadata)? 
 
             AnalyzeScript(
             string moduleName,
-            QsScript script,
+            Script script,
             IEnumerable<IQsMetadata> metadatas,
             IQsErrorCollector errorCollector)
         {
@@ -375,7 +375,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         public bool CheckInstanceMember(
-            QsMemberExp memberExp,
+            MemberExp memberExp,
             QsTypeValue objTypeValue,
             Context context,
             [NotNullWhen(returnValue: true)] out QsVarValue? outVarValue)
@@ -404,7 +404,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         public bool CheckStaticMember(
-            QsMemberExp memberExp,
+            MemberExp memberExp,
             QsTypeValue.Normal objNormalTypeValue,
             Context context,
             [NotNullWhen(returnValue: true)] out QsVarValue? outVarValue)

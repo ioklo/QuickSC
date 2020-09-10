@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -16,9 +16,9 @@ namespace QuickSC.StaticAnalyzer
         {
             QsAnalyzer analyzer;
             Context context;
-            QsUnaryOpExp exp;
+            UnaryOpExp exp;
 
-            public UnaryAssignExpAnalyzer(QsAnalyzer analyzer, Context context, QsUnaryOpExp exp)
+            public UnaryAssignExpAnalyzer(QsAnalyzer analyzer, Context context, UnaryOpExp exp)
                 : base(analyzer, context)
             {
                 this.analyzer = analyzer;
@@ -52,12 +52,12 @@ namespace QuickSC.StaticAnalyzer
             {
                 switch (exp.Kind)
                 {
-                    case QsUnaryOpKind.PostfixDec:
-                    case QsUnaryOpKind.PostfixInc:
+                    case UnaryOpKind.PostfixDec:
+                    case UnaryOpKind.PostfixInc:
                         return true;
 
-                    case QsUnaryOpKind.PrefixDec:
-                    case QsUnaryOpKind.PrefixInc:
+                    case UnaryOpKind.PrefixDec:
+                    case UnaryOpKind.PrefixInc:
                         return false;
                 }
 
@@ -68,16 +68,16 @@ namespace QuickSC.StaticAnalyzer
             {
                 switch (exp.Kind)
                 {
-                    case QsUnaryOpKind.PostfixDec: return QsSpecialNames.OpDec;
-                    case QsUnaryOpKind.PostfixInc: return QsSpecialNames.OpInc;
-                    case QsUnaryOpKind.PrefixDec: return QsSpecialNames.OpDec;
-                    case QsUnaryOpKind.PrefixInc: return QsSpecialNames.OpInc;
+                    case UnaryOpKind.PostfixDec: return QsSpecialNames.OpDec;
+                    case UnaryOpKind.PostfixInc: return QsSpecialNames.OpInc;
+                    case UnaryOpKind.PrefixDec: return QsSpecialNames.OpDec;
+                    case UnaryOpKind.PrefixInc: return QsSpecialNames.OpInc;
                 }
 
                 throw new InvalidOperationException();
             }
 
-            protected override QsTypeValue? AnalyzeCall(QsTypeValue objTypeValue, QsExp objExp, QsFuncValue? getter, QsFuncValue? setter, IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> args)
+            protected override QsTypeValue? AnalyzeCall(QsTypeValue objTypeValue, Exp objExp, QsFuncValue? getter, QsFuncValue? setter, IEnumerable<(Exp Exp, QsTypeValue TypeValue)> args)
             {
                 // e.x++;
                 // e.x가 프로퍼티(GetX, SetX) 라면,
@@ -137,14 +137,14 @@ namespace QuickSC.StaticAnalyzer
                 return operatorTypeValue;
             }
 
-            protected override QsExp GetTargetExp()
+            protected override Exp GetTargetExp()
             {
                 return exp.Operand;
             }
         }
 
         internal bool AnalyzeUnaryAssignExp(
-            QsUnaryOpExp unaryOpExp,
+            UnaryOpExp unaryOpExp,
             Context context,
             [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {

@@ -1,6 +1,6 @@
-﻿using QuickSC.Runtime;
+﻿using Gum.Syntax;
+using QuickSC.Runtime;
 using QuickSC.StaticAnalyzer;
-using QuickSC.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -23,14 +23,14 @@ namespace QuickSC
         private QsValue? thisValue;
         private QsValue retValue;
 
-        private ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> infosByNode;
+        private ImmutableDictionary<ISyntaxNode, QsSyntaxNodeInfo> infosByNode;
 
         public QsEvalContext(
             IQsRuntimeModule runtimeModule, 
             QsDomainService domainService, 
             QsTypeValueService typeValueService,
             int privateGlobalVarCount,
-            ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> infosByNode)
+            ImmutableDictionary<ISyntaxNode, QsSyntaxNodeInfo> infosByNode)
         {
             RuntimeModule = runtimeModule;
             DomainService = domainService;
@@ -104,7 +104,7 @@ namespace QuickSC
             }
         }
 
-        public TSyntaxNodeInfo GetNodeInfo<TSyntaxNodeInfo>(IQsSyntaxNode node) where TSyntaxNodeInfo : QsSyntaxNodeInfo
+        public TSyntaxNodeInfo GetNodeInfo<TSyntaxNodeInfo>(ISyntaxNode node) where TSyntaxNodeInfo : QsSyntaxNodeInfo
         {
             return (TSyntaxNodeInfo)infosByNode[node];
         }

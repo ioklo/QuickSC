@@ -1,4 +1,5 @@
-﻿using QuickSC.Runtime;
+﻿using Gum;
+using QuickSC.Runtime;
 using QuickSC.StaticAnalyzer;
 using System;
 using System.Collections.Generic;
@@ -12,13 +13,13 @@ namespace QuickSC
 {
     public class QsDefaultApplication
     {
-        QsParser parser;        
+        Parser parser;
         QsEvaluator evaluator;
 
         public QsDefaultApplication(IQsCommandProvider commandProvider)
         {
-            QsLexer lexer = new QsLexer();
-            parser = new QsParser(lexer);
+            Lexer lexer = new Lexer();
+            parser = new Parser(lexer);
 
             var typeSkeletonCollector = new QsTypeSkeletonCollector();
             var typeExpEvaluator = new QsTypeExpEvaluator(typeSkeletonCollector);

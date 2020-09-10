@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\External\Gum.TextAnalysis\Gum.TextAnalysis.csproj" />
     <ProjectReference Include="..\QuickSC.Analyzer\QuickSC.Analyzer.csproj" />
     <ProjectReference Include="..\QuickSC.Infra\QuickSC.Infra.csproj" />
     <ProjectReference Include="..\QuickSC.Runtime\QuickSC.Runtime.csproj" />

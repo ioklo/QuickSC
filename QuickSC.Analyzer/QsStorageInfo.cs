@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -79,14 +79,14 @@ namespace QuickSC
 
         public class StaticMember : QsStorageInfo
         {
-            public (QsTypeValue TypeValue, QsExp Exp)? ObjectInfo { get; }
+            public (QsTypeValue TypeValue, Exp Exp)? ObjectInfo { get; }
             public QsVarValue VarValue { get; }
-            public StaticMember((QsTypeValue TypeValue, QsExp Exp)? objectInfo, QsVarValue varValue) { ObjectInfo = objectInfo; VarValue = varValue; }
+            public StaticMember((QsTypeValue TypeValue, Exp Exp)? objectInfo, QsVarValue varValue) { ObjectInfo = objectInfo; VarValue = varValue; }
 
             public override bool Equals(object? obj)
             {
                 return obj is StaticMember member &&
-                       EqualityComparer<(QsTypeValue TypeValue, QsExp Exp)?>.Default.Equals(ObjectInfo, member.ObjectInfo) &&
+                       EqualityComparer<(QsTypeValue TypeValue, Exp Exp)?>.Default.Equals(ObjectInfo, member.ObjectInfo) &&
                        EqualityComparer<QsVarValue>.Default.Equals(VarValue, member.VarValue);
             }
 
@@ -98,10 +98,10 @@ namespace QuickSC
 
         public class InstanceMember : QsStorageInfo
         {
-            public QsExp ObjectExp { get; }
+            public Exp ObjectExp { get; }
             public QsTypeValue ObjectTypeValue { get; }
             public QsName VarName { get; }
-            public InstanceMember(QsExp objectExp, QsTypeValue objectTypeValue, QsName varName)
+            public InstanceMember(Exp objectExp, QsTypeValue objectTypeValue, QsName varName)
             {
                 ObjectExp = objectExp;
                 ObjectTypeValue = objectTypeValue;
@@ -111,7 +111,7 @@ namespace QuickSC
             public override bool Equals(object? obj)
             {
                 return obj is InstanceMember member &&
-                       EqualityComparer<QsExp>.Default.Equals(ObjectExp, member.ObjectExp) &&
+                       EqualityComparer<Exp>.Default.Equals(ObjectExp, member.ObjectExp) &&
                        EqualityComparer<QsTypeValue>.Default.Equals(ObjectTypeValue, member.ObjectTypeValue) &&
                        EqualityComparer<QsName>.Default.Equals(VarName, member.VarName);
             }
@@ -134,10 +134,10 @@ namespace QuickSC
         public static EnumElem MakeEnumElem(string elemName)
             => new EnumElem(elemName);
 
-        public static StaticMember MakeStaticMember((QsTypeValue TypeValue, QsExp Exp)? objetInfo, QsVarValue varValue)
+        public static StaticMember MakeStaticMember((QsTypeValue TypeValue, Exp Exp)? objetInfo, QsVarValue varValue)
             => new StaticMember(objetInfo, varValue);
 
-        public static InstanceMember MakeInstanceMember(QsExp objectExp, QsTypeValue objectTypeValue, QsName varName)
+        public static InstanceMember MakeInstanceMember(Exp objectExp, QsTypeValue objectTypeValue, QsName varName)
             => new InstanceMember(objectExp, objectTypeValue, varName);
         
         public static bool operator ==(QsStorageInfo? left, QsStorageInfo? right)

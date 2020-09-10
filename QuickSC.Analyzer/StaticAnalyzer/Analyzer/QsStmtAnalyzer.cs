@@ -1,5 +1,5 @@
-﻿using QuickSC;
-using QuickSC.Syntax;
+﻿using Gum.Syntax;
+using QuickSC;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -23,7 +23,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         // CommandStmt에 있는 expStringElement를 분석한다
-        bool AnalyzeCommandStmt(QsCommandStmt cmdStmt, Context context)
+        bool AnalyzeCommandStmt(CommandStmt cmdStmt, Context context)
         {
             bool bResult = true;
 
@@ -34,12 +34,12 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeVarDeclStmt(QsVarDeclStmt varDeclStmt, Context context)
+        bool AnalyzeVarDeclStmt(VarDeclStmt varDeclStmt, Context context)
         {
             return analyzer.AnalyzeVarDecl(varDeclStmt.VarDecl, context);
         }
 
-        bool AnalyzeIfStmt(QsIfStmt ifStmt, Context context) 
+        bool AnalyzeIfStmt(IfStmt ifStmt, Context context) 
         {
             bool bResult = true;
 
@@ -66,7 +66,7 @@ namespace QuickSC.StaticAnalyzer
                 // TODO: if (Type v = exp as Type) 구문 추가
 
                 // if (exp is X) 구문은 exp가 identifier일때만 가능하다
-                if (ifStmt.Cond is QsIdentifierExp idExpCond)
+                if (ifStmt.Cond is IdentifierExp idExpCond)
                 {
                     var typeArgs = GetTypeValues(idExpCond.TypeArgs, context);
                     if (!context.GetIdentifierInfo(idExpCond.Value, typeArgs, null, out var idInfo))
@@ -127,14 +127,14 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        bool AnalyzeForStmtInitializer(QsForStmtInitializer forInit, Context context)
+        bool AnalyzeForStmtInitializer(ForStmtInitializer forInit, Context context)
         {
             switch(forInit)
             {
-                case QsVarDeclForStmtInitializer varDeclInit: 
+                case VarDeclForStmtInitializer varDeclInit: 
                     return analyzer.AnalyzeVarDecl(varDeclInit.VarDecl, context);
 
-                case QsExpForStmtInitializer expInit:
+                case ExpForStmtInitializer expInit:
                     {
                         if (analyzer.AnalyzeExp(expInit.Exp, null, context, out var expTypeValue))
                         {
@@ -150,7 +150,7 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        bool AnalyzeForStmt(QsForStmt forStmt, Context context)
+        bool AnalyzeForStmt(ForStmt forStmt, Context context)
         {
             bool bResult = true;
 
@@ -190,19 +190,19 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeContinueStmt(QsContinueStmt continueStmt, Context context)
+        bool AnalyzeContinueStmt(ContinueStmt continueStmt, Context context)
         {
             // TODO: loop안에 있는지 확인한다
             return true;
         }
 
-        bool AnalyzeBreakStmt(QsBreakStmt breakStmt, Context context)
+        bool AnalyzeBreakStmt(BreakStmt breakStmt, Context context)
         {
             // loop안에 있는지 확인해야 한다
             return true;
         }
         
-        bool AnalyzeReturnStmt(QsReturnStmt returnStmt, Context context)
+        bool AnalyzeReturnStmt(ReturnStmt returnStmt, Context context)
         {   
             if (returnStmt.Value != null)
             {
@@ -238,7 +238,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool AnalyzeBlockStmt(QsBlockStmt blockStmt, Context context)
+        bool AnalyzeBlockStmt(BlockStmt blockStmt, Context context)
         {
             bool bResult = true;
 
@@ -253,17 +253,17 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeExpStmt(QsExpStmt expStmt, Context context)
+        bool AnalyzeExpStmt(ExpStmt expStmt, Context context)
         {
             bool bResult = true;
 
-            if ((expStmt.Exp is QsUnaryOpExp unOpExp && (unOpExp.Kind != QsUnaryOpKind.PostfixInc || 
-                    unOpExp.Kind != QsUnaryOpKind.PostfixDec ||
-                    unOpExp.Kind != QsUnaryOpKind.PrefixInc ||
-                    unOpExp.Kind != QsUnaryOpKind.PrefixDec)) && 
-                (expStmt.Exp is QsBinaryOpExp binOpExp && binOpExp.Kind != QsBinaryOpKind.Assign) &&
-                !(expStmt.Exp is QsCallExp) &&
-                !(expStmt.Exp is QsMemberCallExp))
+            if ((expStmt.Exp is UnaryOpExp unOpExp && (unOpExp.Kind != UnaryOpKind.PostfixInc || 
+                    unOpExp.Kind != UnaryOpKind.PostfixDec ||
+                    unOpExp.Kind != UnaryOpKind.PrefixInc ||
+                    unOpExp.Kind != UnaryOpKind.PrefixDec)) && 
+                (expStmt.Exp is BinaryOpExp binOpExp && binOpExp.Kind != BinaryOpKind.Assign) &&
+                !(expStmt.Exp is CallExp) &&
+                !(expStmt.Exp is MemberCallExp))
             {
                 context.ErrorCollector.Add(expStmt, "대입, 함수 호출만 구문으로 사용할 수 있습니다");
                 bResult = false;
@@ -277,16 +277,16 @@ namespace QuickSC.StaticAnalyzer
             return bResult;            
         }
 
-        bool AnalyzeTaskStmt(QsTaskStmt taskStmt, Context context)
+        bool AnalyzeTaskStmt(TaskStmt taskStmt, Context context)
         {
-            if (!analyzer.AnalyzeLambda(taskStmt.Body, ImmutableArray<QsLambdaExpParam>.Empty, context, out var captureInfo, out var funcTypeValue, out int localVarCount))
+            if (!analyzer.AnalyzeLambda(taskStmt.Body, ImmutableArray<LambdaExpParam>.Empty, context, out var captureInfo, out var funcTypeValue, out int localVarCount))
                 return false;
 
             context.AddNodeInfo(taskStmt, new QsTaskStmtInfo(captureInfo, localVarCount));
             return true;
         }
 
-        bool AnalyzeAwaitStmt(QsAwaitStmt awaitStmt, Context context)
+        bool AnalyzeAwaitStmt(AwaitStmt awaitStmt, Context context)
         {
             bool bResult = true;
 
@@ -298,16 +298,16 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeAsyncStmt(QsAsyncStmt asyncStmt, Context context)
+        bool AnalyzeAsyncStmt(AsyncStmt asyncStmt, Context context)
         {
-            if (!analyzer.AnalyzeLambda(asyncStmt.Body, ImmutableArray<QsLambdaExpParam>.Empty, context, out var captureInfo, out var funcTypeValue, out int localVarCount))
+            if (!analyzer.AnalyzeLambda(asyncStmt.Body, ImmutableArray<LambdaExpParam>.Empty, context, out var captureInfo, out var funcTypeValue, out int localVarCount))
                 return false;
 
             context.AddNodeInfo(asyncStmt, new QsAsyncStmtInfo(captureInfo, localVarCount));
             return true;
         }
         
-        bool AnalyzeForeachStmt(QsForeachStmt foreachStmt, Context context)
+        bool AnalyzeForeachStmt(ForeachStmt foreachStmt, Context context)
         {
             var boolTypeValue = analyzer.GetBoolTypeValue();            
 
@@ -395,7 +395,7 @@ namespace QuickSC.StaticAnalyzer
             return bResult;
         }
 
-        bool AnalyzeYieldStmt(QsYieldStmt yieldStmt, Context context)
+        bool AnalyzeYieldStmt(YieldStmt yieldStmt, Context context)
         {
             if (!context.IsSeqFunc())
             {
@@ -420,25 +420,25 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public bool AnalyzeStmt(QsStmt stmt, Context context)
+        public bool AnalyzeStmt(Stmt stmt, Context context)
         {
             switch (stmt)
             {
-                case QsCommandStmt cmdStmt: return AnalyzeCommandStmt(cmdStmt, context); 
-                case QsVarDeclStmt varDeclStmt: return AnalyzeVarDeclStmt(varDeclStmt, context); 
-                case QsIfStmt ifStmt: return AnalyzeIfStmt(ifStmt, context); 
-                case QsForStmt forStmt: return AnalyzeForStmt(forStmt, context); 
-                case QsContinueStmt continueStmt: return AnalyzeContinueStmt(continueStmt, context); 
-                case QsBreakStmt breakStmt: return AnalyzeBreakStmt(breakStmt, context); 
-                case QsReturnStmt returnStmt: return AnalyzeReturnStmt(returnStmt, context); 
-                case QsBlockStmt blockStmt: return AnalyzeBlockStmt(blockStmt, context); 
-                case QsBlankStmt _: return true;
-                case QsExpStmt expStmt: return AnalyzeExpStmt(expStmt, context); 
-                case QsTaskStmt taskStmt: return AnalyzeTaskStmt(taskStmt, context);
-                case QsAwaitStmt awaitStmt: return AnalyzeAwaitStmt(awaitStmt, context); 
-                case QsAsyncStmt asyncStmt: return AnalyzeAsyncStmt(asyncStmt, context); 
-                case QsForeachStmt foreachStmt: return AnalyzeForeachStmt(foreachStmt, context); 
-                case QsYieldStmt yieldStmt: return AnalyzeYieldStmt(yieldStmt, context); 
+                case CommandStmt cmdStmt: return AnalyzeCommandStmt(cmdStmt, context); 
+                case VarDeclStmt varDeclStmt: return AnalyzeVarDeclStmt(varDeclStmt, context); 
+                case IfStmt ifStmt: return AnalyzeIfStmt(ifStmt, context); 
+                case ForStmt forStmt: return AnalyzeForStmt(forStmt, context); 
+                case ContinueStmt continueStmt: return AnalyzeContinueStmt(continueStmt, context); 
+                case BreakStmt breakStmt: return AnalyzeBreakStmt(breakStmt, context); 
+                case ReturnStmt returnStmt: return AnalyzeReturnStmt(returnStmt, context); 
+                case BlockStmt blockStmt: return AnalyzeBlockStmt(blockStmt, context); 
+                case BlankStmt _: return true;
+                case ExpStmt expStmt: return AnalyzeExpStmt(expStmt, context); 
+                case TaskStmt taskStmt: return AnalyzeTaskStmt(taskStmt, context);
+                case AwaitStmt awaitStmt: return AnalyzeAwaitStmt(awaitStmt, context); 
+                case AsyncStmt asyncStmt: return AnalyzeAsyncStmt(asyncStmt, context); 
+                case ForeachStmt foreachStmt: return AnalyzeForeachStmt(foreachStmt, context); 
+                case YieldStmt yieldStmt: return AnalyzeYieldStmt(yieldStmt, context); 
                 default: throw new NotImplementedException();
             }
         }

@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -36,19 +36,19 @@ namespace QuickSC.StaticAnalyzer
 
             // CurFunc와 bGlobalScope를 나누는 이유는, globalScope에서 BlockStmt 안으로 들어가면 global이 아니기 때문이다
             private bool bGlobalScope;
-            private ImmutableDictionary<QsFuncDecl, QsFuncInfo> funcInfosByDecl;
-            private ImmutableDictionary<QsEnumDecl, QsEnumInfo> enumInfosByDecl;
+            private ImmutableDictionary<FuncDecl, QsFuncInfo> funcInfosByDecl;
+            private ImmutableDictionary<EnumDecl, QsEnumInfo> enumInfosByDecl;
             private QsTypeExpTypeValueService typeExpTypeValueService;
             private Dictionary<string, PrivateGlobalVarInfo> privateGlobalVarInfos;
-            private Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo> infosByNode;
+            private Dictionary<ISyntaxNode, QsSyntaxNodeInfo> infosByNode;
             private List<QsScriptTemplate> templates;
 
             public Context(
                 QsMetadataService metadataService,
                 QsTypeValueService typeValueService,
                 QsTypeExpTypeValueService typeExpTypeValueService,
-                ImmutableDictionary<QsFuncDecl, QsFuncInfo> funcInfosByDecl,
-                ImmutableDictionary<QsEnumDecl, QsEnumInfo> enumInfosByDecl,
+                ImmutableDictionary<FuncDecl, QsFuncInfo> funcInfosByDecl,
+                ImmutableDictionary<EnumDecl, QsEnumInfo> enumInfosByDecl,
                 IQsErrorCollector errorCollector)
             {
                 MetadataService = metadataService;
@@ -64,11 +64,11 @@ namespace QuickSC.StaticAnalyzer
                 bGlobalScope = true;
                 privateGlobalVarInfos = new Dictionary<string, PrivateGlobalVarInfo>();
 
-                infosByNode = new Dictionary<IQsSyntaxNode, QsSyntaxNodeInfo>(QsRefEqComparer<IQsSyntaxNode>.Instance);
+                infosByNode = new Dictionary<ISyntaxNode, QsSyntaxNodeInfo>(QsRefEqComparer<ISyntaxNode>.Instance);
                 templates = new List<QsScriptTemplate>();
             }
 
-            public void AddNodeInfo(IQsSyntaxNode node, QsSyntaxNodeInfo info)
+            public void AddNodeInfo(ISyntaxNode node, QsSyntaxNodeInfo info)
             {
                 infosByNode.Add(node, info);
             }
@@ -130,12 +130,12 @@ namespace QuickSC.StaticAnalyzer
                 throw new NotImplementedException();
             }
 
-            public QsFuncInfo GetFuncInfoByDecl(QsFuncDecl funcDecl)
+            public QsFuncInfo GetFuncInfoByDecl(FuncDecl funcDecl)
             {
                 return funcInfosByDecl[funcDecl];
             }
 
-            public QsEnumInfo GetEnumInfoByDecl(QsEnumDecl enumDecl)
+            public QsEnumInfo GetEnumInfoByDecl(EnumDecl enumDecl)
             {
                 return enumInfosByDecl[enumDecl];
             }
@@ -150,12 +150,12 @@ namespace QuickSC.StaticAnalyzer
                 bGlobalScope = bNewGlobalScope;
             }
 
-            public QsTypeValue GetTypeValueByTypeExp(QsTypeExp typeExp)
+            public QsTypeValue GetTypeValueByTypeExp(TypeExp typeExp)
             {
                 return typeExpTypeValueService.GetTypeValue(typeExp);
             }
 
-            public ImmutableDictionary<IQsSyntaxNode, QsSyntaxNodeInfo> MakeInfosByNode()
+            public ImmutableDictionary<ISyntaxNode, QsSyntaxNodeInfo> MakeInfosByNode()
             {
                 return infosByNode.ToImmutableWithComparer();
             }

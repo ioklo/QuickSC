@@ -1,5 +1,5 @@
-﻿using QuickSC;
-using QuickSC.Syntax;
+﻿using Gum.Syntax;
+using QuickSC;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -26,7 +26,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         // x
-        internal bool AnalyzeIdExp(QsIdentifierExp idExp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        internal bool AnalyzeIdExp(IdentifierExp idExp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             outTypeValue = null;
 
@@ -64,19 +64,19 @@ namespace QuickSC.StaticAnalyzer
             return false;
         }
 
-        internal bool AnalyzeBoolLiteralExp(QsBoolLiteralExp boolExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeBoolLiteralExp(BoolLiteralExp boolExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {   
             typeValue = analyzer.GetBoolTypeValue();
             return true;
         }
 
-        internal bool AnalyzeIntLiteralExp(QsIntLiteralExp intExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeIntLiteralExp(IntLiteralExp intExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             typeValue = analyzer.GetIntTypeValue();
             return true;
         }
 
-        internal bool AnalyzeStringExp(QsStringExp stringExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeStringExp(StringExp stringExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             foreach(var elem in stringExp.Elements)
                 analyzer.AnalyzeStringExpElement(elem, context);
@@ -85,7 +85,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        internal bool AnalyzeUnaryOpExp(QsUnaryOpExp unaryOpExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeUnaryOpExp(UnaryOpExp unaryOpExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             typeValue = null;
 
@@ -97,7 +97,7 @@ namespace QuickSC.StaticAnalyzer
 
             switch (unaryOpExp.Kind)
             {
-                case QsUnaryOpKind.LogicalNot:
+                case UnaryOpKind.LogicalNot:
                     {
                         if (!analyzer.IsAssignable(boolTypeValue, operandTypeValue, context))
                         {
@@ -109,13 +109,13 @@ namespace QuickSC.StaticAnalyzer
                         return true;
                     }
                 
-                case QsUnaryOpKind.PostfixInc: // e.m++ 등
-                case QsUnaryOpKind.PostfixDec:
-                case QsUnaryOpKind.PrefixInc:
-                case QsUnaryOpKind.PrefixDec:
+                case UnaryOpKind.PostfixInc: // e.m++ 등
+                case UnaryOpKind.PostfixDec:
+                case UnaryOpKind.PrefixInc:
+                case UnaryOpKind.PrefixDec:
                     return AnalyzeUnaryAssignExp(unaryOpExp, context, out typeValue);
 
-                case QsUnaryOpKind.Minus:
+                case UnaryOpKind.Minus:
                     {
                         if (!analyzer.IsAssignable(intTypeValue, operandTypeValue, context))
                         {
@@ -135,9 +135,9 @@ namespace QuickSC.StaticAnalyzer
 
         
 
-        internal bool AnalyzeBinaryOpExp(QsBinaryOpExp binaryOpExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeBinaryOpExp(BinaryOpExp binaryOpExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {   
-            if (binaryOpExp.Kind == QsBinaryOpKind.Assign)
+            if (binaryOpExp.Kind == BinaryOpKind.Assign)
                 return AnalyzeBinaryAssignExp(binaryOpExp, context, out typeValue);
 
             typeValue = null;
@@ -152,7 +152,7 @@ namespace QuickSC.StaticAnalyzer
             if (!AnalyzeExp(binaryOpExp.Operand1, null, context, out var operandTypeValue1))
                 return false;
 
-            if (binaryOpExp.Kind == QsBinaryOpKind.Equal || binaryOpExp.Kind == QsBinaryOpKind.NotEqual)
+            if (binaryOpExp.Kind == BinaryOpKind.Equal || binaryOpExp.Kind == BinaryOpKind.NotEqual)
             {   
                 if (!EqualityComparer<QsTypeValue>.Default.Equals(operandTypeValue0, operandTypeValue1))
                 {
@@ -214,18 +214,18 @@ namespace QuickSC.StaticAnalyzer
 
                 switch (binaryOpExp.Kind)
                 {
-                    case QsBinaryOpKind.Multiply:
-                    case QsBinaryOpKind.Divide:
-                    case QsBinaryOpKind.Modulo:
-                    case QsBinaryOpKind.Add:
-                    case QsBinaryOpKind.Subtract:
+                    case BinaryOpKind.Multiply:
+                    case BinaryOpKind.Divide:
+                    case BinaryOpKind.Modulo:
+                    case BinaryOpKind.Add:
+                    case BinaryOpKind.Subtract:
                         typeValue = intTypeValue;
                         return true;
 
-                    case QsBinaryOpKind.LessThan:
-                    case QsBinaryOpKind.GreaterThan:
-                    case QsBinaryOpKind.LessThanOrEqual:
-                    case QsBinaryOpKind.GreaterThanOrEqual:
+                    case BinaryOpKind.LessThan:
+                    case BinaryOpKind.GreaterThan:
+                    case BinaryOpKind.LessThanOrEqual:
+                    case BinaryOpKind.GreaterThanOrEqual:
                         typeValue = boolTypeValue;
                         return true;
 
@@ -247,14 +247,14 @@ namespace QuickSC.StaticAnalyzer
 
                 switch (binaryOpExp.Kind)
                 {
-                    case QsBinaryOpKind.Add:
+                    case BinaryOpKind.Add:
                         typeValue = stringTypeValue;
                         return true;
 
-                    case QsBinaryOpKind.LessThan:
-                    case QsBinaryOpKind.GreaterThan:
-                    case QsBinaryOpKind.LessThanOrEqual:
-                    case QsBinaryOpKind.GreaterThanOrEqual:
+                    case BinaryOpKind.LessThan:
+                    case BinaryOpKind.GreaterThan:
+                    case BinaryOpKind.LessThanOrEqual:
+                    case BinaryOpKind.GreaterThanOrEqual:
                         typeValue = boolTypeValue;
                         return true;
 
@@ -269,7 +269,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         bool AnalyzeCallableIdentifierExp(
-            QsIdentifierExp exp, ImmutableArray<QsTypeValue> args, Context context,
+            IdentifierExp exp, ImmutableArray<QsTypeValue> args, Context context,
             [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsTypeValue.Func TypeValue)? outValue)
         {
             // 1. this 검색
@@ -310,7 +310,7 @@ namespace QuickSC.StaticAnalyzer
 
 
         bool AnalyzeCallableElseExp(
-            QsExp exp, ImmutableArray<QsTypeValue> args, Context context,
+            Exp exp, ImmutableArray<QsTypeValue> args, Context context,
             [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsTypeValue.Func TypeValue)? outValue)
         {
             if (!AnalyzeExp(exp, null, context, out var typeValue))
@@ -342,21 +342,21 @@ namespace QuickSC.StaticAnalyzer
         //   -> AnalyzeCallableExp(F, [Int])
         //        -> FuncValue(
         bool AnalyzeCallableExp(
-            QsExp exp, 
+            Exp exp, 
             ImmutableArray<QsTypeValue> args, Context context, 
             [NotNullWhen(returnValue: true)] out (QsFuncValue? FuncValue, QsTypeValue.Func TypeValue)? outValue)
         {
-            if (exp is QsIdentifierExp idExp)
+            if (exp is IdentifierExp idExp)
                 return AnalyzeCallableIdentifierExp(idExp, args, context, out outValue);
             else
                 return AnalyzeCallableElseExp(exp, args, context, out outValue);
         }
         
-        internal bool AnalyzeCallExp(QsCallExp exp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
+        internal bool AnalyzeCallExp(CallExp exp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
         {
             (QsSyntaxNodeInfo NodeInfo, QsTypeValue TypeValue)? AnalyzeEnumValueOrNormal(ImmutableArray<QsTypeValue> args)
             {
-                if (exp.Callable is QsIdentifierExp idExp)
+                if (exp.Callable is IdentifierExp idExp)
                 {
                     var typeArgs = GetTypeValues(idExp.TypeArgs, context);                    
                     if (context.GetIdentifierInfo(idExp.Value, typeArgs, hintTypeValue, out var idInfo))
@@ -420,7 +420,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
         
-        internal bool AnalyzeLambdaExp(QsLambdaExp lambdaExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        internal bool AnalyzeLambdaExp(LambdaExp lambdaExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             if (!analyzer.AnalyzeLambda(lambdaExp.Body, lambdaExp.Params, context, out var captureInfo, out var funcTypeValue, out var localVarCount))
             {
@@ -433,7 +433,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        bool AnalyzeIndexerExp(QsIndexerExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        bool AnalyzeIndexerExp(IndexerExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             outTypeValue = null;
 
@@ -468,7 +468,7 @@ namespace QuickSC.StaticAnalyzer
         }
 
         // TODO: Hint를 받을 수 있게 해야 한다
-        bool AnalyzeExps(IEnumerable<QsExp> exps, Context context, out ImmutableArray<QsTypeValue> outTypeValues)
+        bool AnalyzeExps(IEnumerable<Exp> exps, Context context, out ImmutableArray<QsTypeValue> outTypeValues)
         {
             var typeValues = new List<QsTypeValue>();
             foreach (var exp in exps)
@@ -486,7 +486,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        internal bool AnalyzeMemberCallExp(QsMemberCallExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        internal bool AnalyzeMemberCallExp(MemberCallExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
         {
             outTypeValue = null;
 
@@ -501,7 +501,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        internal bool AnalyzeMemberExp(QsMemberExp memberExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
+        internal bool AnalyzeMemberExp(MemberExp memberExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue) 
         {
             var memberExpAnalyzer = new MemberExpAnalyzer(analyzer, memberExp, context);
             var result = memberExpAnalyzer.Analyze();
@@ -519,7 +519,7 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        internal bool AnalyzeListExp(QsListExp listExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        internal bool AnalyzeListExp(ListExp listExp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             typeValue = null;
             QsTypeValue? curElemTypeValue = null;
@@ -562,22 +562,22 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public bool AnalyzeExp(QsExp exp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        public bool AnalyzeExp(Exp exp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
         {
             switch(exp)
             {
-                case QsIdentifierExp idExp: return AnalyzeIdExp(idExp, hintTypeValue, context, out typeValue);
-                case QsBoolLiteralExp boolExp: return AnalyzeBoolLiteralExp(boolExp, context, out typeValue);
-                case QsIntLiteralExp intExp: return AnalyzeIntLiteralExp(intExp, context, out typeValue);
-                case QsStringExp stringExp: return AnalyzeStringExp(stringExp, context, out typeValue);
-                case QsUnaryOpExp unaryOpExp: return AnalyzeUnaryOpExp(unaryOpExp, context, out typeValue);
-                case QsBinaryOpExp binaryOpExp: return AnalyzeBinaryOpExp(binaryOpExp, context, out typeValue);
-                case QsCallExp callExp: return AnalyzeCallExp(callExp, hintTypeValue, context, out typeValue);        
-                case QsLambdaExp lambdaExp: return AnalyzeLambdaExp(lambdaExp, context, out typeValue);
-                case QsIndexerExp indexerExp: return AnalyzeIndexerExp(indexerExp, context, out typeValue);
-                case QsMemberCallExp memberCallExp: return AnalyzeMemberCallExp(memberCallExp, context, out typeValue);
-                case QsMemberExp memberExp: return AnalyzeMemberExp(memberExp, context, out typeValue);
-                case QsListExp listExp: return AnalyzeListExp(listExp, context, out typeValue);
+                case IdentifierExp idExp: return AnalyzeIdExp(idExp, hintTypeValue, context, out typeValue);
+                case BoolLiteralExp boolExp: return AnalyzeBoolLiteralExp(boolExp, context, out typeValue);
+                case IntLiteralExp intExp: return AnalyzeIntLiteralExp(intExp, context, out typeValue);
+                case StringExp stringExp: return AnalyzeStringExp(stringExp, context, out typeValue);
+                case UnaryOpExp unaryOpExp: return AnalyzeUnaryOpExp(unaryOpExp, context, out typeValue);
+                case BinaryOpExp binaryOpExp: return AnalyzeBinaryOpExp(binaryOpExp, context, out typeValue);
+                case CallExp callExp: return AnalyzeCallExp(callExp, hintTypeValue, context, out typeValue);        
+                case LambdaExp lambdaExp: return AnalyzeLambdaExp(lambdaExp, context, out typeValue);
+                case IndexerExp indexerExp: return AnalyzeIndexerExp(indexerExp, context, out typeValue);
+                case MemberCallExp memberCallExp: return AnalyzeMemberCallExp(memberCallExp, context, out typeValue);
+                case MemberExp memberExp: return AnalyzeMemberExp(memberExp, context, out typeValue);
+                case ListExp listExp: return AnalyzeListExp(listExp, context, out typeValue);
                 default: throw new NotImplementedException();
             }
         }

@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -15,9 +15,9 @@ namespace QuickSC.StaticAnalyzer
             public QsTypeValue? SeqElemTypeValue { get; }
             public bool bThisCall { get; }
             public int LocalVarCount { get; }
-            public QsStmt Body { get; }
+            public Stmt Body { get; }
 
-            internal Func(QsMetaItemId funcId, QsTypeValue? seqElemTypeValue, bool bThisCall, int localVarCount, QsStmt body)
+            internal Func(QsMetaItemId funcId, QsTypeValue? seqElemTypeValue, bool bThisCall, int localVarCount, Stmt body)
                 : base(funcId)
             {
                 SeqElemTypeValue = seqElemTypeValue;
@@ -45,7 +45,7 @@ namespace QuickSC.StaticAnalyzer
             Id = funcId;
         }
 
-        public static Func MakeFunc(QsMetaItemId funcId, QsTypeValue? seqElemTypeValue, bool bThisCall, int localVarCount, QsStmt body)
+        public static Func MakeFunc(QsMetaItemId funcId, QsTypeValue? seqElemTypeValue, bool bThisCall, int localVarCount, Stmt body)
             => new Func(funcId, seqElemTypeValue, bThisCall, localVarCount, body);
 
         public static Enum MakeEnum(QsMetaItemId enumId, string defaultElemName, IEnumerable<(string Name, QsTypeValue TypeValue)> defaultFields)

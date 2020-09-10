@@ -1,5 +1,5 @@
 ﻿using QuickSC.StaticAnalyzer;
-using QuickSC.Syntax;
+using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -128,16 +128,16 @@ namespace QuickSC
         public class CallSetter : QsBinaryOpExpAssignInfo
         {
             public QsTypeValue? ObjectTypeValue { get; }
-            public QsExp? Object { get;}            
+            public Exp? Object { get;}            
             public QsFuncValue Setter { get;}
-            public ImmutableArray<(QsExp Exp, QsTypeValue TypeValue)> Arguments { get; }
+            public ImmutableArray<(Exp Exp, QsTypeValue TypeValue)> Arguments { get; }
             public QsTypeValue ValueTypeValue { get; }
 
             public CallSetter(
                 QsTypeValue? objTypeValue,
-                QsExp? obj,
+                Exp? obj,
                 QsFuncValue setter,
-                IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> arguments,
+                IEnumerable<(Exp Exp, QsTypeValue TypeValue)> arguments,
                 QsTypeValue valueTypeValue)
             {
                 ObjectTypeValue = objTypeValue;
@@ -153,9 +153,9 @@ namespace QuickSC
 
         public static CallSetter MakeCallSetter(
             QsTypeValue? objTypeValue,
-            QsExp? obj,
+            Exp? obj,
             QsFuncValue setter,
-            IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> arguments,
+            IEnumerable<(Exp Exp, QsTypeValue TypeValue)> arguments,
             QsTypeValue valueTypeValue)
             => new CallSetter(objTypeValue, obj, setter, arguments, valueTypeValue);
     }
@@ -180,7 +180,7 @@ namespace QuickSC
 
         public class CallFunc : QsUnaryOpExpAssignInfo
         {
-            public QsExp? ObjectExp { get; }
+            public Exp? ObjectExp { get; }
             public QsTypeValue? ObjectTypeValue { get; }
 
             public QsTypeValue ValueTypeValue0 { get; }
@@ -188,19 +188,19 @@ namespace QuickSC
             public bool bReturnPrevValue { get; }
 
             // Getter/setter Arguments without setter value
-            public ImmutableArray<(QsExp Exp, QsTypeValue TypeValue)> Arguments { get; }
+            public ImmutableArray<(Exp Exp, QsTypeValue TypeValue)> Arguments { get; }
 
             public QsFuncValue Getter { get; }            
             public QsFuncValue Setter { get; }
             public QsFuncValue Operator { get; }
 
             public CallFunc(
-                QsExp? objectExp,
+                Exp? objectExp,
                 QsTypeValue? objectTypeValue,
                 QsTypeValue valueTypeValue0,
                 QsTypeValue valueTypeValue1,
                 bool bReturnPrevValue,
-                IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> arguments,
+                IEnumerable<(Exp Exp, QsTypeValue TypeValue)> arguments,
                 QsFuncValue getter,
                 QsFuncValue setter,
                 QsFuncValue op)
@@ -222,12 +222,12 @@ namespace QuickSC
             => new Direct(storageInfo, operatorValue, bReturnPrevValue, valueTypeValue);
 
         public static CallFunc MakeCallFunc(
-            QsExp? objectExp,
+            Exp? objectExp,
             QsTypeValue? objectTypeValue,
             QsTypeValue valueTypeValue0,
             QsTypeValue valueTypeValue1,
             bool bReturnPrevValue,
-            IEnumerable<(QsExp Exp, QsTypeValue TypeValue)> arguments,
+            IEnumerable<(Exp Exp, QsTypeValue TypeValue)> arguments,
             QsFuncValue getter,
             QsFuncValue setter,
             QsFuncValue op)

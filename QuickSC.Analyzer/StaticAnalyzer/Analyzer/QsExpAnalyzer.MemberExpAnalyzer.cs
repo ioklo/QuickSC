@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Linq;
 using static QuickSC.StaticAnalyzer.QsAnalyzer;
@@ -22,10 +22,10 @@ namespace QuickSC.StaticAnalyzer
             }
 
             QsAnalyzer analyzer;
-            QsMemberExp memberExp;
+            MemberExp memberExp;
             Context context;
 
-            public MemberExpAnalyzer(QsAnalyzer analyzer, QsMemberExp memberExp, Context context)
+            public MemberExpAnalyzer(QsAnalyzer analyzer, MemberExp memberExp, Context context)
             {
                 this.analyzer = analyzer;
                 this.memberExp = memberExp;
@@ -34,7 +34,7 @@ namespace QuickSC.StaticAnalyzer
 
             public Result? Analyze()
             {
-                if (memberExp.Object is QsIdentifierExp objIdExp)
+                if (memberExp.Object is IdentifierExp objIdExp)
                 {
                     var typeArgs = GetTypeValues(objIdExp.TypeArgs, context);
                     if (!context.GetIdentifierInfo(objIdExp.Value, typeArgs, null, out var idInfo))

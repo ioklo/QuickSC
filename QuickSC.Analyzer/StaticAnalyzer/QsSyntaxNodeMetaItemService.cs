@@ -1,27 +1,27 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System.Collections.Immutable;
 
 namespace QuickSC.StaticAnalyzer
 {
     public class QsSyntaxNodeMetaItemService
     {
-        private ImmutableDictionary<IQsSyntaxNode, QsMetaItemId> typeIdsByNode;
-        private ImmutableDictionary<IQsSyntaxNode, QsMetaItemId> funcIdsByNode;
+        private ImmutableDictionary<ISyntaxNode, QsMetaItemId> typeIdsByNode;
+        private ImmutableDictionary<ISyntaxNode, QsMetaItemId> funcIdsByNode;
 
         public QsSyntaxNodeMetaItemService(
-            ImmutableDictionary<IQsSyntaxNode, QsMetaItemId> typeIdsByNode, 
-            ImmutableDictionary<IQsSyntaxNode, QsMetaItemId> funcIdsByNode)
+            ImmutableDictionary<ISyntaxNode, QsMetaItemId> typeIdsByNode, 
+            ImmutableDictionary<ISyntaxNode, QsMetaItemId> funcIdsByNode)
         {
             this.typeIdsByNode = typeIdsByNode;
             this.funcIdsByNode = funcIdsByNode;
         }
 
-        public QsMetaItemId GetTypeId(IQsSyntaxNode node)
+        public QsMetaItemId GetTypeId(ISyntaxNode node)
         {
             return typeIdsByNode[node];
         }
 
-        public QsMetaItemId GetFuncId(IQsSyntaxNode node)
+        public QsMetaItemId GetFuncId(ISyntaxNode node)
         {
             return funcIdsByNode[node];
         }

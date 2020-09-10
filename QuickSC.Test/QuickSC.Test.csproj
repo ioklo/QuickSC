@@ -35,6 +35,8 @@
 
   <ItemGroup>
     <Folder Include="Input\Exp\CallExp\" />
+    <Folder Include="LexerTest\" />
+    <Folder Include="ParserTest\" />
   </ItemGroup>
 
 </Project>

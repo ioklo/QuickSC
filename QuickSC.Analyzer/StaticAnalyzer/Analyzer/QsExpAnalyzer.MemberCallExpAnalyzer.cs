@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Collections.Immutable;
 using System.Linq;
@@ -26,11 +26,11 @@ namespace QuickSC.StaticAnalyzer
             }
 
             QsExpAnalyzer expAnalyzer;
-            QsMemberCallExp exp;
+            MemberCallExp exp;
             Context context;
             ImmutableArray<QsTypeValue> args;
 
-            public MemberCallExpAnalyzer(QsExpAnalyzer expAnalyzer, QsMemberCallExp exp, Context context)
+            public MemberCallExpAnalyzer(QsExpAnalyzer expAnalyzer, MemberCallExp exp, Context context)
             {
                 this.expAnalyzer = expAnalyzer;
                 this.exp = exp;
@@ -43,7 +43,7 @@ namespace QuickSC.StaticAnalyzer
                     return null;
 
                 // id인 경우는 따로 처리
-                if (exp.Object is QsIdentifierExp objIdExp)
+                if (exp.Object is IdentifierExp objIdExp)
                 {
                     return AnalyzeObjectIdExp(objIdExp);
                 }
@@ -56,7 +56,7 @@ namespace QuickSC.StaticAnalyzer
                 }
             }
 
-            private Result? AnalyzeObjectIdExp(QsIdentifierExp objIdExp)
+            private Result? AnalyzeObjectIdExp(IdentifierExp objIdExp)
             {
                 var typeArgs = GetTypeValues(objIdExp.TypeArgs, context);
 

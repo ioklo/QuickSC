@@ -1,6 +1,6 @@
 ﻿using QuickSC.Runtime;
 using QuickSC.StaticAnalyzer;
-using QuickSC.Syntax;
+using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -68,7 +68,7 @@ namespace QuickSC
             };
         }
         
-        async ValueTask EvalIdExpAsync(QsIdentifierExp idExp, QsValue result, QsEvalContext context)
+        async ValueTask EvalIdExpAsync(IdentifierExp idExp, QsValue result, QsEvalContext context)
         {
             var info = context.GetNodeInfo<QsIdentifierExpInfo>(idExp);
 
@@ -77,17 +77,17 @@ namespace QuickSC
             result.SetValue(value);
         }
 
-        void EvalBoolLiteralExp(QsBoolLiteralExp boolLiteralExp, QsValue result, QsEvalContext context)
+        void EvalBoolLiteralExp(BoolLiteralExp boolLiteralExp, QsValue result, QsEvalContext context)
         {
             context.RuntimeModule.SetBool(result, boolLiteralExp.Value);
         }
 
-        void EvalIntLiteralExp(QsIntLiteralExp intLiteralExp, QsValue result, QsEvalContext context)
+        void EvalIntLiteralExp(IntLiteralExp intLiteralExp, QsValue result, QsEvalContext context)
         {
             context.RuntimeModule.SetInt(result, intLiteralExp.Value);
         }
 
-        internal async ValueTask EvalStringExpAsync(QsStringExp stringExp, QsValue result, QsEvalContext context)
+        internal async ValueTask EvalStringExpAsync(StringExp stringExp, QsValue result, QsEvalContext context)
         {
             // stringExp는 element들의 concatenation
             var sb = new StringBuilder();
@@ -95,11 +95,11 @@ namespace QuickSC
             {
                 switch (elem)
                 {
-                    case QsTextStringExpElement textElem:
+                    case TextStringExpElement textElem:
                         sb.Append(textElem.Text);
                         break;
 
-                    case QsExpStringExpElement expElem:
+                    case ExpStringExpElement expElem:
                         {
                             var expStringExpElementInfo = context.GetNodeInfo<QsExpStringExpElementInfo>(expElem);
                             var tempValue = evaluator.GetDefaultValue(expStringExpElementInfo.ExpTypeValue, context);
@@ -118,7 +118,7 @@ namespace QuickSC
             context.RuntimeModule.SetString(context.DomainService, result, sb.ToString());
         }        
 
-        async ValueTask EvalUnaryOpExpAssignAsync(QsUnaryOpExp exp, QsValue result, QsEvalContext context)
+        async ValueTask EvalUnaryOpExpAssignAsync(UnaryOpExp exp, QsValue result, QsEvalContext context)
         {
             async ValueTask EvalDirectAsync(QsUnaryOpExpAssignInfo.Direct directInfo)
             {
@@ -225,18 +225,18 @@ namespace QuickSC
                 throw new InvalidOperationException();
         }
 
-        async ValueTask EvalUnaryOpExpAsync(QsUnaryOpExp exp, QsValue result, QsEvalContext context)
+        async ValueTask EvalUnaryOpExpAsync(UnaryOpExp exp, QsValue result, QsEvalContext context)
         {
             switch (exp.Kind)
             {
-                case QsUnaryOpKind.PostfixInc:  // i++                
-                case QsUnaryOpKind.PostfixDec: // i--
-                case QsUnaryOpKind.PrefixInc: // ++i
-                case QsUnaryOpKind.PrefixDec: // --i
+                case UnaryOpKind.PostfixInc:  // i++                
+                case UnaryOpKind.PostfixDec: // i--
+                case UnaryOpKind.PrefixInc: // ++i
+                case UnaryOpKind.PrefixDec: // --i
                     await EvalUnaryOpExpAssignAsync(exp, result, context);
                     return;
 
-                case QsUnaryOpKind.LogicalNot:
+                case UnaryOpKind.LogicalNot:
                     {
                         // 같은 타입이니 result 재사용
                         await EvalAsync(exp.Operand, result, context);
@@ -247,7 +247,7 @@ namespace QuickSC
 
                 
 
-                case QsUnaryOpKind.Minus: // -i
+                case UnaryOpKind.Minus: // -i
                     {
                         // 타입이 같으므로 재사용
                         await EvalAsync(exp.Operand, result, context);
@@ -260,7 +260,7 @@ namespace QuickSC
             throw new NotImplementedException();
         }
 
-        private ValueTask EvalBinaryAssignExpAsync(QsBinaryOpExp exp, QsValue result, QsEvalContext context)
+        private ValueTask EvalBinaryAssignExpAsync(BinaryOpExp exp, QsValue result, QsEvalContext context)
         {
             // 내부함수는 꼭 필요하지 않은 이상 한 단계 아래로 만들지 않기로
 
@@ -318,11 +318,11 @@ namespace QuickSC
                 throw new InvalidOperationException();
         }
 
-        async ValueTask EvalBinaryOpExpAsync(QsBinaryOpExp exp, QsValue result, QsEvalContext context)
+        async ValueTask EvalBinaryOpExpAsync(BinaryOpExp exp, QsValue result, QsEvalContext context)
         {
             switch (exp.Kind)
             {
-                case QsBinaryOpKind.Multiply:
+                case BinaryOpKind.Multiply:
                     {
                         await EvalAsync(exp.Operand0, result, context);
                         var intValue0 = context.RuntimeModule.GetInt(result);
@@ -334,7 +334,7 @@ namespace QuickSC
                         return;
                     }
 
-                case QsBinaryOpKind.Divide:
+                case BinaryOpKind.Divide:
                     {
                         await EvalAsync(exp.Operand0, result, context);
                         var intValue0 = context.RuntimeModule.GetInt(result);
@@ -346,7 +346,7 @@ namespace QuickSC
                         return;
                     }
 
-                case QsBinaryOpKind.Modulo:
+                case BinaryOpKind.Modulo:
                     {
                         await EvalAsync(exp.Operand0, result, context);
                         var intValue0 = context.RuntimeModule.GetInt(result);
@@ -358,7 +358,7 @@ namespace QuickSC
                         return;
                     }
 
-                case QsBinaryOpKind.Add:
+                case BinaryOpKind.Add:
                     {
                         var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
 
@@ -391,7 +391,7 @@ namespace QuickSC
                         }
                     }
 
-                case QsBinaryOpKind.Subtract:
+                case BinaryOpKind.Subtract:
                     {
                         await EvalAsync(exp.Operand0, result, context);
                         var intValue0 = context.RuntimeModule.GetInt(result);
@@ -403,7 +403,7 @@ namespace QuickSC
                         return;
                     }
 
-                case QsBinaryOpKind.LessThan:
+                case BinaryOpKind.LessThan:
                     {
                         // TODO: 이쪽은 operator<로 교체될 것이므로 임시로 하드코딩
                         var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
@@ -441,7 +441,7 @@ namespace QuickSC
                         }
                     }
 
-                case QsBinaryOpKind.GreaterThan:
+                case BinaryOpKind.GreaterThan:
                     {
                         // TODO: 이쪽은 operator> 로 교체될 것이므로 임시로 하드코딩
                         var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
@@ -479,7 +479,7 @@ namespace QuickSC
                         }
                     }
 
-                case QsBinaryOpKind.LessThanOrEqual:
+                case BinaryOpKind.LessThanOrEqual:
                     {
                         // TODO: 이쪽은 operator<=로 교체될 것이므로 임시로 하드코딩
                         var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
@@ -517,7 +517,7 @@ namespace QuickSC
                         }
                     }
 
-                case QsBinaryOpKind.GreaterThanOrEqual:
+                case BinaryOpKind.GreaterThanOrEqual:
                     {
                         // TODO: 이쪽은 operator>=로 교체될 것이므로 임시로 하드코딩
                         var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
@@ -555,7 +555,7 @@ namespace QuickSC
                         }
                     }
 
-                case QsBinaryOpKind.Equal:
+                case BinaryOpKind.Equal:
                     {
                         // TODO: 이쪽은 operator>=로 교체될 것이므로 임시로 하드코딩
                         var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
@@ -606,7 +606,7 @@ namespace QuickSC
                         }
                     }
 
-                case QsBinaryOpKind.NotEqual:
+                case BinaryOpKind.NotEqual:
                     {
                         // TODO: 이쪽은 operator>=로 교체될 것이므로 임시로 하드코딩
                         var info = context.GetNodeInfo<QsBinaryOpExpInfo>(exp);
@@ -657,7 +657,7 @@ namespace QuickSC
                         }
                     }
 
-                case QsBinaryOpKind.Assign:
+                case BinaryOpKind.Assign:
                     {
                         await EvalBinaryAssignExpAsync(exp, result, context);                        
                         return;
@@ -667,7 +667,7 @@ namespace QuickSC
             throw new NotImplementedException();
         }
 
-        async ValueTask EvalCallExpAsync(QsCallExp exp, QsValue result, QsEvalContext context)
+        async ValueTask EvalCallExpAsync(CallExp exp, QsValue result, QsEvalContext context)
         {
             var info = context.GetNodeInfo<QsCallExpInfo>(exp);
 
@@ -724,7 +724,7 @@ namespace QuickSC
             }
         }
         
-        void EvalLambdaExp(QsLambdaExp exp, QsValue result, QsEvalContext context)
+        void EvalLambdaExp(LambdaExp exp, QsValue result, QsEvalContext context)
         {
             var info = context.GetNodeInfo<QsLambdaExpInfo>(exp);
 
@@ -740,7 +740,7 @@ namespace QuickSC
         }
 
         // a[x] => a.Func(x)
-        async ValueTask EvalIndexerExpAsync(QsIndexerExp exp, QsValue result, QsEvalContext context)
+        async ValueTask EvalIndexerExpAsync(IndexerExp exp, QsValue result, QsEvalContext context)
         {
             var info = context.GetNodeInfo<QsIndexerExpInfo>(exp);
             var thisValue = evaluator.GetDefaultValue(info.ObjectTypeValue, context);
@@ -754,7 +754,7 @@ namespace QuickSC
             await evaluator.EvaluateFuncInstAsync(thisValue, funcInst, ImmutableArray.Create(indexValue), result, context);
         }
 
-        async ValueTask EvalMemberCallExpAsync(QsMemberCallExp exp, QsValue result, QsEvalContext context)
+        async ValueTask EvalMemberCallExpAsync(MemberCallExp exp, QsValue result, QsEvalContext context)
         {
             var info = context.GetNodeInfo<QsMemberCallExpInfo>(exp);
 
@@ -824,7 +824,7 @@ namespace QuickSC
                     throw new NotImplementedException();
             }
 
-            async ValueTask<ImmutableArray<QsValue>> EvaluateArgsAsync(IEnumerable<QsTypeValue> argTypeValues, ImmutableArray<QsExp> argExps)
+            async ValueTask<ImmutableArray<QsValue>> EvaluateArgsAsync(IEnumerable<QsTypeValue> argTypeValues, ImmutableArray<Exp> argExps)
             {
                 var argsBuilder = ImmutableArray.CreateBuilder<QsValue>(argExps.Length);
 
@@ -841,7 +841,7 @@ namespace QuickSC
             }
         }
 
-        async ValueTask EvalMemberExpAsync(QsMemberExp exp, QsValue result, QsEvalContext context)
+        async ValueTask EvalMemberExpAsync(MemberExp exp, QsValue result, QsEvalContext context)
         {
             // TODO: namespace가 있으면 Global(N.x의 경우) 이 될수 있다.  
             // 지금은 Instance(obj.id) / Static(Type.id)으로 나눠진다
@@ -882,7 +882,7 @@ namespace QuickSC
             }
         }
 
-        async ValueTask EvalListExpAsync(QsListExp listExp, QsValue result, QsEvalContext context)
+        async ValueTask EvalListExpAsync(ListExp listExp, QsValue result, QsEvalContext context)
         {
             var info = context.GetNodeInfo<QsListExpInfo>(listExp);
 
@@ -899,22 +899,22 @@ namespace QuickSC
             context.RuntimeModule.SetList(context.DomainService, result, info.ElemTypeValue, elems);
         }
 
-        internal async ValueTask EvalAsync(QsExp exp, QsValue result, QsEvalContext context)
+        internal async ValueTask EvalAsync(Exp exp, QsValue result, QsEvalContext context)
         {
             switch(exp)
             {
-                case QsIdentifierExp idExp: await EvalIdExpAsync(idExp, result, context); break;
-                case QsBoolLiteralExp boolExp: EvalBoolLiteralExp(boolExp, result, context); break;
-                case QsIntLiteralExp intExp: EvalIntLiteralExp(intExp, result, context); break;
-                case QsStringExp stringExp: await EvalStringExpAsync(stringExp, result, context); break;
-                case QsUnaryOpExp unaryOpExp: await EvalUnaryOpExpAsync(unaryOpExp, result, context); break;
-                case QsBinaryOpExp binaryOpExp: await EvalBinaryOpExpAsync(binaryOpExp, result, context); break;
-                case QsCallExp callExp: await EvalCallExpAsync(callExp, result, context); break;
-                case QsLambdaExp lambdaExp: EvalLambdaExp(lambdaExp, result, context); break;
-                case QsIndexerExp indexerExp: await EvalIndexerExpAsync(indexerExp, result, context); break;
-                case QsMemberCallExp memberCallExp: await EvalMemberCallExpAsync(memberCallExp, result, context); break;
-                case QsMemberExp memberExp: await EvalMemberExpAsync(memberExp, result, context); break;
-                case QsListExp listExp: await EvalListExpAsync(listExp, result, context); break;
+                case IdentifierExp idExp: await EvalIdExpAsync(idExp, result, context); break;
+                case BoolLiteralExp boolExp: EvalBoolLiteralExp(boolExp, result, context); break;
+                case IntLiteralExp intExp: EvalIntLiteralExp(intExp, result, context); break;
+                case StringExp stringExp: await EvalStringExpAsync(stringExp, result, context); break;
+                case UnaryOpExp unaryOpExp: await EvalUnaryOpExpAsync(unaryOpExp, result, context); break;
+                case BinaryOpExp binaryOpExp: await EvalBinaryOpExpAsync(binaryOpExp, result, context); break;
+                case CallExp callExp: await EvalCallExpAsync(callExp, result, context); break;
+                case LambdaExp lambdaExp: EvalLambdaExp(lambdaExp, result, context); break;
+                case IndexerExp indexerExp: await EvalIndexerExpAsync(indexerExp, result, context); break;
+                case MemberCallExp memberCallExp: await EvalMemberCallExpAsync(memberCallExp, result, context); break;
+                case MemberExp memberExp: await EvalMemberExpAsync(memberExp, result, context); break;
+                case ListExp listExp: await EvalListExpAsync(listExp, result, context); break;
                 default:  throw new NotImplementedException();
             }
         }

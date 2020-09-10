@@ -1,4 +1,4 @@
-﻿using QuickSC.Syntax;
+﻿using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -9,21 +9,21 @@ namespace QuickSC.StaticAnalyzer
     {
         public class Context
         {
-            private Dictionary<IQsSyntaxNode, QsMetaItemId> typeIdsByNode { get; }
-            private Dictionary<IQsSyntaxNode, QsMetaItemId> funcIdsByNode { get; }
+            private Dictionary<ISyntaxNode, QsMetaItemId> typeIdsByNode { get; }
+            private Dictionary<ISyntaxNode, QsMetaItemId> funcIdsByNode { get; }
             private List<QsTypeSkeleton> typeSkeletons { get; }            
 
             private QsTypeSkeleton? scopeSkeleton { get; set; }
 
             public Context()
             {
-                typeIdsByNode = new Dictionary<IQsSyntaxNode, QsMetaItemId>();
-                funcIdsByNode = new Dictionary<IQsSyntaxNode, QsMetaItemId>();
+                typeIdsByNode = new Dictionary<ISyntaxNode, QsMetaItemId>();
+                funcIdsByNode = new Dictionary<ISyntaxNode, QsMetaItemId>();
                 typeSkeletons = new List<QsTypeSkeleton>();
                 scopeSkeleton = null;
             }
             
-            internal void AddTypeSkeleton(IQsSyntaxNode node, string name, int typeParamCount, IEnumerable<string> enumElemNames)
+            internal void AddTypeSkeleton(ISyntaxNode node, string name, int typeParamCount, IEnumerable<string> enumElemNames)
             {
                 QsMetaItemId typeId;                
                 
@@ -39,17 +39,17 @@ namespace QuickSC.StaticAnalyzer
                     scopeSkeleton.AddMemberTypeId(name, typeParamCount, typeId);
             }
 
-            public void AddFuncId(IQsSyntaxNode node, QsMetaItemId funcId)
+            public void AddFuncId(ISyntaxNode node, QsMetaItemId funcId)
             {
                 funcIdsByNode.Add(node, funcId);
             }
 
-            public ImmutableDictionary<IQsSyntaxNode, QsMetaItemId> GetTypeIdsByNode()
+            public ImmutableDictionary<ISyntaxNode, QsMetaItemId> GetTypeIdsByNode()
             {
                 return typeIdsByNode.ToImmutableDictionary();
             }
 
-            public ImmutableDictionary<IQsSyntaxNode, QsMetaItemId> GetFuncIdsByNode()
+            public ImmutableDictionary<ISyntaxNode, QsMetaItemId> GetFuncIdsByNode()
             {
                 return funcIdsByNode.ToImmutableDictionary();
             }
