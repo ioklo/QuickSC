@@ -1,6 +1,6 @@
 using Gum.CompileTime;
 using QuickSC;
-using QuickSC.Runtime;
+using Gum.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using Xunit;
 
-namespace QuickSC.RuntimeModule.Test
+namespace Gum.RuntimeModule.Test
 {
     public class UnitTest1
     {
@@ -19,7 +19,7 @@ namespace QuickSC.RuntimeModule.Test
 
             ModuleInfoService moduleInfoService = new ModuleInfoService(ImmutableArray.Create<IModuleInfo>(runtimeModule));
 
-            QsDomainService domainService = new QsDomainService();
+            DomainService domainService = new DomainService();
 
             domainService.LoadModule(runtimeModule);
 
@@ -37,14 +37,14 @@ namespace QuickSC.RuntimeModule.Test
             
 
             // list = [1, 2]
-            var list = runtimeModule.MakeList(domainService, intTypeValue, new List<QsValue> { runtimeModule.MakeInt(1), runtimeModule.MakeInt(2) });
+            var list = runtimeModule.MakeList(domainService, intTypeValue, new List<Value> { runtimeModule.MakeInt(1), runtimeModule.MakeInt(2) });
 
             // List<int>.Add(list, 3)
-            if( funcInst is QsNativeFuncInst nativeFuncInst )
-                nativeFuncInst.CallAsync(list, ImmutableArray.Create<QsValue>(runtimeModule.MakeInt(3)), QsVoidValue.Instance);
+            if( funcInst is NativeFuncInst nativeFuncInst )
+                nativeFuncInst.CallAsync(list, ImmutableArray.Create<Value>(runtimeModule.MakeInt(3)), VoidValue.Instance);
 
             // [1, 2, 3]
-            Assert.True(list is QsObjectValue objValue && 
+            Assert.True(list is ObjectValue objValue && 
                 objValue.Object is QsListObject lstObj &&
                 runtimeModule.GetInt(lstObj.Elems[0]) == 1 &&
                 runtimeModule.GetInt(lstObj.Elems[1]) == 2 &&

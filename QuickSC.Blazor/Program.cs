@@ -8,9 +8,10 @@ using Microsoft.JSInterop;
 using System.IO;
 using System.Collections.Immutable;
 using System.Threading;
-using QuickSC.StaticAnalyzer;
-using QuickSC.Runtime;
+using Gum.StaticAnalysis;
+using Gum.Runtime;
 using System.Linq;
+using Gum.Infra;
 
 namespace QuickSC.Blazor
 {
@@ -36,7 +37,7 @@ namespace QuickSC.Blazor
             await jsRuntime.InvokeVoidAsync("writeConsole", msg);
         }
 
-        class QsDemoErrorCollector : IQsErrorCollector
+        class QsDemoErrorCollector : IErrorCollector
         {
             public List<(object, string)> Messages = new List<(object, string)>();
 
@@ -93,7 +94,7 @@ namespace QuickSC.Blazor
                 var runtimeModule = new QsRuntimeModule("/", "/");
                 var errorCollector = new QsDemoErrorCollector();
 
-                var runResult = await app.RunAsync("Demo", input, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
+                var runResult = await app.RunAsync("Demo", input, runtimeModule, ImmutableArray<IModule>.Empty, errorCollector);
                 
                 if (errorCollector.HasError)
                 {

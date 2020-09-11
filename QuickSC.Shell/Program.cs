@@ -1,5 +1,6 @@
-﻿using QuickSC.Runtime;
-using QuickSC.StaticAnalyzer;
+﻿using Gum.Infra;
+using Gum.Runtime;
+using Gum.StaticAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -15,7 +16,7 @@ namespace QuickSC.Shell
 {
     class Program
     {
-        class QsDemoErrorCollector : IQsErrorCollector
+        class QsDemoErrorCollector : IErrorCollector
         {
             public List<(object, string)> Messages = new List<(object, string)>();
 
@@ -175,7 +176,7 @@ namespace QuickSC.Shell
 
                     var input = await stream.ReadToEndAsync();
                     var moduleName = Path.GetFileNameWithoutExtension(fullPath);
-                    var runResult = await app.RunAsync(moduleName, input, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
+                    var runResult = await app.RunAsync(moduleName, input, runtimeModule, ImmutableArray<IModule>.Empty, errorCollector);
                     
                     if (errorCollector.HasError)
                     {

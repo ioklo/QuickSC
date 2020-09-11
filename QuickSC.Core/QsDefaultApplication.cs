@@ -1,7 +1,8 @@
 ﻿using Gum;
 using Gum.CompileTime;
-using QuickSC.Runtime;
-using QuickSC.StaticAnalyzer;
+using Gum.Infra;
+using Gum.Runtime;
+using Gum.StaticAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -22,18 +23,18 @@ namespace QuickSC
             Lexer lexer = new Lexer();
             parser = new Parser(lexer);
 
-            var typeSkeletonCollector = new QsTypeSkeletonCollector();
-            var typeExpEvaluator = new QsTypeExpEvaluator(typeSkeletonCollector);
-            var typeAndFuncBuilder = new QsModuleInfoBuilder(typeExpEvaluator);
+            var typeSkeletonCollector = new TypeSkeletonCollector();
+            var typeExpEvaluator = new TypeExpEvaluator(typeSkeletonCollector);
+            var typeAndFuncBuilder = new ModuleInfoBuilder(typeExpEvaluator);
 
-            var capturer = new QsCapturer();
-            var analyzer = new QsAnalyzer(typeAndFuncBuilder, capturer);
+            var capturer = new Capturer();
+            var analyzer = new Analyzer(typeAndFuncBuilder, capturer);
             
             evaluator = new QsEvaluator(analyzer, commandProvider);        
         }
         
         public async ValueTask<int?> RunAsync(
-            string moduleName, string input, IQsRuntimeModule runtimeModule, ImmutableArray<IQsModule> modulesExceptRuntimeModule, IQsErrorCollector errorCollector) // 레퍼런스를 포함
+            string moduleName, string input, IRuntimeModule runtimeModule, ImmutableArray<IModule> modulesExceptRuntimeModule, IErrorCollector errorCollector) // 레퍼런스를 포함
         {
             var moduleInfos = new List<IModuleInfo>(modulesExceptRuntimeModule.Length + 1);
 

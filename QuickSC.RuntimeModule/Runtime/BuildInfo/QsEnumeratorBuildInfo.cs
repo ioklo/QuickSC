@@ -6,12 +6,12 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
     class QsEnumeratorBuildInfo : QsRuntimeModuleTypeBuildInfo.Class
     {
         public QsEnumeratorBuildInfo()
-            : base(null, QsRuntimeModule.EnumeratorId, ImmutableArray.Create("T"), null, () => new QsObjectValue(null))
+            : base(null, QsRuntimeModule.EnumeratorId, ImmutableArray.Create("T"), null, () => new ObjectValue(null))
         {
         }
 
@@ -38,18 +38,18 @@ namespace QuickSC.Runtime
         }
     }
 
-    class QsEnumeratorObject : QsObject
+    class QsEnumeratorObject : GumObject
     {
-        QsTypeInst typeInst;
-        IAsyncEnumerator<QsValue> enumerator;
+        TypeInst typeInst;
+        IAsyncEnumerator<Value> enumerator;
 
-        public QsEnumeratorObject(QsTypeInst typeInst, IAsyncEnumerator<QsValue> enumerator)
+        public QsEnumeratorObject(TypeInst typeInst, IAsyncEnumerator<Value> enumerator)
         {
             this.typeInst = typeInst;
             this.enumerator = enumerator;
         }
 
-        internal static async ValueTask NativeMoveNext(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
+        internal static async ValueTask NativeMoveNext(DomainService domainService, TypeArgumentList typeArgList, Value? thisValue, IReadOnlyList<Value> args, Value result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);
@@ -58,10 +58,10 @@ namespace QuickSC.Runtime
 
             bool bResult = await enumeratorObj.enumerator.MoveNextAsync();
 
-            ((QsValue<bool>)result).Value = bResult;
+            ((Value<bool>)result).Data = bResult;
         }
 
-        internal static ValueTask NativeGetCurrent(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
+        internal static ValueTask NativeGetCurrent(DomainService domainService, TypeArgumentList typeArgList, Value? thisValue, IReadOnlyList<Value> args, Value result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);
@@ -72,7 +72,7 @@ namespace QuickSC.Runtime
             return new ValueTask();
         }
 
-        public override QsTypeInst GetTypeInst()
+        public override TypeInst GetTypeInst()
         {
             return typeInst;
         }

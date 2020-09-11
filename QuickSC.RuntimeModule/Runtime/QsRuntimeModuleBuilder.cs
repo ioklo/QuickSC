@@ -5,9 +5,9 @@ using System.Collections.Immutable;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
-    using Invoker = Func<QsDomainService, TypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
+    using Invoker = Func<DomainService, TypeArgumentList, Value?, IReadOnlyList<Value>, Value, ValueTask>;
 
     class QsRuntimeModuleBuilder
     {
@@ -41,7 +41,7 @@ namespace QuickSC.Runtime
             IEnumerable<ModuleItemId> memberTypeIds,
             IEnumerable<ModuleItemId> memberFuncIds,
             IEnumerable<ModuleItemId> memberVarIds,
-            Func<QsValue> defaultValueFactory)
+            Func<Value> defaultValueFactory)
         {
             typeInfos.Add(new ClassInfo(outerTypeId, typeId, typeParams, baseTypeValue, memberTypeIds, memberFuncIds, memberVarIds));
             typeInstantiators.Add(new QsNativeTypeInstantiator(typeId, defaultValueFactory));
@@ -55,7 +55,7 @@ namespace QuickSC.Runtime
             IEnumerable<ModuleItemId> memberTypeIds,
             IEnumerable<ModuleItemId> memberFuncIds,
             IEnumerable<ModuleItemId> memberVarIds,
-            Func<QsValue> defaultValueFactory)
+            Func<Value> defaultValueFactory)
         {
             typeInfos.Add(new StructInfo(outerTypeId, typeId, typeParams, baseTypeValue, memberTypeIds, memberFuncIds, memberVarIds));
             typeInstantiators.Add(new QsNativeTypeInstantiator(typeId, defaultValueFactory));

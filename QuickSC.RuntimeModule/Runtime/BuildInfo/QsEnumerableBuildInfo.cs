@@ -7,14 +7,14 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
-    using Invoker = Func<QsDomainService, TypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
+    using Invoker = Func<DomainService, TypeArgumentList, Value?, IReadOnlyList<Value>, Value, ValueTask>;
 
     class QsEnumerableBuildInfo : QsRuntimeModuleTypeBuildInfo.Class
     {
         public QsEnumerableBuildInfo()
-            : base(null, QsRuntimeModule.EnumerableId, ImmutableArray.Create("T"), null, () => new QsObjectValue(null))
+            : base(null, QsRuntimeModule.EnumerableId, ImmutableArray.Create("T"), null, () => new ObjectValue(null))
         {
         }
 
@@ -41,19 +41,19 @@ namespace QuickSC.Runtime
         
     }
 
-    class QsEnumerableObject : QsObject
+    class QsEnumerableObject : GumObject
     {
-        QsTypeInst typeInst;
-        IAsyncEnumerable<QsValue> enumerable;
+        TypeInst typeInst;
+        IAsyncEnumerable<Value> enumerable;
 
-        public QsEnumerableObject(QsTypeInst typeInst, IAsyncEnumerable<QsValue> enumerable)
+        public QsEnumerableObject(TypeInst typeInst, IAsyncEnumerable<Value> enumerable)
         {
             this.typeInst = typeInst;
             this.enumerable = enumerable;
         }
         
         // Enumerator<T> Enumerable<T>.GetEnumerator()
-        internal static ValueTask NativeGetEnumerator(QsDomainService domainService, ModuleItemId enumeratorId, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
+        internal static ValueTask NativeGetEnumerator(DomainService domainService, ModuleItemId enumeratorId, TypeArgumentList typeArgList, Value? thisValue, IReadOnlyList<Value> args, Value result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);
@@ -62,12 +62,12 @@ namespace QuickSC.Runtime
 
             var enumeratorInst = domainService.GetTypeInst(TypeValue.MakeNormal(enumeratorId, typeArgList)); // 같은 TypeArgList를 사용한다
             
-            ((QsObjectValue)result).SetObject(new QsEnumeratorObject(enumeratorInst, enumerableObject.enumerable.GetAsyncEnumerator()));
+            ((ObjectValue)result).SetObject(new QsEnumeratorObject(enumeratorInst, enumerableObject.enumerable.GetAsyncEnumerator()));
 
             return new ValueTask();
         }
 
-        public override QsTypeInst GetTypeInst()
+        public override TypeInst GetTypeInst()
         {
             return typeInst;
         }

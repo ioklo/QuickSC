@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 
-namespace QuickSC.Runtime.Dotnet
+namespace Gum.Runtime.Dotnet
 {
     public class QsDotnetTypeInfo : ITypeInfo
     {

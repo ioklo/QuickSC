@@ -10,9 +10,9 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {   
-    public class QsRuntimeModule : IQsRuntimeModule
+    public class QsRuntimeModule : IRuntimeModule
     {
         private ImmutableDictionary<ModuleItemId, ITypeInfo> typeInfos;
         private ImmutableDictionary<ModuleItemId, FuncInfo> funcInfos;
@@ -58,9 +58,9 @@ namespace QuickSC.Runtime
 
             var moduleBuilder = new QsRuntimeModuleBuilder();
 
-            moduleBuilder.AddBuildInfo(new QsEmptyStructBuildInfo(BoolId, () => new QsValue<bool>(false)));
+            moduleBuilder.AddBuildInfo(new QsEmptyStructBuildInfo(BoolId, () => new Value<bool>(false)));
             moduleBuilder.AddBuildInfo(new QsIntBuildInfo(this));
-            moduleBuilder.AddBuildInfo(new QsEmptyClassBuildInfo(StringId, () => new QsObjectValue(null)));
+            moduleBuilder.AddBuildInfo(new QsEmptyClassBuildInfo(StringId, () => new ObjectValue(null)));
             moduleBuilder.AddBuildInfo(new QsEnumerableBuildInfo());
             moduleBuilder.AddBuildInfo(new QsEnumeratorBuildInfo());
             moduleBuilder.AddBuildInfo(new QsListBuildInfo());
@@ -82,7 +82,7 @@ namespace QuickSC.Runtime
 
         class QsEmptyStructBuildInfo : QsRuntimeModuleTypeBuildInfo.Struct
         {
-            public QsEmptyStructBuildInfo(ModuleItemId typeId, Func<QsValue> defaultValueFactory)
+            public QsEmptyStructBuildInfo(ModuleItemId typeId, Func<Value> defaultValueFactory)
                 : base(null, typeId, Enumerable.Empty<string>(), null, defaultValueFactory)
             {
             }
@@ -94,7 +94,7 @@ namespace QuickSC.Runtime
 
         class QsEmptyClassBuildInfo : QsRuntimeModuleTypeBuildInfo.Class
         {
-            public QsEmptyClassBuildInfo(ModuleItemId typeId, Func<QsValue> defaultValueFactory)
+            public QsEmptyClassBuildInfo(ModuleItemId typeId, Func<Value> defaultValueFactory)
                 : base(null, typeId, Enumerable.Empty<string>(), null, defaultValueFactory)
             {
             }
@@ -104,98 +104,98 @@ namespace QuickSC.Runtime
             }
         }
 
-        public string GetString(QsValue value)
+        public string GetString(Value value)
         {
-            if (value is QsObjectValue objValue && objValue.Object is QsStringBuildInfo strObj) return strObj.Data;
-            if (value is QsValue<int> intValue) return intValue.Value.ToString();
-            if (value is QsValue<bool> boolValue) return boolValue.Value ? "true" : "false";
+            if (value is ObjectValue objValue && objValue.Object is QsStringBuildInfo strObj) return strObj.Data;
+            if (value is Value<int> intValue) return intValue.Data.ToString();
+            if (value is Value<bool> boolValue) return boolValue.Data ? "true" : "false";
 
             // TODO: ObjectValue의 경우 ToString()을 찾는다
             throw new InvalidOperationException();
         }
 
-        public void SetString(QsDomainService domainService, QsValue value, string s)
+        public void SetString(DomainService domainService, Value value, string s)
         {
             var stringInst = domainService.GetTypeInst(TypeValue.MakeNormal(StringId));
-            ((QsObjectValue)value).SetObject(new QsStringBuildInfo(stringInst, s));
+            ((ObjectValue)value).SetObject(new QsStringBuildInfo(stringInst, s));
         }
 
-        public void SetList(QsDomainService domainService, QsValue value, TypeValue elemTypeValue, List<QsValue> elems)
+        public void SetList(DomainService domainService, Value value, TypeValue elemTypeValue, List<Value> elems)
         {
             var listInst = domainService.GetTypeInst(TypeValue.MakeNormal(ListId, TypeArgumentList.Make(elemTypeValue)));
-            ((QsObjectValue)value).SetObject(new QsListObject(listInst, elems));
+            ((ObjectValue)value).SetObject(new QsListObject(listInst, elems));
         }
 
-        public void SetEnumerable(QsDomainService domainService, QsValue value, TypeValue elemTypeValue, IAsyncEnumerable<QsValue> asyncEnumerable)
+        public void SetEnumerable(DomainService domainService, Value value, TypeValue elemTypeValue, IAsyncEnumerable<Value> asyncEnumerable)
         {
             var enumerableInst = domainService.GetTypeInst(TypeValue.MakeNormal(EnumerableId, TypeArgumentList.Make(elemTypeValue)));
-            ((QsObjectValue)value).SetObject(new QsEnumerableObject(enumerableInst, asyncEnumerable));
+            ((ObjectValue)value).SetObject(new QsEnumerableObject(enumerableInst, asyncEnumerable));
         }        
         
-        public QsValue MakeBool(bool b)
+        public Value MakeBool(bool b)
         {
-            return new QsValue<bool>(b);
+            return new Value<bool>(b);
         }
 
-        public QsValue MakeInt(int i)
+        public Value MakeInt(int i)
         {
-            return new QsValue<int>(i);
+            return new Value<int>(i);
         }
 
-        public QsValue MakeString(QsDomainService domainService, string str)
+        public Value MakeString(DomainService domainService, string str)
         {
             var stringInst = domainService.GetTypeInst(TypeValue.MakeNormal(StringId));
-            return new QsObjectValue(new QsStringBuildInfo(stringInst, str));
+            return new ObjectValue(new QsStringBuildInfo(stringInst, str));
         }
 
-        public QsValue MakeList(QsDomainService domainService, TypeValue elemTypeValue, List<QsValue> elems)
+        public Value MakeList(DomainService domainService, TypeValue elemTypeValue, List<Value> elems)
         {
             var listInst = domainService.GetTypeInst(TypeValue.MakeNormal(ListId, TypeArgumentList.Make(elemTypeValue)));
 
-            return new QsObjectValue(new QsListObject(listInst, elems));
+            return new ObjectValue(new QsListObject(listInst, elems));
         }
 
-        public int GetInt(QsValue value)
+        public int GetInt(Value value)
         {
-            return ((QsValue<int>)value).Value;
+            return ((Value<int>)value).Data;
         }
         
-        public void SetInt(QsValue value, int i)
+        public void SetInt(Value value, int i)
         {
-            ((QsValue<int>)value).Value = i;
+            ((Value<int>)value).Data = i;
         }
 
-        public bool GetBool(QsValue value)
+        public bool GetBool(Value value)
         {
-            return ((QsValue<bool>)value).Value;
+            return ((Value<bool>)value).Data;
         }
 
-        public void SetBool(QsValue value, bool b)
+        public void SetBool(Value value, bool b)
         {
-            ((QsValue<bool>)value).Value = b;
+            ((Value<bool>)value).Data = b;
         }
 
-        public void OnLoad(QsDomainService domainService)
+        public void OnLoad(DomainService domainService)
         {
             // HomeDir?
             // ScriptDir?
             var homeDirValue = MakeString(domainService, homeDir);
             var scriptDirValue = MakeString(domainService, scriptDir);
 
-            domainService.InitGlobalValue(envId, new QsObjectValue(new QsEnvironmentObject(homeDirValue, scriptDirValue)));
+            domainService.InitGlobalValue(envId, new ObjectValue(new QsEnvironmentObject(homeDirValue, scriptDirValue)));
         }
 
-        public QsObjectValue MakeNullObject()
+        public ObjectValue MakeNullObject()
         {
-            return new QsObjectValue(null);
+            return new ObjectValue(null);
         }
 
-        public QsTypeInst GetTypeInst(QsDomainService domainService, TypeValue.Normal ntv)
+        public TypeInst GetTypeInst(DomainService domainService, TypeValue.Normal ntv)
         {
             return typeInstantiators[ntv.TypeId].Instantiate(domainService, ntv);
         }
 
-        public QsFuncInst GetFuncInst(QsDomainService domainService, FuncValue funcValue)
+        public FuncInst GetFuncInst(DomainService domainService, FuncValue funcValue)
         {
             return funcInstantiators[funcValue.FuncId].Instantiate(domainService, funcValue);
         }

@@ -1,20 +1,20 @@
 ﻿using Gum.CompileTime;
 using System;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
     public class QsNativeTypeInstantiator
     {
         public ModuleItemId TypeId { get; }
-        Func<QsValue> defaultValueFactory;
+        Func<Value> defaultValueFactory;
 
-        public QsNativeTypeInstantiator(ModuleItemId typeId, Func<QsValue> defaultValueFactory)
+        public QsNativeTypeInstantiator(ModuleItemId typeId, Func<Value> defaultValueFactory)
         {
             TypeId = typeId;
             this.defaultValueFactory = defaultValueFactory;
         }
 
-        public QsTypeInst Instantiate(QsDomainService domainService, TypeValue.Normal ntv)
+        public TypeInst Instantiate(DomainService domainService, TypeValue.Normal ntv)
         {
             return new QsNativeTypeInst(ntv, defaultValueFactory);
         }

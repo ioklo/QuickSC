@@ -5,7 +5,7 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace QuickSC.Runtime.Dotnet
+namespace Gum.Runtime.Dotnet
 {
     static class QsDotnetMisc
     {

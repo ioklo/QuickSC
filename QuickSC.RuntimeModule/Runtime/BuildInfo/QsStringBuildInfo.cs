@@ -2,15 +2,15 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
     // String 
-    public class QsStringBuildInfo : QsObject
+    public class QsStringBuildInfo : GumObject
     {
-        QsTypeInst typeInst;
+        TypeInst typeInst;
         public string Data { get; } // 내부 구조는 string
 
-        public QsStringBuildInfo(QsTypeInst typeInst, string data)
+        public QsStringBuildInfo(TypeInst typeInst, string data)
         {
             this.typeInst = typeInst;
             Data = data;
@@ -19,7 +19,7 @@ namespace QuickSC.Runtime
         public override bool Equals(object? obj)
         {
             return obj is QsStringBuildInfo @object &&
-                   EqualityComparer<QsTypeInst>.Default.Equals(typeInst, @object.typeInst) &&
+                   EqualityComparer<TypeInst>.Default.Equals(typeInst, @object.typeInst) &&
                    Data == @object.Data;
         }
 
@@ -38,7 +38,7 @@ namespace QuickSC.Runtime
             return !(left == right);
         }
 
-        public override QsTypeInst GetTypeInst()
+        public override TypeInst GetTypeInst()
         {
             return typeInst;
         }

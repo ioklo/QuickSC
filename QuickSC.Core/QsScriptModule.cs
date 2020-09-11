@@ -1,24 +1,25 @@
 ﻿using Gum.CompileTime;
-using QuickSC.Runtime;
-using QuickSC.StaticAnalyzer;
+using Gum.Runtime;
+using Gum.StaticAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using Gum;
 
 namespace QuickSC
 {
-    internal class QsScriptModule : IQsModule
+    internal class QsScriptModule : IModule
     {
         private ScriptModuleInfo moduleInfo;
-        private ImmutableDictionary<ModuleItemId, QsScriptTemplate> templatesById;
-        private QsTypeValueApplier typeValueApplier;
+        private ImmutableDictionary<ModuleItemId, ScriptTemplate> templatesById;
+        private TypeValueApplier typeValueApplier;
 
         public QsScriptModule(
             ScriptModuleInfo moduleInfo, 
-            Func<QsScriptModule, QsTypeValueApplier> typeValueApplierConstructor, 
-            IEnumerable<QsScriptTemplate> templates)
+            Func<QsScriptModule, TypeValueApplier> typeValueApplierConstructor, 
+            IEnumerable<ScriptTemplate> templates)
         {
             this.moduleInfo = moduleInfo;
             this.typeValueApplier = typeValueApplierConstructor.Invoke(this);
@@ -42,11 +43,11 @@ namespace QuickSC
             return moduleInfo.GetVarInfo(id, out varInfo);
         }
 
-        public QsFuncInst GetFuncInst(QsDomainService domainService, FuncValue funcValue)
+        public FuncInst GetFuncInst(DomainService domainService, FuncValue funcValue)
         {
             var templ = templatesById[funcValue.FuncId];
 
-            if (templ is QsScriptTemplate.Func funcTempl)
+            if (templ is ScriptTemplate.Func funcTempl)
             {
                 if (funcValue.TypeArgList.GetTotalLength() != 0)
                     throw new NotImplementedException();
@@ -54,17 +55,17 @@ namespace QuickSC
                 return new QsScriptFuncInst(
                     funcTempl.SeqElemTypeValue, 
                     funcTempl.bThisCall, 
-                    null, ImmutableArray<QsValue>.Empty, funcTempl.LocalVarCount, funcTempl.Body);
+                    null, ImmutableArray<Value>.Empty, funcTempl.LocalVarCount, funcTempl.Body);
             }
 
             throw new InvalidOperationException();
         }
 
-        public QsTypeInst GetTypeInst(QsDomainService domainService, TypeValue.Normal typeValue)
+        public TypeInst GetTypeInst(DomainService domainService, TypeValue.Normal typeValue)
         {
             var templ = templatesById[typeValue.TypeId];
 
-            if (templ is QsScriptTemplate.Enum enumTempl)
+            if (templ is ScriptTemplate.Enum enumTempl)
             {
                 // E<int>
                 var defaultFieldInsts = enumTempl.DefaultFields.Select(field =>
@@ -79,7 +80,7 @@ namespace QuickSC
             throw new InvalidOperationException();
         }
 
-        public void OnLoad(QsDomainService domainService)
+        public void OnLoad(DomainService domainService)
         {
         }
     }

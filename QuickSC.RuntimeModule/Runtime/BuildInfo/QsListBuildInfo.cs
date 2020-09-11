@@ -7,14 +7,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
-    using Invoker = Func<QsDomainService, TypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
+    using Invoker = Func<DomainService, TypeArgumentList, Value?, IReadOnlyList<Value>, Value, ValueTask>;
 
     class QsListBuildInfo : QsRuntimeModuleTypeBuildInfo.Class
     {
         public QsListBuildInfo()
-            : base(null, QsRuntimeModule.ListId, ImmutableArray.Create("T"), null, () => new QsObjectValue(null))
+            : base(null, QsRuntimeModule.ListId, ImmutableArray.Create("T"), null, () => new ObjectValue(null))
         {
         }       
 
@@ -53,19 +53,19 @@ namespace QuickSC.Runtime
     }
 
     // List
-    public class QsListObject : QsObject
+    public class QsListObject : GumObject
     {
-        QsTypeInst typeInst;
-        public List<QsValue> Elems { get; }
+        TypeInst typeInst;
+        public List<Value> Elems { get; }
 
-        public QsListObject(QsTypeInst typeInst, List<QsValue> elems)
+        public QsListObject(TypeInst typeInst, List<Value> elems)
         {
             this.typeInst = typeInst;
             Elems = elems;
         }
         
         // Enumerator<T> List<T>.GetEnumerator()
-        internal static ValueTask NativeGetEnumerator(QsDomainService domainService, ModuleItemId enumeratorId, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
+        internal static ValueTask NativeGetEnumerator(DomainService domainService, ModuleItemId enumeratorId, TypeArgumentList typeArgList, Value? thisValue, IReadOnlyList<Value> args, Value result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);
@@ -75,12 +75,12 @@ namespace QuickSC.Runtime
             var enumeratorInst = domainService.GetTypeInst(TypeValue.MakeNormal(enumeratorId, typeArgList));
 
             // TODO: Runtime 메모리 관리자한테 new를 요청해야 합니다
-            ((QsObjectValue)result).SetObject(new QsEnumeratorObject(enumeratorInst, ToAsyncEnum(list.Elems).GetAsyncEnumerator()));
+            ((ObjectValue)result).SetObject(new QsEnumeratorObject(enumeratorInst, ToAsyncEnum(list.Elems).GetAsyncEnumerator()));
 
             return new ValueTask();
 
 #pragma warning disable CS1998
-            async IAsyncEnumerable<QsValue> ToAsyncEnum(IEnumerable<QsValue> enumerable)
+            async IAsyncEnumerable<Value> ToAsyncEnum(IEnumerable<Value> enumerable)
             {
                 foreach(var elem in enumerable)
                     yield return elem;
@@ -88,20 +88,20 @@ namespace QuickSC.Runtime
 #pragma warning restore CS1998
         }
 
-        internal static ValueTask NativeIndexer(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
+        internal static ValueTask NativeIndexer(DomainService domainService, TypeArgumentList typeArgList, Value? thisValue, IReadOnlyList<Value> args, Value result)
         {
             Debug.Assert(args.Count == 1);
             Debug.Assert(thisValue != null);
 
             var list = GetObject<QsListObject>(thisValue);
 
-            result!.SetValue(list.Elems[((QsValue<int>)args[0]).Value]);
+            result!.SetValue(list.Elems[((Value<int>)args[0]).Data]);
 
             return new ValueTask();
         }
 
         // List<T>.Add
-        internal static ValueTask NativeAdd(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
+        internal static ValueTask NativeAdd(DomainService domainService, TypeArgumentList typeArgList, Value? thisValue, IReadOnlyList<Value> args, Value result)
         {
             Debug.Assert(args.Count == 1);
             Debug.Assert(thisValue != null);
@@ -113,19 +113,19 @@ namespace QuickSC.Runtime
             return new ValueTask();
         }
 
-        internal static ValueTask NativeRemoveAt(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
+        internal static ValueTask NativeRemoveAt(DomainService domainService, TypeArgumentList typeArgList, Value? thisValue, IReadOnlyList<Value> args, Value result)
         {
             Debug.Assert(args.Count == 1);
             Debug.Assert(thisValue != null);
             Debug.Assert(result == null);
 
             var list = GetObject<QsListObject>(thisValue);
-            list.Elems.RemoveAt(((QsValue<int>)args[0]).Value);
+            list.Elems.RemoveAt(((Value<int>)args[0]).Data);
 
             return new ValueTask();
         }
 
-        public override QsTypeInst GetTypeInst()
+        public override TypeInst GetTypeInst()
         {
             return typeInst;
         }

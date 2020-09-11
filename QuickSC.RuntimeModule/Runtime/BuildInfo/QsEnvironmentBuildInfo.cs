@@ -5,12 +5,12 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
     class QsEnvironmentBuildInfo : QsRuntimeModuleTypeBuildInfo.Class
     {
         public QsEnvironmentBuildInfo()
-            : base(null, ModuleItemId.Make("Environment"), Enumerable.Empty<string>(), null, () => new QsObjectValue(null))
+            : base(null, ModuleItemId.Make("Environment"), Enumerable.Empty<string>(), null, () => new ObjectValue(null))
         {
         }
 
@@ -23,10 +23,10 @@ namespace QuickSC.Runtime
         }
     }
 
-    class QsEnvironmentObject : QsObject
+    class QsEnvironmentObject : GumObject
     {
-        QsValue homeDir;
-        QsValue scriptDir;
+        Value homeDir;
+        Value scriptDir;
 
         public string this[string varName]
         {
@@ -34,13 +34,13 @@ namespace QuickSC.Runtime
             set { Environment.SetEnvironmentVariable(varName, value); }
         }
 
-        public QsEnvironmentObject(QsValue homeDir, QsValue scriptDir)
+        public QsEnvironmentObject(Value homeDir, Value scriptDir)
         {
             this.homeDir = homeDir;
             this.scriptDir = scriptDir;
         }
 
-        public override QsValue GetMemberValue(Name varName)
+        public override Value GetMemberValue(Name varName)
         {
             if (varName.Text == "HomeDir")
                 return homeDir;

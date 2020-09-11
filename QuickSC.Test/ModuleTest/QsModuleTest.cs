@@ -1,5 +1,6 @@
-﻿using Gum.CompileTime;
-using QuickSC.Runtime;
+﻿using Gum;
+using Gum.CompileTime;
+using Gum.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -10,7 +11,7 @@ using Xunit;
 
 namespace QuickSC.ModuleTest
 {
-    class QsTestModule : IQsModule
+    class QsTestModule : IModule
     {
         public string ModuleName { get => "TestModule"; }
 
@@ -19,7 +20,7 @@ namespace QuickSC.ModuleTest
             throw new NotImplementedException();
         }
 
-        public QsFuncInst GetFuncInst(QsDomainService domainService, FuncValue funcValue)
+        public FuncInst GetFuncInst(DomainService domainService, FuncValue funcValue)
         {
             throw new NotImplementedException();
         }
@@ -29,7 +30,7 @@ namespace QuickSC.ModuleTest
             throw new NotImplementedException();
         }
 
-        public QsTypeInst GetTypeInst(QsDomainService domainService, TypeValue.Normal typeValue)
+        public TypeInst GetTypeInst(DomainService domainService, TypeValue.Normal typeValue)
         {
             throw new NotImplementedException();
         }
@@ -39,7 +40,7 @@ namespace QuickSC.ModuleTest
             throw new NotImplementedException();
         }
 
-        public void OnLoad(QsDomainService domainService)
+        public void OnLoad(DomainService domainService)
         {
 
         }
@@ -51,7 +52,7 @@ namespace QuickSC.ModuleTest
         void TestGetGlobalVariable()
         {
             var testModule = new QsTestModule();            
-            var domainService = new QsDomainService();
+            var domainService = new DomainService();
 
             domainService.LoadModule(testModule);
 

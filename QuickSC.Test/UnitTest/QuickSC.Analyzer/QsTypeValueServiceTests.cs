@@ -1,4 +1,5 @@
-﻿using Gum.CompileTime;
+﻿using Gum;
+using Gum.CompileTime;
 using System.Linq;
 using Xunit;
 
@@ -13,7 +14,7 @@ namespace QuickSC
         //     Dict<T, U> v; 
         //     T F<V>(V v, List<U> u); 
         // } }
-        QsTypeValueService MakeTypeValueService()
+        TypeValueService MakeTypeValueService()
         {
             var xId = ModuleItemId.Make("X", 2);
             var yId = xId.Append("Y", 1);
@@ -37,9 +38,9 @@ namespace QuickSC
             var moduleInfo = new ScriptModuleInfo("Script", new[] { xInfo, yInfo }, new[] { fInfo }, new[] { vInfo });
 
             var moduleInfoService = new ModuleInfoService(new[] { moduleInfo });
-            var applier = new QsTypeValueApplier(moduleInfoService);
+            var applier = new TypeValueApplier(moduleInfoService);
 
-            return new QsTypeValueService(moduleInfoService, applier);
+            return new TypeValueService(moduleInfoService, applier);
         }
 
         [Fact]

@@ -6,6 +6,7 @@ using System.Text;
 using Moq;
 using System.Linq;
 using Gum.CompileTime;
+using Gum;
 
 namespace QuickSC
 {
@@ -41,7 +42,7 @@ namespace QuickSC
             IModuleInfo moduleInfo = new ScriptModuleInfo("Script", typeInfos, funcInfos, Enumerable.Empty<VarInfo>());
 
             var moduleInfoService = new ModuleInfoService(new[] { moduleInfo });
-            var applier = new QsTypeValueApplier(moduleInfoService);
+            var applier = new TypeValueApplier(moduleInfoService);
 
             // X<A, B, C>.Y<D, E>.Func<F>
             var funcTypeArgList = TypeArgumentList.Make(
@@ -76,7 +77,7 @@ namespace QuickSC
             IModuleInfo moduleInfo = new ScriptModuleInfo("Script", typeInfos, Enumerable.Empty<FuncInfo>(), Enumerable.Empty<VarInfo>());
                 
             var moduleInfoService = new ModuleInfoService(new[] { moduleInfo });
-            var applier = new QsTypeValueApplier(moduleInfoService);
+            var applier = new TypeValueApplier(moduleInfoService);
 
 
             // Apply(X<int>.Y<short>, TofX) == int

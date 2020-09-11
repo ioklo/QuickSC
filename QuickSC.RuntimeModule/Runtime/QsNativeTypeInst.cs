@@ -4,21 +4,21 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
-    class QsNativeTypeInst : QsTypeInst
+    class QsNativeTypeInst : TypeInst
     {
         // key
         TypeValue typeValue;
-        Func<QsValue> defaultValueFactory;
+        Func<Value> defaultValueFactory;
 
-        public QsNativeTypeInst(TypeValue typeValue, Func<QsValue> defaultValueFactory)
+        public QsNativeTypeInst(TypeValue typeValue, Func<Value> defaultValueFactory)
         {
             this.typeValue = typeValue;
             this.defaultValueFactory = defaultValueFactory;
         }
 
-        public override QsValue MakeDefaultValue()
+        public override Value MakeDefaultValue()
         {
             return defaultValueFactory();
         }

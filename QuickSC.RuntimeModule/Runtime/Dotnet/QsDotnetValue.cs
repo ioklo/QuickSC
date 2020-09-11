@@ -1,9 +1,9 @@
 ﻿using Gum.CompileTime;
 using System.Reflection;
 
-namespace QuickSC.Runtime.Dotnet
+namespace Gum.Runtime.Dotnet
 {
-    class QsDotnetValue : QsValue
+    class QsDotnetValue : Value
     {
         object? obj;
 
@@ -12,24 +12,24 @@ namespace QuickSC.Runtime.Dotnet
             this.obj = obj;
         }
 
-        public QsValue GetMemberValue(Name varName)
+        public Value GetMemberValue(Name varName)
         {
             var fieldInfo = obj!.GetType().GetField(varName.Text);
 
             return new QsDotnetValue(fieldInfo.GetValue(obj));
         }
 
-        public QsTypeInst GetTypeInst()
+        public TypeInst GetTypeInst()
         {
             return new QsDotnetTypeInst(obj!.GetType().GetTypeInfo());
         }
 
-        public override QsValue MakeCopy()
+        public override Value MakeCopy()
         {
             return new QsDotnetValue(obj);
         }
 
-        public override void SetValue(QsValue fromValue)
+        public override void SetValue(Value fromValue)
         {
             if (fromValue is QsDotnetValue dotnetFromValue)
             {

@@ -1,4 +1,5 @@
-﻿using QuickSC.Runtime;
+﻿using Gum.Infra;
+using Gum.Runtime;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -32,7 +33,7 @@ namespace QuickSC.EvalTest
         }
     }
 
-    class QsTestErrorCollector : IQsErrorCollector
+    class QsTestErrorCollector : IErrorCollector
     {
         List<(object, string)> messages = new List<(object, string)>();
 
@@ -81,7 +82,7 @@ namespace QuickSC.EvalTest
 
             var runtimeModule = new QsRuntimeModule(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Directory.GetCurrentDirectory());
             var errorCollector = new QsTestErrorCollector();
-            var runResult = await app.RunAsync(Path.GetFileNameWithoutExtension(data.Path), text, runtimeModule, ImmutableArray<IQsModule>.Empty, errorCollector);
+            var runResult = await app.RunAsync(Path.GetFileNameWithoutExtension(data.Path), text, runtimeModule, ImmutableArray<IModule>.Empty, errorCollector);
 
             Assert.True((runResult == null) == (errorCollector.HasError), "실행은 중간에 멈췄는데 에러로그가 남지 않았습니다");
             Assert.False(errorCollector.HasError, errorCollector.GetMessages());

@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
-    using Invoker = Func<QsDomainService, TypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
+    using Invoker = Func<DomainService, TypeArgumentList, Value?, IReadOnlyList<Value>, Value, ValueTask>;
 
     public class QsNativeFuncInstantiator
     {
@@ -22,9 +22,9 @@ namespace QuickSC.Runtime
             this.invoker = invoker;
         }
 
-        public QsFuncInst Instantiate(QsDomainService domainService, FuncValue fv)
+        public FuncInst Instantiate(DomainService domainService, FuncValue fv)
         {
-            return new QsNativeFuncInst(bThisCall, (thisValue, argValues, result) => invoker.Invoke(domainService, fv.TypeArgList, thisValue, argValues, result));
+            return new NativeFuncInst(bThisCall, (thisValue, argValues, result) => invoker.Invoke(domainService, fv.TypeArgList, thisValue, argValues, result));
         }
     }
 }

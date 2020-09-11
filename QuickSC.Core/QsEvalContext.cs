@@ -1,37 +1,38 @@
 ﻿using Gum.CompileTime;
 using Gum.Syntax;
-using QuickSC.Runtime;
-using QuickSC.StaticAnalyzer;
+using Gum.Runtime;
+using Gum.StaticAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
+using Gum;
 
 namespace QuickSC
 {   
     public class QsEvalContext
     {
-        public IQsRuntimeModule RuntimeModule { get; }
-        public QsDomainService DomainService { get; }
-        public QsTypeValueService TypeValueService { get; }
+        public IRuntimeModule RuntimeModule { get; }
+        public DomainService DomainService { get; }
+        public TypeValueService TypeValueService { get; }
 
-        private QsValue?[] privateGlobalVars;
-        private QsValue?[] localVars;
+        private Value?[] privateGlobalVars;
+        private Value?[] localVars;
 
         private QsEvalFlowControl flowControl;
         private ImmutableArray<Task> tasks;
-        private QsValue? thisValue;
-        private QsValue retValue;
+        private Value? thisValue;
+        private Value retValue;
 
-        private ImmutableDictionary<ISyntaxNode, QsSyntaxNodeInfo> infosByNode;
+        private ImmutableDictionary<ISyntaxNode, SyntaxNodeInfo> infosByNode;
 
         public QsEvalContext(
-            IQsRuntimeModule runtimeModule, 
-            QsDomainService domainService, 
-            QsTypeValueService typeValueService,
+            IRuntimeModule runtimeModule, 
+            DomainService domainService, 
+            TypeValueService typeValueService,
             int privateGlobalVarCount,
-            ImmutableDictionary<ISyntaxNode, QsSyntaxNodeInfo> infosByNode)
+            ImmutableDictionary<ISyntaxNode, SyntaxNodeInfo> infosByNode)
         {
             RuntimeModule = runtimeModule;
             DomainService = domainService;
@@ -39,21 +40,21 @@ namespace QuickSC
             
             this.infosByNode = infosByNode;
             
-            localVars = new QsValue?[0];
-            privateGlobalVars = new QsValue?[privateGlobalVarCount];
+            localVars = new Value?[0];
+            privateGlobalVars = new Value?[privateGlobalVarCount];
             flowControl = QsEvalFlowControl.None;
             tasks = ImmutableArray<Task>.Empty; ;
             thisValue = null;
-            retValue = QsVoidValue.Instance;
+            retValue = VoidValue.Instance;
         }
 
         public QsEvalContext(
             QsEvalContext other,
-            QsValue?[] localVars,
+            Value?[] localVars,
             QsEvalFlowControl flowControl,
             ImmutableArray<Task> tasks,
-            QsValue? thisValue,
-            QsValue retValue)
+            Value? thisValue,
+            Value retValue)
         {
             RuntimeModule = other.RuntimeModule;
             DomainService = other.DomainService;
@@ -85,11 +86,11 @@ namespace QuickSC
         }
 
         public async ValueTask ExecInNewFuncFrameAsync(
-            QsValue?[] newLocalVars, 
+            Value?[] newLocalVars, 
             QsEvalFlowControl newFlowControl, 
             ImmutableArray<Task> newTasks, 
-            QsValue? newThisValue, 
-            QsValue newRetValue,
+            Value? newThisValue, 
+            Value newRetValue,
             Func<ValueTask> ActionAsync)
         {
             var prevValue = (localVars, flowControl, tasks, thisValue, retValue);
@@ -105,32 +106,32 @@ namespace QuickSC
             }
         }
 
-        public TSyntaxNodeInfo GetNodeInfo<TSyntaxNodeInfo>(ISyntaxNode node) where TSyntaxNodeInfo : QsSyntaxNodeInfo
+        public TSyntaxNodeInfo GetNodeInfo<TSyntaxNodeInfo>(ISyntaxNode node) where TSyntaxNodeInfo : SyntaxNodeInfo
         {
             return (TSyntaxNodeInfo)infosByNode[node];
         }
 
-        public QsValue GetStaticValue(VarValue varValue)
+        public Value GetStaticValue(VarValue varValue)
         {
             throw new NotImplementedException();
         }
 
-        public QsValue GetPrivateGlobalVar(int index)
+        public Value GetPrivateGlobalVar(int index)
         {
             return privateGlobalVars[index]!;
         }
 
-        public void InitPrivateGlobalVar(int index, QsValue value)
+        public void InitPrivateGlobalVar(int index, Value value)
         {
             privateGlobalVars[index] = value;
         }
 
-        public QsValue GetLocalVar(int index)
+        public Value GetLocalVar(int index)
         {
             return localVars[index]!;
         }
 
-        public void InitLocalVar(int i, QsValue value)
+        public void InitLocalVar(int i, Value value)
         {
             // for문 내부에서 decl할 경우 재사용하기 때문에 assert를 넣으면 안된다
             // Debug.Assert(context.LocalVars[storage.LocalIndex] == null);
@@ -152,17 +153,17 @@ namespace QuickSC
             flowControl = newFlowControl;
         }
 
-        public QsValue GetRetValue()
+        public Value GetRetValue()
         {
             return retValue!;
         }
 
-        public QsValue? GetThisValue()
+        public Value? GetThisValue()
         {
             return thisValue;
         }
 
-        public async IAsyncEnumerable<QsValue> ExecInNewTasks(Func<IAsyncEnumerable<QsValue>> enumerable)
+        public async IAsyncEnumerable<Value> ExecInNewTasks(Func<IAsyncEnumerable<Value>> enumerable)
         {
             var prevTasks = tasks;
             tasks = ImmutableArray<Task>.Empty;

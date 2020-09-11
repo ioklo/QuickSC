@@ -2,9 +2,9 @@
 using System;
 using System.Reflection;
 
-namespace QuickSC.Runtime.Dotnet
+namespace Gum.Runtime.Dotnet
 {
-    class QsDotnetTypeInst : QsTypeInst
+    class QsDotnetTypeInst : TypeInst
     {
         TypeInfo typeInfo;
 
@@ -20,7 +20,7 @@ namespace QuickSC.Runtime.Dotnet
             throw new NotImplementedException();
         }
 
-        public override QsValue MakeDefaultValue()
+        public override Value MakeDefaultValue()
         {
             return new QsDotnetValue(null);
         }

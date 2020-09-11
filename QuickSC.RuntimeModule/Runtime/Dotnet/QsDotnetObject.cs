@@ -1,26 +1,26 @@
 ﻿using Gum.CompileTime;
 using System;
 
-namespace QuickSC.Runtime.Dotnet
+namespace Gum.Runtime.Dotnet
 {
     // 
-    class QsDotnetObject : QsObject
+    class QsDotnetObject : GumObject
     {
-        QsTypeInst typeInst;        
+        TypeInst typeInst;        
         Object obj;
 
-        public QsDotnetObject(QsTypeInst typeInst, Object obj)
+        public QsDotnetObject(TypeInst typeInst, Object obj)
         {
             this.typeInst = typeInst;
             this.obj = obj;
         }
 
-        public override QsTypeInst GetTypeInst()
+        public override TypeInst GetTypeInst()
         {
             return typeInst;
         }
 
-        public override QsValue GetMemberValue(Name varName)
+        public override Value GetMemberValue(Name varName)
         {
             var fieldInfo = obj.GetType().GetField(varName.Text!);
             return new QsDotnetValue(fieldInfo.GetValue(obj));

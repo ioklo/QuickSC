@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
     class QsIntBuildInfo : QsRuntimeModuleTypeBuildInfo.Struct
     {
@@ -26,7 +26,7 @@ namespace QuickSC.Runtime
             builder.AddMemberFunc(SpecialNames.OpDec, false, false, ImmutableArray<string>.Empty, intTypeValue, ImmutableArray.Create(intTypeValue), OperatorDec);
         }
 
-        ValueTask OperatorInc(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> argValues, QsValue resultValue)
+        ValueTask OperatorInc(DomainService domainService, TypeArgumentList typeArgList, Value? thisValue, IReadOnlyList<Value> argValues, Value resultValue)
         {
             Debug.Assert(argValues.Count == 1);
             var source = argValues[0];
@@ -37,7 +37,7 @@ namespace QuickSC.Runtime
             return default;
         }
 
-        ValueTask OperatorDec(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> argValues, QsValue resultValue)
+        ValueTask OperatorDec(DomainService domainService, TypeArgumentList typeArgList, Value? thisValue, IReadOnlyList<Value> argValues, Value resultValue)
         {
             Debug.Assert(argValues.Count == 1);
             var source = argValues[0];

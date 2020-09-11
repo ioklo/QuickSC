@@ -9,10 +9,10 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace QuickSC.Runtime.Dotnet
+namespace Gum.Runtime.Dotnet
 {
     // 닷넷 어셈블리 하나를 모듈처럼 쓸 수 있게 해주는 부분입니다
-    public class QsDotnetModule : IQsModule
+    public class QsDotnetModule : IModule
     {
         Assembly assembly;
 
@@ -82,12 +82,12 @@ namespace QuickSC.Runtime.Dotnet
             return false;
         }
 
-        public QsFuncInst GetFuncInst(QsDomainService domainService, FuncValue fv)
+        public FuncInst GetFuncInst(DomainService domainService, FuncValue fv)
         {
             throw new NotImplementedException();
         }
 
-        public QsTypeInst GetTypeInst(QsDomainService domainService, TypeValue.Normal ntv)
+        public TypeInst GetTypeInst(DomainService domainService, TypeValue.Normal ntv)
         {
             var dotnetType = assembly.GetType(MakeDotnetName(ntv.TypeId));
             var dotnetTypeInfo = dotnetType.GetTypeInfo();
@@ -96,13 +96,13 @@ namespace QuickSC.Runtime.Dotnet
             //{
             //    if (0 < ntv.TypeArgs.Length)
             //    {
-            //        // List<int> => List<Cont(int)> => List<QsValue<int>>
+            //        // List<int> => List<Cont(int)> => List<Value<int>>
             //        // 
             //        // List<X<int>> => List<Cont(QsDotnetTypeInfo(X<int>))> => List<X<int>>
             //        // List<Y<int>> => List<Cont(QsTypeInfo(Y<int>))> => 
 
             //        // dotnetType.MakeGenericType(typeof(int));
-            //        // dotnetType.MakeGenericType(typeof(QsValue<int>));
+            //        // dotnetType.MakeGenericType(typeof(Value<int>));
 
             //        // List<X>.Add(X);
             //        dotnetType.MakeGenericType()
@@ -115,7 +115,7 @@ namespace QuickSC.Runtime.Dotnet
             throw new NotImplementedException();
         }
 
-        public void OnLoad(QsDomainService domainService)
+        public void OnLoad(DomainService domainService)
         {
 
         }

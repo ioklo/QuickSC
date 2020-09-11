@@ -1,4 +1,4 @@
-﻿using QuickSC.StaticAnalyzer;
+﻿using Gum.StaticAnalysis;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -9,7 +9,7 @@ using System.Collections;
 using System.IO;
 using System.IO.Enumeration;
 using System.Collections.Immutable;
-using QuickSC.Runtime;
+using Gum.Runtime;
 using Gum;
 using Gum.Syntax;
 

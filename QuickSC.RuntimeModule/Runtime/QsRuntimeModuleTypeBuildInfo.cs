@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 
-namespace QuickSC.Runtime
+namespace Gum.Runtime
 {
     abstract class QsRuntimeModuleTypeBuildInfo
     {
@@ -12,15 +12,15 @@ namespace QuickSC.Runtime
         ModuleItemId id;
         IEnumerable<string> typeParams;
         TypeValue? baseTypeValue;
-        Func<QsValue> defaultValueFactory;
+        Func<Value> defaultValueFactory;
 
         public ModuleItemId? GetOuterTypeId() => outerTypeId;
         public ModuleItemId GetId() => id;
         public IEnumerable<string> GetTypeParams() => typeParams;
         public TypeValue? GetBaseTypeValue() => baseTypeValue;
-        public Func<QsValue> GetDefaultValueFactory() => defaultValueFactory;
+        public Func<Value> GetDefaultValueFactory() => defaultValueFactory;
 
-        public QsRuntimeModuleTypeBuildInfo(ModuleItemId? outerTypeId, ModuleItemId id, IEnumerable<string> typeParams, TypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
+        public QsRuntimeModuleTypeBuildInfo(ModuleItemId? outerTypeId, ModuleItemId id, IEnumerable<string> typeParams, TypeValue? baseTypeValue, Func<Value> defaultValueFactory)
         {
             this.outerTypeId = outerTypeId;
             this.id = id;
@@ -31,7 +31,7 @@ namespace QuickSC.Runtime
 
         public abstract class Class : QsRuntimeModuleTypeBuildInfo
         {   
-            public Class(ModuleItemId? outerTypeId, ModuleItemId id, IEnumerable<string> typeParams, TypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
+            public Class(ModuleItemId? outerTypeId, ModuleItemId id, IEnumerable<string> typeParams, TypeValue? baseTypeValue, Func<Value> defaultValueFactory)
                 : base(outerTypeId, id, typeParams, baseTypeValue, defaultValueFactory)
             {   
             }
@@ -39,7 +39,7 @@ namespace QuickSC.Runtime
 
         public abstract class Struct : QsRuntimeModuleTypeBuildInfo
         {
-            public Struct(ModuleItemId? outerTypeId, ModuleItemId id, IEnumerable<string> typeParams, TypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
+            public Struct(ModuleItemId? outerTypeId, ModuleItemId id, IEnumerable<string> typeParams, TypeValue? baseTypeValue, Func<Value> defaultValueFactory)
                 : base(outerTypeId, id, typeParams, baseTypeValue, defaultValueFactory)
             {
             }
