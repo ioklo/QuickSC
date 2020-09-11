@@ -6,6 +6,7 @@ using System.Linq;
 using static QuickSC.StaticAnalyzer.QsAnalyzer.Misc;
 using static QuickSC.StaticAnalyzer.QsAnalyzer;
 using Gum.Syntax;
+using Gum.CompileTime;
 
 namespace QuickSC.StaticAnalyzer
 {
@@ -23,15 +24,15 @@ namespace QuickSC.StaticAnalyzer
             }
 
             protected abstract Exp GetTargetExp();
-            protected abstract QsTypeValue? AnalyzeDirect(QsTypeValue typeValue, QsStorageInfo storageInfo);
-            protected abstract QsTypeValue? AnalyzeCall(
-                QsTypeValue objTypeValue,
+            protected abstract TypeValue? AnalyzeDirect(TypeValue typeValue, QsStorageInfo storageInfo);
+            protected abstract TypeValue? AnalyzeCall(
+                TypeValue objTypeValue,
                 Exp objExp,
-                QsFuncValue? getter,
-                QsFuncValue? setter,
-                IEnumerable<(Exp Exp, QsTypeValue TypeValue)> args);
+                FuncValue? getter,
+                FuncValue? setter,
+                IEnumerable<(Exp Exp, TypeValue TypeValue)> args);
 
-            QsTypeValue? AnalyzeAssignToIdExp(IdentifierExp idExp)
+            TypeValue? AnalyzeAssignToIdExp(IdentifierExp idExp)
             {
                 var typeArgs = GetTypeValues(idExp.TypeArgs, context);
 
@@ -45,7 +46,7 @@ namespace QuickSC.StaticAnalyzer
                 return null;
             }
 
-            QsTypeValue? AnalyzeAssignToMemberExp(MemberExp memberExp)
+            TypeValue? AnalyzeAssignToMemberExp(MemberExp memberExp)
             {
                 // i.m = e1
                 if (memberExp.Object is IdentifierExp objIdExp)
@@ -65,7 +66,7 @@ namespace QuickSC.StaticAnalyzer
                 return AnalyzeAssignToInstanceMember(memberExp, objTypeValue);
             }
 
-            QsTypeValue? AnalyzeAssignToStaticMember(MemberExp memberExp, QsTypeValue.Normal objNormalTypeValue)
+            TypeValue? AnalyzeAssignToStaticMember(MemberExp memberExp, TypeValue.Normal objNormalTypeValue)
             {
                 if (!analyzer.CheckStaticMember(memberExp, objNormalTypeValue, context, out var varValue))
                     return null;
@@ -75,7 +76,7 @@ namespace QuickSC.StaticAnalyzer
                 return AnalyzeDirect(typeValue, QsStorageInfo.MakeStaticMember(null, varValue));
             }
 
-            QsTypeValue? AnalyzeAssignToInstanceMember(MemberExp memberExp, QsTypeValue objTypeValue)
+            TypeValue? AnalyzeAssignToInstanceMember(MemberExp memberExp, TypeValue objTypeValue)
             {
                 if (!analyzer.CheckInstanceMember(memberExp, objTypeValue, context, out var varValue))
                     return null;
@@ -87,12 +88,12 @@ namespace QuickSC.StaticAnalyzer
                 if (IsVarStatic(varValue.VarId, context))
                     storageInfo = QsStorageInfo.MakeStaticMember((objTypeValue, memberExp.Object), varValue);
                 else
-                    storageInfo = QsStorageInfo.MakeInstanceMember(memberExp.Object, objTypeValue, QsName.MakeText(memberExp.MemberName));
+                    storageInfo = QsStorageInfo.MakeInstanceMember(memberExp.Object, objTypeValue, Name.MakeText(memberExp.MemberName));
 
                 return AnalyzeDirect(typeValue, storageInfo);
             }
 
-            QsTypeValue? AnalyzeAssignToIndexerExp(IndexerExp indexerExp0)
+            TypeValue? AnalyzeAssignToIndexerExp(IndexerExp indexerExp0)
             {
                 if (!analyzer.AnalyzeExp(indexerExp0.Object, null, context, out var objTypeValue))
                     return null;
@@ -102,20 +103,20 @@ namespace QuickSC.StaticAnalyzer
 
                 context.TypeValueService.GetMemberFuncValue(
                     objTypeValue,
-                    QsSpecialNames.IndexerSet,
-                    ImmutableArray<QsTypeValue>.Empty,
+                    SpecialNames.IndexerSet,
+                    ImmutableArray<TypeValue>.Empty,
                     out var setter);
 
                 context.TypeValueService.GetMemberFuncValue(
                     objTypeValue,
-                    QsSpecialNames.IndexerGet,
-                    ImmutableArray<QsTypeValue>.Empty,
+                    SpecialNames.IndexerGet,
+                    ImmutableArray<TypeValue>.Empty,
                     out var getter);
 
                 return AnalyzeCall(objTypeValue, indexerExp0.Object, getter, setter, ImmutableArray.Create((indexerExp0.Index, indexTypeValue)));
             }
 
-            public bool Analyze([NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+            public bool Analyze([NotNullWhen(returnValue: true)] out TypeValue? outTypeValue)
             {
                 var locExp = GetTargetExp();
 

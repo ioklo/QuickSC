@@ -6,21 +6,22 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Text;
+using Gum.CompileTime;
 using Gum.Syntax;
 
 namespace QuickSC.StaticAnalyzer
 {
     public partial class QsAnalyzer
     {   
-        QsMetadataBuilder typeAndFuncBuilder;
+        QsModuleInfoBuilder moduleInfoBuilder;
         QsCapturer capturer;
 
         QsExpAnalyzer expAnalyzer;
         QsStmtAnalyzer stmtAnalyzer;        
 
-        public QsAnalyzer(QsMetadataBuilder typeAndFuncBuilder, QsCapturer capturer)
+        public QsAnalyzer(QsModuleInfoBuilder moduleInfoBuilder, QsCapturer capturer)
         {
-            this.typeAndFuncBuilder = typeAndFuncBuilder;
+            this.moduleInfoBuilder = moduleInfoBuilder;
 
             // 내부 전용 클래스는 new를 써서 직접 만들어도 된다 (DI, 인자로 받을 필요 없이)
             this.capturer = capturer;
@@ -42,7 +43,7 @@ namespace QuickSC.StaticAnalyzer
             {
                 if (elem.InitExp == null)
                 {
-                    if (declTypeValue is QsTypeValue.Var)
+                    if (declTypeValue is TypeValue.Var)
                     {
                         context.ErrorCollector.Add(elem, $"{elem.VarName}의 타입을 추론할 수 없습니다");
                         return false;
@@ -55,8 +56,8 @@ namespace QuickSC.StaticAnalyzer
                 else
                 {
                     // var 처리
-                    QsTypeValue typeValue;
-                    if (declTypeValue is QsTypeValue.Var)
+                    TypeValue typeValue;
+                    if (declTypeValue is TypeValue.Var)
                     {
                         if (!AnalyzeExp(elem.InitExp, null, context, out var initExpTypeValue))
                             return false;
@@ -81,7 +82,7 @@ namespace QuickSC.StaticAnalyzer
             context.AddNodeInfo(varDecl, new QsVarDeclInfo(elemsBuilder.MoveToImmutable()));
             return true;
 
-            void AddElement(string name, QsTypeValue typeValue, Context context)
+            void AddElement(string name, TypeValue typeValue, Context context)
             {
                 // TODO: globalScope에서 public인 경우는, globalStorage로 
                 if (context.IsGlobalScope())
@@ -122,7 +123,7 @@ namespace QuickSC.StaticAnalyzer
             ImmutableArray<LambdaExpParam> parameters,
             Context context,
             [NotNullWhen(returnValue: true)] out QsCaptureInfo? outCaptureInfo,
-            [NotNullWhen(returnValue: true)] out QsTypeValue.Func? outFuncTypeValue,
+            [NotNullWhen(returnValue: true)] out TypeValue.Func? outFuncTypeValue,
             out int outLocalVarCount)
         {
             outCaptureInfo = null;
@@ -146,7 +147,7 @@ namespace QuickSC.StaticAnalyzer
             var elemsBuilder = ImmutableArray.CreateBuilder<QsCaptureInfo.Element>();
             foreach (var needCapture in captureResult.NeedCaptures)
             {
-                if (context.GetIdentifierInfo(needCapture.VarName, ImmutableArray<QsTypeValue>.Empty, null, out var idInfo))
+                if (context.GetIdentifierInfo(needCapture.VarName, ImmutableArray<TypeValue>.Empty, null, out var idInfo))
                 {
                     if (idInfo is IdentifierInfo.Var varIdInfo)
                     {
@@ -174,7 +175,7 @@ namespace QuickSC.StaticAnalyzer
                 return false;                
             }            
 
-            var paramTypeValuesBuilder = ImmutableArray.CreateBuilder<QsTypeValue>(parameters.Length);
+            var paramTypeValuesBuilder = ImmutableArray.CreateBuilder<TypeValue>(parameters.Length);
             foreach (var param in parameters)
             {
                 if (param.Type == null)
@@ -197,15 +198,15 @@ namespace QuickSC.StaticAnalyzer
             });
 
             outCaptureInfo = new QsCaptureInfo(false, elemsBuilder.ToImmutable());
-            outFuncTypeValue = QsTypeValue.MakeFunc(
-                funcContext.GetRetTypeValue() ?? QsTypeValue.MakeVoid(),
+            outFuncTypeValue = TypeValue.MakeFunc(
+                funcContext.GetRetTypeValue() ?? TypeValue.MakeVoid(),
                 paramTypeValuesBuilder.MoveToImmutable());
             outLocalVarCount = funcContext.GetLocalVarCount();
 
             return bResult;
         }
 
-        public bool AnalyzeExp(Exp exp, QsTypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        public bool AnalyzeExp(Exp exp, TypeValue? hintTypeValue, Context context, [NotNullWhen(returnValue: true)] out TypeValue? typeValue)
         {
             return expAnalyzer.AnalyzeExp(exp, hintTypeValue, context, out typeValue);
         }
@@ -299,25 +300,25 @@ namespace QuickSC.StaticAnalyzer
             ImmutableDictionary<ISyntaxNode, QsSyntaxNodeInfo> InfosByNode,
             ImmutableArray<QsScriptTemplate> Templates,
             QsTypeValueService TypeValueService,
-            QsScriptMetadata ScriptMetadata)? 
+            ScriptModuleInfo ModuleInfo)? 
 
             AnalyzeScript(
             string moduleName,
             Script script,
-            IEnumerable<IQsMetadata> metadatas,
+            IEnumerable<IModuleInfo> moduleInfos,
             IQsErrorCollector errorCollector)
         {
-            // 3. Type, Func만들기, MetadataBuilder
-            var buildResult = typeAndFuncBuilder.BuildScript(moduleName, metadatas, script, errorCollector);
+            // 3. Type, Func만들기, ModuleInfoBuilder
+            var buildResult = moduleInfoBuilder.BuildScript(moduleName, moduleInfos, script, errorCollector);
             if (buildResult == null)
                 return null;
 
-            var metadataService = new QsMetadataService(metadatas.Append(buildResult.ScriptMetadata));
-            var typeValueApplier = new QsTypeValueApplier(metadataService);
-            var typeValueService = new QsTypeValueService(metadataService, typeValueApplier);
+            var moduleInfoService = new ModuleInfoService(moduleInfos.Append(buildResult.ModuleInfo));
+            var typeValueApplier = new QsTypeValueApplier(moduleInfoService);
+            var typeValueService = new QsTypeValueService(moduleInfoService, typeValueApplier);
 
             var context = new Context(
-                metadataService,
+                moduleInfoService,
                 typeValueService,
                 buildResult.TypeExpTypeValueService,
                 buildResult.FuncInfosByDecl,
@@ -335,19 +336,19 @@ namespace QuickSC.StaticAnalyzer
                 context.GetPrivateGlobalVarCount(),
                 context.MakeInfosByNode(),
                 context.GetTemplates().ToImmutableArray(), 
-                typeValueService, buildResult.ScriptMetadata);
+                typeValueService, buildResult.ModuleInfo);
         }
 
-        public bool IsAssignable(QsTypeValue toTypeValue, QsTypeValue fromTypeValue, Context context)
+        public bool IsAssignable(TypeValue toTypeValue, TypeValue fromTypeValue, Context context)
         {
             // B <- D
             // 지금은 fromType의 base들을 찾아가면서 toTypeValue와 맞는 것이 있는지 본다
             // TODO: toTypeValue가 interface라면, fromTypeValue의 interface들을 본다
 
-            QsTypeValue? curType = fromTypeValue;
+            TypeValue? curType = fromTypeValue;
             while (curType != null)
             {
-                if (EqualityComparer<QsTypeValue>.Default.Equals(toTypeValue, curType))
+                if (EqualityComparer<TypeValue>.Default.Equals(toTypeValue, curType))
                     return true;
 
                 if (!context.TypeValueService.GetBaseTypeValue(curType, out var outType))
@@ -359,31 +360,31 @@ namespace QuickSC.StaticAnalyzer
             return false;
         }
 
-        public QsTypeValue GetIntTypeValue()
+        public TypeValue GetIntTypeValue()
         {
-            return QsTypeValue.MakeNormal(QsMetaItemId.Make("int"));
+            return TypeValue.MakeNormal(ModuleItemId.Make("int"));
         }
 
-        public QsTypeValue GetBoolTypeValue()
+        public TypeValue GetBoolTypeValue()
         {
-            return QsTypeValue.MakeNormal(QsMetaItemId.Make("bool"));
+            return TypeValue.MakeNormal(ModuleItemId.Make("bool"));
         }
 
-        public QsTypeValue GetStringTypeValue()
+        public TypeValue GetStringTypeValue()
         {
-            return QsTypeValue.MakeNormal(QsMetaItemId.Make("string")); ;
+            return TypeValue.MakeNormal(ModuleItemId.Make("string")); ;
         }
 
         public bool CheckInstanceMember(
             MemberExp memberExp,
-            QsTypeValue objTypeValue,
+            TypeValue objTypeValue,
             Context context,
-            [NotNullWhen(returnValue: true)] out QsVarValue? outVarValue)
+            [NotNullWhen(returnValue: true)] out VarValue? outVarValue)
         {
             outVarValue = null;
 
             // TODO: Func추가
-            QsTypeValue.Normal? objNormalTypeValue = objTypeValue as QsTypeValue.Normal;
+            TypeValue.Normal? objNormalTypeValue = objTypeValue as TypeValue.Normal;
 
             if (objNormalTypeValue == null)
             {
@@ -394,7 +395,7 @@ namespace QuickSC.StaticAnalyzer
             if (0 < memberExp.MemberTypeArgs.Length)
                 context.ErrorCollector.Add(memberExp, "멤버변수에는 타입인자를 붙일 수 없습니다");
 
-            if (!context.TypeValueService.GetMemberVarValue(objNormalTypeValue, QsName.MakeText(memberExp.MemberName), out outVarValue))
+            if (!context.TypeValueService.GetMemberVarValue(objNormalTypeValue, Name.MakeText(memberExp.MemberName), out outVarValue))
             {
                 context.ErrorCollector.Add(memberExp, $"{memberExp.MemberName}은 {objNormalTypeValue}의 멤버가 아닙니다");
                 return false;
@@ -405,13 +406,13 @@ namespace QuickSC.StaticAnalyzer
 
         public bool CheckStaticMember(
             MemberExp memberExp,
-            QsTypeValue.Normal objNormalTypeValue,
+            TypeValue.Normal objNormalTypeValue,
             Context context,
-            [NotNullWhen(returnValue: true)] out QsVarValue? outVarValue)
+            [NotNullWhen(returnValue: true)] out VarValue? outVarValue)
         {
             outVarValue = null;
 
-            if (!context.TypeValueService.GetMemberVarValue(objNormalTypeValue, QsName.MakeText(memberExp.MemberName), out outVarValue))
+            if (!context.TypeValueService.GetMemberVarValue(objNormalTypeValue, Name.MakeText(memberExp.MemberName), out outVarValue))
             {
                 context.ErrorCollector.Add(memberExp, "멤버가 존재하지 않습니다");
                 return false;
@@ -432,7 +433,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public bool CheckParamTypes(object objForErrorMsg, ImmutableArray<QsTypeValue> parameters, IReadOnlyList<QsTypeValue> args, Context context)
+        public bool CheckParamTypes(object objForErrorMsg, ImmutableArray<TypeValue> parameters, IReadOnlyList<TypeValue> args, Context context)
         {
             if (parameters.Length != args.Count)
             {

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Text;
 using Moq;
 using System.Linq;
+using Gum.CompileTime;
 
 namespace QuickSC
 {
@@ -13,47 +14,47 @@ namespace QuickSC
         [Fact()]
         public void Apply_FuncTest()
         {
-            QsTypeValue MakeTypeValue(string name)
-                => QsTypeValue.MakeNormal(QsMetaItemId.Make(name));
+            TypeValue MakeTypeValue(string name)
+                => TypeValue.MakeNormal(ModuleItemId.Make(name));
 
             // class X<T, U, V> { class Y<T, U> { V Func<T>(T t, U u); } }
-            var typeInfos = new List<IQsTypeInfo>();
-            var funcInfos = new List<QsFuncInfo>();
+            var typeInfos = new List<ITypeInfo>();
+            var funcInfos = new List<FuncInfo>();
 
-            var xId = QsMetaItemId.Make("X", 3);
+            var xId = ModuleItemId.Make("X", 3);
             var yId = xId.Append("Y", 2);
             var funcId = yId.Append("Func", 1);
 
-            var xVTypeVar = QsTypeValue.MakeTypeVar(xId, "V");
-            var yUTypeVar = QsTypeValue.MakeTypeVar(yId, "U");
-            var funcTTypeVar = QsTypeValue.MakeTypeVar(funcId, "T");
+            var xVTypeVar = TypeValue.MakeTypeVar(xId, "V");
+            var yUTypeVar = TypeValue.MakeTypeVar(yId, "U");
+            var funcTTypeVar = TypeValue.MakeTypeVar(funcId, "T");
 
-            var xInfo = new QsClassInfo(null, xId, new string[] { "T", "U", "V" }, null, new[] { yId }, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
-            var yInfo = new QsClassInfo(xId, yId, new string[] { "T", "U" }, null, Enumerable.Empty<QsMetaItemId>(), new[] { funcId }, Enumerable.Empty<QsMetaItemId>());
-            var funcInfo = new QsFuncInfo(yId, funcId, false, true, new[] { "T" }, xVTypeVar, funcTTypeVar, yUTypeVar);
+            var xInfo = new ClassInfo(null, xId, new string[] { "T", "U", "V" }, null, new[] { yId }, Enumerable.Empty<ModuleItemId>(), Enumerable.Empty<ModuleItemId>());
+            var yInfo = new ClassInfo(xId, yId, new string[] { "T", "U" }, null, Enumerable.Empty<ModuleItemId>(), new[] { funcId }, Enumerable.Empty<ModuleItemId>());
+            var funcInfo = new FuncInfo(yId, funcId, false, true, new[] { "T" }, xVTypeVar, funcTTypeVar, yUTypeVar);
 
             typeInfos.Add(xInfo);
             typeInfos.Add(yInfo);
 
             funcInfos.Add(funcInfo);
 
-            IQsMetadata metadata = new QsScriptMetadata("Script", typeInfos, funcInfos, Enumerable.Empty<QsVarInfo>());
+            IModuleInfo moduleInfo = new ScriptModuleInfo("Script", typeInfos, funcInfos, Enumerable.Empty<VarInfo>());
 
-            var metadataService = new QsMetadataService(new[] { metadata });
-            var applier = new QsTypeValueApplier(metadataService);
+            var moduleInfoService = new ModuleInfoService(new[] { moduleInfo });
+            var applier = new QsTypeValueApplier(moduleInfoService);
 
             // X<A, B, C>.Y<D, E>.Func<F>
-            var funcTypeArgList = QsTypeArgumentList.Make(
+            var funcTypeArgList = TypeArgumentList.Make(
                 new[] { MakeTypeValue("A"), MakeTypeValue("B"), MakeTypeValue("C") },
                 new[] { MakeTypeValue("D"), MakeTypeValue("E") },
                 new[] { MakeTypeValue("F") });
 
-            var funcValue = new QsFuncValue(funcId, funcTypeArgList);
-            var funcTypeValue = QsTypeValue.MakeFunc(xVTypeVar, new[] { funcTTypeVar, yUTypeVar });
+            var funcValue = new FuncValue(funcId, funcTypeArgList);
+            var funcTypeValue = TypeValue.MakeFunc(xVTypeVar, new[] { funcTTypeVar, yUTypeVar });
 
             var appliedTypeValue = applier.Apply_Func(funcValue, funcTypeValue);
 
-            var expectedTypeValue = QsTypeValue.MakeFunc(MakeTypeValue("C"), new[] { MakeTypeValue("F"), MakeTypeValue("E") });
+            var expectedTypeValue = TypeValue.MakeFunc(MakeTypeValue("C"), new[] { MakeTypeValue("F"), MakeTypeValue("E") });
             Assert.Equal(expectedTypeValue, appliedTypeValue);
         }
 
@@ -61,34 +62,34 @@ namespace QuickSC
         public void ApplyTest()
         {
             // class X<T> { class Y<T> { T x; } }
-            List<IQsTypeInfo> typeInfos = new List<IQsTypeInfo>();
+            List<ITypeInfo> typeInfos = new List<ITypeInfo>();
 
-            var xId = QsMetaItemId.Make("X", 1);
+            var xId = ModuleItemId.Make("X", 1);
             var yId = xId.Append("Y", 1);
 
-            var xInfo = new QsClassInfo(null, xId, new string[] { "T" }, null, new[] { yId }, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
-            var yInfo = new QsClassInfo(xId, yId, new string[] { "T" }, null, Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>(), Enumerable.Empty<QsMetaItemId>());
+            var xInfo = new ClassInfo(null, xId, new string[] { "T" }, null, new[] { yId }, Enumerable.Empty<ModuleItemId>(), Enumerable.Empty<ModuleItemId>());
+            var yInfo = new ClassInfo(xId, yId, new string[] { "T" }, null, Enumerable.Empty<ModuleItemId>(), Enumerable.Empty<ModuleItemId>(), Enumerable.Empty<ModuleItemId>());
 
             typeInfos.Add(xInfo);
             typeInfos.Add(yInfo);
 
-            IQsMetadata metadata = new QsScriptMetadata("Script", typeInfos, Enumerable.Empty<QsFuncInfo>(), Enumerable.Empty<QsVarInfo>());
+            IModuleInfo moduleInfo = new ScriptModuleInfo("Script", typeInfos, Enumerable.Empty<FuncInfo>(), Enumerable.Empty<VarInfo>());
                 
-            var metadataService = new QsMetadataService(new[] { metadata });
-            var applier = new QsTypeValueApplier(metadataService);
+            var moduleInfoService = new ModuleInfoService(new[] { moduleInfo });
+            var applier = new QsTypeValueApplier(moduleInfoService);
 
 
             // Apply(X<int>.Y<short>, TofX) == int
-            var intId = QsMetaItemId.Make("int");
-            var shortId = QsMetaItemId.Make("short");
-            var intValue = QsTypeValue.MakeNormal(intId, QsTypeArgumentList.Empty);
-            var shortValue = QsTypeValue.MakeNormal(shortId, QsTypeArgumentList.Empty);
+            var intId = ModuleItemId.Make("int");
+            var shortId = ModuleItemId.Make("short");
+            var intValue = TypeValue.MakeNormal(intId, TypeArgumentList.Empty);
+            var shortValue = TypeValue.MakeNormal(shortId, TypeArgumentList.Empty);
 
-            var yTypeArgs = QsTypeArgumentList.Make(
+            var yTypeArgs = TypeArgumentList.Make(
                 new[] { intValue },
                 new[] { shortValue });
 
-            var appliedValue = applier.Apply(QsTypeValue.MakeNormal(yId, yTypeArgs), QsTypeValue.MakeTypeVar(xId, "T"));
+            var appliedValue = applier.Apply(TypeValue.MakeNormal(yId, yTypeArgs), TypeValue.MakeTypeVar(xId, "T"));
 
             Assert.Equal(intValue, appliedValue);
         }

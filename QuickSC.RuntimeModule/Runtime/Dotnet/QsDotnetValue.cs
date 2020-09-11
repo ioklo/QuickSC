@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using Gum.CompileTime;
+using System.Reflection;
 
 namespace QuickSC.Runtime.Dotnet
 {
@@ -11,9 +12,9 @@ namespace QuickSC.Runtime.Dotnet
             this.obj = obj;
         }
 
-        public QsValue GetMemberValue(QsName varName)
+        public QsValue GetMemberValue(Name varName)
         {
-            var fieldInfo = obj!.GetType().GetField(varName.Name);
+            var fieldInfo = obj!.GetType().GetField(varName.Text);
 
             return new QsDotnetValue(fieldInfo.GetValue(obj));
         }

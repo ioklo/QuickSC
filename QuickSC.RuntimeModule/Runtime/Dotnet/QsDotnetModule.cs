@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
@@ -26,16 +27,16 @@ namespace QuickSC.Runtime.Dotnet
             this.assembly = assembly;
         }
         
-        private QsTypeValue MakeTypeValue(Type baseType)
+        private TypeValue MakeTypeValue(Type baseType)
         {
             throw new NotImplementedException();
         }        
 
-        string MakeDotnetName(QsMetaItemId typeId)
+        string MakeDotnetName(ModuleItemId typeId)
         {
             var sb = new StringBuilder();
 
-            void MakeNameInner(QsMetaItemId typeId)
+            void MakeNameInner(ModuleItemId typeId)
             {
                 if (typeId.Outer != null)
                     MakeNameInner(typeId.Outer);
@@ -55,7 +56,7 @@ namespace QuickSC.Runtime.Dotnet
             return sb.ToString();
         }
 
-        public bool GetTypeInfo(QsMetaItemId typeId, [NotNullWhen(true)] out IQsTypeInfo? outType)
+        public bool GetTypeInfo(ModuleItemId typeId, [NotNullWhen(true)] out ITypeInfo? outType)
         {
             var dotnetType = assembly.GetType(MakeDotnetName(typeId)); 
 
@@ -69,24 +70,24 @@ namespace QuickSC.Runtime.Dotnet
             return true;
         }
 
-        public bool GetFuncInfo(QsMetaItemId funcId, [NotNullWhen(true)] out QsFuncInfo? outFunc)
+        public bool GetFuncInfo(ModuleItemId funcId, [NotNullWhen(true)] out FuncInfo? outFunc)
         {
             outFunc = null;
             return false;
         }
 
-        public bool GetVarInfo(QsMetaItemId typeId, [NotNullWhen(true)] out QsVarInfo? outVar)
+        public bool GetVarInfo(ModuleItemId typeId, [NotNullWhen(true)] out VarInfo? outVar)
         {
             outVar = null;
             return false;
         }
 
-        public QsFuncInst GetFuncInst(QsDomainService domainService, QsFuncValue fv)
+        public QsFuncInst GetFuncInst(QsDomainService domainService, FuncValue fv)
         {
             throw new NotImplementedException();
         }
 
-        public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue.Normal ntv)
+        public QsTypeInst GetTypeInst(QsDomainService domainService, TypeValue.Normal ntv)
         {
             var dotnetType = assembly.GetType(MakeDotnetName(ntv.TypeId));
             var dotnetTypeInfo = dotnetType.GetTypeInfo();

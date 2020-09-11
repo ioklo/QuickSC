@@ -1,4 +1,5 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Syntax;
 using QuickSC;
 using System;
 using System.Collections.Generic;
@@ -91,11 +92,11 @@ namespace QuickSC.StaticAnalyzer
                     // TestType이 있을때만 넣는다
                     var testTypeValue = context.GetTypeValueByTypeExp(ifStmt.TestType);
 
-                    if (testTypeValue is QsTypeValue.EnumElem enumElem)
+                    if (testTypeValue is TypeValue.EnumElem enumElem)
                     {
                         context.AddNodeInfo(ifStmt, QsIfStmtInfo.MakeTestEnum(condTypeValue, enumElem.Name));
                     }
-                    else if (testTypeValue is QsTypeValue.Normal normal)
+                    else if (testTypeValue is TypeValue.Normal normal)
                     {
                         context.AddNodeInfo(ifStmt, QsIfStmtInfo.MakeTestClass(condTypeValue, testTypeValue));
                     }
@@ -176,7 +177,7 @@ namespace QuickSC.StaticAnalyzer
                         context.ErrorCollector.Add(forStmt.CondExp, $"{forStmt.CondExp}는 bool 형식이어야 합니다");
                 }
 
-                QsTypeValue? contTypeValue = null;
+                TypeValue? contTypeValue = null;
                 if (forStmt.ContinueExp != null)
                     if (!analyzer.AnalyzeExp(forStmt.ContinueExp, null, context, out contTypeValue))
                         bResult = false;
@@ -231,7 +232,7 @@ namespace QuickSC.StaticAnalyzer
             }
             else
             {
-                if (!context.IsSeqFunc() && context.GetRetTypeValue() != QsTypeValue.MakeVoid())
+                if (!context.IsSeqFunc() && context.GetRetTypeValue() != TypeValue.MakeVoid())
                     context.ErrorCollector.Add(returnStmt.Value!, $"이 함수는 {context.GetRetTypeValue()}을 반환해야 합니다");
             }
 
@@ -318,7 +319,7 @@ namespace QuickSC.StaticAnalyzer
 
             if (!context.TypeValueService.GetMemberFuncValue(
                 objTypeValue,
-                QsName.MakeText("GetEnumerator"), ImmutableArray<QsTypeValue>.Empty,
+                Name.MakeText("GetEnumerator"), ImmutableArray<TypeValue>.Empty,
                 out var getEnumeratorValue))
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "foreach ... in 뒤 객체는 IEnumerator<T> GetEnumerator() 함수가 있어야 합니다.");
@@ -333,7 +334,7 @@ namespace QuickSC.StaticAnalyzer
 
             if (!context.TypeValueService.GetMemberFuncValue(
                 getEnumeratorTypeValue.Return,
-                QsName.MakeText("MoveNext"), ImmutableArray<QsTypeValue>.Empty, 
+                Name.MakeText("MoveNext"), ImmutableArray<TypeValue>.Empty, 
                 out var moveNextValue))
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "enumerator doesn't have 'bool MoveNext()' function");
@@ -350,7 +351,7 @@ namespace QuickSC.StaticAnalyzer
 
             if (!context.TypeValueService.GetMemberFuncValue(
                 getEnumeratorTypeValue.Return, 
-                QsName.MakeText("GetCurrent"), ImmutableArray<QsTypeValue>.Empty, 
+                Name.MakeText("GetCurrent"), ImmutableArray<TypeValue>.Empty, 
                 out var getCurrentValue))
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "enumerator doesn't have 'GetCurrent()' function");
@@ -358,13 +359,13 @@ namespace QuickSC.StaticAnalyzer
             }
 
             var getCurrentTypeValue = context.TypeValueService.GetTypeValue(getCurrentValue);
-            if (getCurrentTypeValue.Return is QsTypeValue.Void)
+            if (getCurrentTypeValue.Return is TypeValue.Void)
             {
                 context.ErrorCollector.Add(foreachStmt.Obj, "'GetCurrent()' function cannot return void");
                 return false;
             }
 
-            if (elemTypeValue is QsTypeValue.Var)
+            if (elemTypeValue is TypeValue.Var)
             {   
                 elemTypeValue = getCurrentTypeValue.Return;
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 
 namespace QuickSC.Runtime.Dotnet
 {
@@ -19,9 +20,9 @@ namespace QuickSC.Runtime.Dotnet
             return typeInst;
         }
 
-        public override QsValue GetMemberValue(QsName varName)
+        public override QsValue GetMemberValue(Name varName)
         {
-            var fieldInfo = obj.GetType().GetField(varName.Name!);
+            var fieldInfo = obj.GetType().GetField(varName.Text!);
             return new QsDotnetValue(fieldInfo.GetValue(obj));
         }
     }

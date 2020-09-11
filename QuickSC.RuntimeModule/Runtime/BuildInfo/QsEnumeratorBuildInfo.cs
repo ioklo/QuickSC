@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -18,21 +19,21 @@ namespace QuickSC.Runtime
         {
             var enumeratorId = QsRuntimeModule.EnumeratorId;
 
-            var funcIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
-            var elemTypeValue = QsTypeValue.MakeTypeVar(enumeratorId, "T");
-            var boolTypeValue = QsTypeValue.MakeNormal(QsRuntimeModule.BoolId);
+            var funcIdsBuilder = ImmutableArray.CreateBuilder<ModuleItemId>();
+            var elemTypeValue = TypeValue.MakeTypeVar(enumeratorId, "T");
+            var boolTypeValue = TypeValue.MakeNormal(QsRuntimeModule.BoolId);
 
             // bool Enumerator<T>.MoveNext()
             builder.AddMemberFunc(
-                QsName.MakeText("MoveNext"),
+                Name.MakeText("MoveNext"),
                 false, true,
-                ImmutableArray<string>.Empty, boolTypeValue, ImmutableArray<QsTypeValue>.Empty,
+                ImmutableArray<string>.Empty, boolTypeValue, ImmutableArray<TypeValue>.Empty,
                 QsEnumeratorObject.NativeMoveNext);
 
             // T Enumerator<T>.GetCurrent()
-            builder.AddMemberFunc(QsName.MakeText("GetCurrent"),
+            builder.AddMemberFunc(Name.MakeText("GetCurrent"),
                 false, true,
-                ImmutableArray<string>.Empty, elemTypeValue, ImmutableArray<QsTypeValue>.Empty,
+                ImmutableArray<string>.Empty, elemTypeValue, ImmutableArray<TypeValue>.Empty,
                 QsEnumeratorObject.NativeGetCurrent);
         }
     }
@@ -48,7 +49,7 @@ namespace QuickSC.Runtime
             this.enumerator = enumerator;
         }
 
-        internal static async ValueTask NativeMoveNext(QsDomainService domainService, QsTypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
+        internal static async ValueTask NativeMoveNext(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);
@@ -60,7 +61,7 @@ namespace QuickSC.Runtime
             ((QsValue<bool>)result).Value = bResult;
         }
 
-        internal static ValueTask NativeGetCurrent(QsDomainService domainService, QsTypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
+        internal static ValueTask NativeGetCurrent(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);

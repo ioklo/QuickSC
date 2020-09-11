@@ -1,4 +1,6 @@
-﻿namespace QuickSC.StaticAnalyzer
+﻿using Gum.CompileTime;
+
+namespace QuickSC.StaticAnalyzer
 {
     public partial class QsAnalyzer
     {
@@ -7,9 +9,9 @@
             public class Var : IdentifierInfo
             {
                 public QsStorageInfo StorageInfo { get; }
-                public QsTypeValue TypeValue { get; }
+                public TypeValue TypeValue { get; }
 
-                public Var(QsStorageInfo storageInfo, QsTypeValue typeValue)
+                public Var(QsStorageInfo storageInfo, TypeValue typeValue)
                 {
                     StorageInfo = storageInfo;
                     TypeValue = typeValue;
@@ -18,8 +20,8 @@
 
             public class Func : IdentifierInfo
             {
-                public QsFuncValue FuncValue { get; }
-                public Func(QsFuncValue funcValue)
+                public FuncValue FuncValue { get; }
+                public Func(FuncValue funcValue)
                 {
                     FuncValue = funcValue;
                 }
@@ -27,8 +29,8 @@
 
             public class Type : IdentifierInfo
             {
-                public QsTypeValue.Normal TypeValue { get; }
-                public Type(QsTypeValue.Normal typeValue)
+                public TypeValue.Normal TypeValue { get; }
+                public Type(TypeValue.Normal typeValue)
                 {
                     TypeValue = typeValue;
                 }
@@ -36,23 +38,23 @@
 
             public class EnumElem : IdentifierInfo
             {
-                public QsTypeValue.Normal EnumTypeValue { get; }
-                public QsEnumElemInfo ElemInfo { get; }
+                public TypeValue.Normal EnumTypeValue { get; }
+                public EnumElemInfo ElemInfo { get; }
 
-                public EnumElem(QsTypeValue.Normal enumTypeValue, QsEnumElemInfo elemInfo)
+                public EnumElem(TypeValue.Normal enumTypeValue, EnumElemInfo elemInfo)
                 {
                     EnumTypeValue = enumTypeValue;
                     ElemInfo = elemInfo;
                 }
             }
 
-            public static Var MakeVar(QsStorageInfo storageInfo, QsTypeValue typeValue) => new Var(storageInfo, typeValue);
+            public static Var MakeVar(QsStorageInfo storageInfo, TypeValue typeValue) => new Var(storageInfo, typeValue);
 
-            public static Func MakeFunc(QsFuncValue funcValue) => new Func(funcValue);
+            public static Func MakeFunc(FuncValue funcValue) => new Func(funcValue);
 
-            public static Type MakeType(QsTypeValue.Normal typeValue) => new Type(typeValue);
+            public static Type MakeType(TypeValue.Normal typeValue) => new Type(typeValue);
 
-            public static EnumElem MakeEnumElem(QsTypeValue.Normal enumTypeValue, QsEnumElemInfo elemInfo) => new EnumElem(enumTypeValue, elemInfo);
+            public static EnumElem MakeEnumElem(TypeValue.Normal enumTypeValue, EnumElemInfo elemInfo) => new EnumElem(enumTypeValue, elemInfo);
         }
     }
 }

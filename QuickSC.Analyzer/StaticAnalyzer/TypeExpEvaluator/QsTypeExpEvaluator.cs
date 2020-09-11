@@ -1,4 +1,5 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Syntax;
 using QuickSC;
 using System;
 using System.Collections.Generic;
@@ -20,7 +21,7 @@ namespace QuickSC.StaticAnalyzer
             this.typeSkeletonCollector = typeSkeletonCollector;
         }
 
-        bool EvaluateIdTypeExp(IdTypeExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+        bool EvaluateIdTypeExp(IdTypeExp exp, Context context, [NotNullWhen(returnValue: true)] out TypeValue? outTypeValue)
         {
             outTypeValue = null;
 
@@ -32,7 +33,7 @@ namespace QuickSC.StaticAnalyzer
                     return false;
                 }
 
-                outTypeValue = QsTypeValue.MakeVar();
+                outTypeValue = TypeValue.MakeVar();
                 context.AddTypeValue(exp, outTypeValue);
                 return true;
             }
@@ -44,7 +45,7 @@ namespace QuickSC.StaticAnalyzer
                     return false;
                 }
 
-                outTypeValue = QsTypeValue.MakeVoid();
+                outTypeValue = TypeValue.MakeVoid();
                 context.AddTypeValue(exp, outTypeValue);
                 return true;
             }
@@ -59,7 +60,7 @@ namespace QuickSC.StaticAnalyzer
 
             // TODO: 2. 현재 This Context에서 검색
 
-            var typeArgs = new List<QsTypeValue>(exp.TypeArgs.Length);
+            var typeArgs = new List<TypeValue>(exp.TypeArgs.Length);
             foreach (var typeArgExp in exp.TypeArgs)
             {
                 if (!EvaluateTypeExp(typeArgExp, context, out var typeArg))
@@ -68,20 +69,20 @@ namespace QuickSC.StaticAnalyzer
                 typeArgs.Add(typeArg);
             }
 
-            var typeArgList = QsTypeArgumentList.Make(null, typeArgs);
-            var metaItemId = QsMetaItemId.Make(exp.Name, typeArgs.Count);
+            var typeArgList = TypeArgumentList.Make(null, typeArgs);
+            var itemId = ModuleItemId.Make(exp.Name, typeArgs.Count);
 
             // 3-1. GlobalSkeleton에서 검색
-            List <QsTypeValue> candidates = new List<QsTypeValue>();
-            if (context.GetSkeleton(metaItemId, out var skeleton))
+            List <TypeValue> candidates = new List<TypeValue>();
+            if (context.GetSkeleton(itemId, out var skeleton))
             {
                 // global이니까 outer는 null
-                candidates.Add(QsTypeValue.MakeNormal(skeleton.TypeId, typeArgList));
+                candidates.Add(TypeValue.MakeNormal(skeleton.TypeId, typeArgList));
             }
 
-            // 3-2. Reference에서 검색, GlobalTypeSkeletons에 이름이 겹치지 않아야 한다.. RefMetadata들 끼리도 이름이 겹칠 수 있다
-            foreach (var type in context.GetTypeInfos(metaItemId))
-                candidates.Add(QsTypeValue.MakeNormal(type.TypeId, typeArgList));
+            // 3-2. Reference에서 검색, GlobalTypeSkeletons에 이름이 겹치지 않아야 한다.. ModuleInfo들 끼리도 이름이 겹칠 수 있다
+            foreach (var type in context.GetTypeInfos(itemId))
+                candidates.Add(TypeValue.MakeNormal(type.TypeId, typeArgList));
 
             if (candidates.Count == 1)
             {
@@ -101,21 +102,21 @@ namespace QuickSC.StaticAnalyzer
             }
         }
         
-        bool EvaluateMemberTypeExp(MemberTypeExp exp, Context context, [NotNullWhen(returnValue: true)] out QsTypeValue? typeValue)
+        bool EvaluateMemberTypeExp(MemberTypeExp exp, Context context, [NotNullWhen(returnValue: true)] out TypeValue? typeValue)
         {
             typeValue = null;
 
             if (!EvaluateTypeExp(exp.Parent, context, out var parentTypeValue))
                 return false;
 
-            var parentNTV = parentTypeValue as QsTypeValue.Normal;
+            var parentNTV = parentTypeValue as TypeValue.Normal;
             if (parentNTV == null)
             {
                 context.AddError(exp.Parent, "멤버가 있는 타입이 아닙니다");
                 return false;
             }
 
-            var typeArgsBuilder = ImmutableArray.CreateBuilder<QsTypeValue>(exp.TypeArgs.Length);
+            var typeArgsBuilder = ImmutableArray.CreateBuilder<TypeValue>(exp.TypeArgs.Length);
             foreach (var typeArgExp in exp.TypeArgs)
             {
                 if (!EvaluateTypeExp(typeArgExp, context, out var typeArg))
@@ -137,14 +138,14 @@ namespace QuickSC.StaticAnalyzer
         // Error를 만들지 않습니다
         private bool GetMemberTypeValue(
             Context context,
-            QsTypeValue.Normal parent, 
+            TypeValue.Normal parent, 
             string memberName, 
-            ImmutableArray<QsTypeValue> typeArgs, 
-            [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+            ImmutableArray<TypeValue> typeArgs, 
+            [NotNullWhen(returnValue: true)] out TypeValue? outTypeValue)
         {
             outTypeValue = null;
             
-            if (!(parent is QsTypeValue.Normal normalParent))
+            if (!(parent is TypeValue.Normal normalParent))
                 return false;
             
             if (!context.GetSkeleton(normalParent.TypeId, out var parentSkeleton))
@@ -152,19 +153,19 @@ namespace QuickSC.StaticAnalyzer
 
             if (parentSkeleton.GetMemberTypeId(memberName, typeArgs.Length, out var childTypeId))
             {
-                outTypeValue = QsTypeValue.MakeNormal(childTypeId, QsTypeArgumentList.Make(parent.TypeArgList, typeArgs));
+                outTypeValue = TypeValue.MakeNormal(childTypeId, TypeArgumentList.Make(parent.TypeArgList, typeArgs));
                 return true;
             }
             else if (parentSkeleton.ContainsEnumElem(memberName))
             {
-                outTypeValue = QsTypeValue.MakeEnumElem(parent, memberName);
+                outTypeValue = TypeValue.MakeEnumElem(parent, memberName);
                 return true;
             }
 
             return false;
         }
 
-        bool EvaluateTypeExp(TypeExp exp, Context context, [NotNullWhen(returnValue:true)] out QsTypeValue? typeValue)
+        bool EvaluateTypeExp(TypeExp exp, Context context, [NotNullWhen(returnValue:true)] out TypeValue? typeValue)
         {
             if (exp is IdTypeExp idExp)
                 return EvaluateIdTypeExp(idExp, context, out typeValue);
@@ -472,21 +473,21 @@ namespace QuickSC.StaticAnalyzer
             }
         }
 
-        public (QsSyntaxNodeMetaItemService SyntaxNodeMetaItemService, QsTypeExpTypeValueService TypeExpTypeValueService)? 
+        public (QsSyntaxNodeModuleItemService SyntaxNodeModuleItemService, QsTypeExpTypeValueService TypeExpTypeValueService)? 
             EvaluateScript(
             Script script,
-            IEnumerable<IQsMetadata> metadatas,
+            IEnumerable<IModuleInfo> moduleInfos,
             IQsErrorCollector errorCollector)
         {
             var collectResult = typeSkeletonCollector.CollectScript(script, errorCollector);
             if (collectResult == null)
                 return null;
 
-            var metadataService = new QsMetadataService(metadatas);
+            var moduleInfoService = new ModuleInfoService(moduleInfos);
 
             var context = new Context(
-                metadataService,
-                collectResult.Value.SyntaxNodeMetaItemService,
+                moduleInfoService,
+                collectResult.Value.SyntaxNodeModuleItemService,
                 collectResult.Value.TypeSkeletons,
                 errorCollector);
 
@@ -499,7 +500,7 @@ namespace QuickSC.StaticAnalyzer
 
             var typeExpTypeValueService = new QsTypeExpTypeValueService(context.GetTypeValuesByTypeExp());
 
-            return (collectResult.Value.SyntaxNodeMetaItemService, typeExpTypeValueService);
+            return (collectResult.Value.SyntaxNodeModuleItemService, typeExpTypeValueService);
         }
 
     }

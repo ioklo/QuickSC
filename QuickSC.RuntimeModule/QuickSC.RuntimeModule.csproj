@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\QuickSC.Runtime\QuickSC.Runtime.csproj" />
+    <ProjectReference Include="..\External\Gum.Runtime\Gum.Runtime.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,6 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Infra;
+using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -10,47 +12,47 @@ namespace QuickSC.StaticAnalyzer
     {
         class Context
         {
-            private QsMetadataService metadataService;
-            private QsSyntaxNodeMetaItemService syntaxNodeMetaItemService;
-            private ImmutableDictionary<QsMetaItemId, QsTypeSkeleton> typeSkeletonsByTypeId;
+            private ModuleInfoService moduleInfoService;
+            private QsSyntaxNodeModuleItemService syntaxNodeModuleItemService;
+            private ImmutableDictionary<ModuleItemId, QsTypeSkeleton> typeSkeletonsByTypeId;
             private IQsErrorCollector errorCollector;
 
-            private Dictionary<TypeExp, QsTypeValue> typeValuesByTypeExp;
-            private ImmutableDictionary<string, QsTypeValue.TypeVar> typeEnv;
+            private Dictionary<TypeExp, TypeValue> typeValuesByTypeExp;
+            private ImmutableDictionary<string, TypeValue.TypeVar> typeEnv;
 
             public Context(
-                QsMetadataService metadataService,
-                QsSyntaxNodeMetaItemService syntaxNodeMetaItemService,
+                ModuleInfoService moduleInfoService,
+                QsSyntaxNodeModuleItemService syntaxNodeModuleItemService,
                 IEnumerable<QsTypeSkeleton> typeSkeletons,
                 IQsErrorCollector errorCollector)
             {
-                this.metadataService = metadataService;
-                this.syntaxNodeMetaItemService = syntaxNodeMetaItemService;
+                this.moduleInfoService = moduleInfoService;
+                this.syntaxNodeModuleItemService = syntaxNodeModuleItemService;
                 this.typeSkeletonsByTypeId = typeSkeletons.ToImmutableDictionary(skeleton => skeleton.TypeId);
                 this.errorCollector = errorCollector;
 
-                typeValuesByTypeExp = new Dictionary<TypeExp, QsTypeValue>(QsRefEqComparer<TypeExp>.Instance);
-                typeEnv = ImmutableDictionary<string, QsTypeValue.TypeVar>.Empty;
+                typeValuesByTypeExp = new Dictionary<TypeExp, TypeValue>(RefEqComparer<TypeExp>.Instance);
+                typeEnv = ImmutableDictionary<string, TypeValue.TypeVar>.Empty;
             }            
 
-            public IEnumerable<IQsTypeInfo> GetTypeInfos(QsMetaItemId metaItemId)
+            public IEnumerable<ITypeInfo> GetTypeInfos(ModuleItemId itemId)
             {
-                return metadataService.GetTypeInfos(metaItemId);
+                return moduleInfoService.GetTypeInfos(itemId);
             }
 
-            public QsMetaItemId GetTypeId(ISyntaxNode node)
+            public ModuleItemId GetTypeId(ISyntaxNode node)
             {
-                return syntaxNodeMetaItemService.GetTypeId(node);
+                return syntaxNodeModuleItemService.GetTypeId(node);
             }
 
-            public QsMetaItemId GetFuncId(ISyntaxNode node)
+            public ModuleItemId GetFuncId(ISyntaxNode node)
             {
-                return syntaxNodeMetaItemService.GetFuncId(node);
+                return syntaxNodeModuleItemService.GetFuncId(node);
             }
 
-            public bool GetSkeleton(QsMetaItemId metaItemId, out QsTypeSkeleton outTypeSkeleton)
+            public bool GetSkeleton(ModuleItemId itemId, out QsTypeSkeleton outTypeSkeleton)
             {
-                return typeSkeletonsByTypeId.TryGetValue(metaItemId, out outTypeSkeleton);
+                return typeSkeletonsByTypeId.TryGetValue(itemId, out outTypeSkeleton);
             }
 
             public void AddError(ISyntaxNode node, string msg)
@@ -58,28 +60,28 @@ namespace QuickSC.StaticAnalyzer
                 errorCollector.Add(node, msg);
             }
 
-            public void AddTypeValue(TypeExp exp, QsTypeValue typeValue)
+            public void AddTypeValue(TypeExp exp, TypeValue typeValue)
             {
                 typeValuesByTypeExp.Add(exp, typeValue);
             }
 
-            public ImmutableDictionary<TypeExp, QsTypeValue> GetTypeValuesByTypeExp()
+            public ImmutableDictionary<TypeExp, TypeValue> GetTypeValuesByTypeExp()
             {
                 return typeValuesByTypeExp.ToImmutableWithComparer();
             }
 
-            public bool GetTypeVar(string name, [NotNullWhen(returnValue: true)] out QsTypeValue.TypeVar? typeValue)
+            public bool GetTypeVar(string name, [NotNullWhen(returnValue: true)] out TypeValue.TypeVar? typeValue)
             {
                 return typeEnv.TryGetValue(name, out typeValue);
             }
 
-            public void ExecInScope(QsMetaItemId itemId, IEnumerable<string> typeParams, Action action)
+            public void ExecInScope(ModuleItemId itemId, IEnumerable<string> typeParams, Action action)
             {
                 var prevTypeEnv = typeEnv;
 
                 foreach (var typeParam in typeParams)
                 {
-                    typeEnv = typeEnv.SetItem(typeParam, QsTypeValue.MakeTypeVar(itemId, typeParam));
+                    typeEnv = typeEnv.SetItem(typeParam, TypeValue.MakeTypeVar(itemId, typeParam));
                 }
 
                 try

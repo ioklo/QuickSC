@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
@@ -8,10 +9,10 @@ namespace QuickSC.Runtime
     class QsNativeTypeInst : QsTypeInst
     {
         // key
-        QsTypeValue typeValue;
+        TypeValue typeValue;
         Func<QsValue> defaultValueFactory;
 
-        public QsNativeTypeInst(QsTypeValue typeValue, Func<QsValue> defaultValueFactory)
+        public QsNativeTypeInst(TypeValue typeValue, Func<QsValue> defaultValueFactory)
         {
             this.typeValue = typeValue;
             this.defaultValueFactory = defaultValueFactory;
@@ -22,7 +23,7 @@ namespace QuickSC.Runtime
             return defaultValueFactory();
         }
 
-        public override QsTypeValue GetTypeValue()
+        public override TypeValue GetTypeValue()
         {
             return typeValue;
         }
@@ -30,7 +31,7 @@ namespace QuickSC.Runtime
         public override bool Equals(object? obj)
         {
             return obj is QsNativeTypeInst inst &&
-                   EqualityComparer<QsTypeValue>.Default.Equals(typeValue, inst.typeValue);
+                   EqualityComparer<TypeValue>.Default.Equals(typeValue, inst.typeValue);
         }
 
         public override int GetHashCode()

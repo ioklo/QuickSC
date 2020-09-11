@@ -1,4 +1,5 @@
-﻿using QuickSC.Runtime;
+﻿using Gum.CompileTime;
+using QuickSC.Runtime;
 using QuickSC.StaticAnalyzer;
 using System;
 using System.Collections.Generic;
@@ -10,38 +11,38 @@ namespace QuickSC
 {
     internal class QsScriptModule : IQsModule
     {
-        private QsScriptMetadata scriptMetadata;
-        private ImmutableDictionary<QsMetaItemId, QsScriptTemplate> templatesById;
+        private ScriptModuleInfo moduleInfo;
+        private ImmutableDictionary<ModuleItemId, QsScriptTemplate> templatesById;
         private QsTypeValueApplier typeValueApplier;
 
         public QsScriptModule(
-            QsScriptMetadata scriptMetadata, 
+            ScriptModuleInfo moduleInfo, 
             Func<QsScriptModule, QsTypeValueApplier> typeValueApplierConstructor, 
             IEnumerable<QsScriptTemplate> templates)
         {
-            this.scriptMetadata = scriptMetadata;
+            this.moduleInfo = moduleInfo;
             this.typeValueApplier = typeValueApplierConstructor.Invoke(this);
             this.templatesById = templates.ToImmutableDictionary(templ => templ.Id);
         }
 
-        public string ModuleName => scriptMetadata.ModuleName;
+        public string ModuleName => moduleInfo.ModuleName;
 
-        public bool GetFuncInfo(QsMetaItemId id, [NotNullWhen(true)] out QsFuncInfo? funcInfo)
+        public bool GetFuncInfo(ModuleItemId id, [NotNullWhen(true)] out FuncInfo? funcInfo)
         {
-            return scriptMetadata.GetFuncInfo(id, out funcInfo);
+            return moduleInfo.GetFuncInfo(id, out funcInfo);
         }       
 
-        public bool GetTypeInfo(QsMetaItemId id, [NotNullWhen(true)] out IQsTypeInfo? typeInfo)
+        public bool GetTypeInfo(ModuleItemId id, [NotNullWhen(true)] out ITypeInfo? typeInfo)
         {
-            return scriptMetadata.GetTypeInfo(id, out typeInfo);
+            return moduleInfo.GetTypeInfo(id, out typeInfo);
         }
 
-        public bool GetVarInfo(QsMetaItemId id, [NotNullWhen(true)] out QsVarInfo? varInfo)
+        public bool GetVarInfo(ModuleItemId id, [NotNullWhen(true)] out VarInfo? varInfo)
         {
-            return scriptMetadata.GetVarInfo(id, out varInfo);
+            return moduleInfo.GetVarInfo(id, out varInfo);
         }
 
-        public QsFuncInst GetFuncInst(QsDomainService domainService, QsFuncValue funcValue)
+        public QsFuncInst GetFuncInst(QsDomainService domainService, FuncValue funcValue)
         {
             var templ = templatesById[funcValue.FuncId];
 
@@ -59,7 +60,7 @@ namespace QuickSC
             throw new InvalidOperationException();
         }
 
-        public QsTypeInst GetTypeInst(QsDomainService domainService, QsTypeValue.Normal typeValue)
+        public QsTypeInst GetTypeInst(QsDomainService domainService, TypeValue.Normal typeValue)
         {
             var templ = templatesById[typeValue.TypeId];
 

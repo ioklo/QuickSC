@@ -1,4 +1,5 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Syntax;
 using System;
 using System.Linq;
 using static QuickSC.StaticAnalyzer.QsAnalyzer;
@@ -13,8 +14,8 @@ namespace QuickSC.StaticAnalyzer
             public struct Result
             {
                 public QsMemberExpInfo MemberExpInfo { get;}
-                public QsTypeValue TypeValue { get;}
-                public Result(QsMemberExpInfo memberExpInfo, QsTypeValue typeValue)
+                public TypeValue TypeValue { get;}
+                public Result(QsMemberExpInfo memberExpInfo, TypeValue typeValue)
                 {
                     MemberExpInfo = memberExpInfo;
                     TypeValue = typeValue;
@@ -50,12 +51,12 @@ namespace QuickSC.StaticAnalyzer
                 return Analyze_EnumElemOrInstance(objTypeValue);
             }
 
-            private Result? Analyze_EnumElemOrInstance(QsTypeValue objTypeValue)
+            private Result? Analyze_EnumElemOrInstance(TypeValue objTypeValue)
             {
                 // enumElem의 경우
-                if (objTypeValue is QsTypeValue.EnumElem enumElem)
+                if (objTypeValue is TypeValue.EnumElem enumElem)
                 {
-                    var enumInfo = (IQsEnumInfo)context.MetadataService.GetTypeInfos(enumElem.EnumTypeValue.TypeId).Single();
+                    var enumInfo = (IEnumInfo)context.ModuleInfoService.GetTypeInfos(enumElem.EnumTypeValue.TypeId).Single();
                     if (!enumInfo.GetElemInfo(enumElem.Name, out var elemInfo))
                     {
                         context.ErrorCollector.Add(memberExp, $"{memberExp.MemberName}은 {enumInfo}의 멤버가 아닙니다");
@@ -79,7 +80,7 @@ namespace QuickSC.StaticAnalyzer
                 return Analyze_Instance(objTypeValue);
             }
 
-            private Result? Analyze_Instance(QsTypeValue objTypeValue)
+            private Result? Analyze_Instance(TypeValue objTypeValue)
             {
                 if (!analyzer.CheckInstanceMember(memberExp, objTypeValue, context, out var varValue))
                     return null;
@@ -87,17 +88,17 @@ namespace QuickSC.StaticAnalyzer
                 // instance이지만 static 이라면, exp는 실행하고, static변수에서 가져온다
                 var nodeInfo = IsVarStatic(varValue.VarId, context)
                     ? QsMemberExpInfo.MakeStatic(objTypeValue, varValue)
-                    : QsMemberExpInfo.MakeInstance(objTypeValue, QsName.MakeText(memberExp.MemberName));
+                    : QsMemberExpInfo.MakeInstance(objTypeValue, Name.MakeText(memberExp.MemberName));
 
                 var typeValue = context.TypeValueService.GetTypeValue(varValue);
 
                 return new Result(nodeInfo, typeValue);
             }
 
-            private Result? Analyze_EnumOrType(QsTypeValue.Normal objNTV)
+            private Result? Analyze_EnumOrType(TypeValue.Normal objNTV)
             {
-                var typeInfo = context.MetadataService.GetTypeInfos(objNTV.TypeId).Single();
-                if (typeInfo is IQsEnumInfo enumTypeInfo)
+                var typeInfo = context.ModuleInfoService.GetTypeInfos(objNTV.TypeId).Single();
+                if (typeInfo is IEnumInfo enumTypeInfo)
                 {
                     if (!enumTypeInfo.GetElemInfo(memberExp.MemberName, out var elemInfo))
                         return null;
@@ -119,7 +120,7 @@ namespace QuickSC.StaticAnalyzer
                 return Analyze_Type(objNTV);
             }
 
-            private Result? Analyze_Type(QsTypeValue.Normal objNTV)
+            private Result? Analyze_Type(TypeValue.Normal objNTV)
             {
                 if (!analyzer.CheckStaticMember(memberExp, objNTV, context, out var varValue))
                     return null;

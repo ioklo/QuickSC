@@ -1,21 +1,22 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<QsDomainService, QsTypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
+    using Invoker = Func<QsDomainService, TypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
 
     class QsRuntimeModuleTypeBuilder
     {
         QsRuntimeModuleBuilder moduleBuilder;
-        QsMetaItemId? outerTypeId;
-        QsMetaItemId typeId;
+        ModuleItemId? outerTypeId;
+        ModuleItemId typeId;
 
-        List<QsMetaItemId> memberTypeIds;
-        List<QsMetaItemId> memberFuncIds;
-        List<QsMetaItemId> memberVarIds;
+        List<ModuleItemId> memberTypeIds;
+        List<ModuleItemId> memberFuncIds;
+        List<ModuleItemId> memberVarIds;
 
         public static void BuildObject(QsRuntimeModuleBuilder runtimeModuleBuilder, QsRuntimeModuleTypeBuildInfo buildInfo)
         {
@@ -26,15 +27,15 @@ namespace QuickSC.Runtime
             objectBuilder.BuildType(buildInfo);
         }
 
-        private QsRuntimeModuleTypeBuilder(QsRuntimeModuleBuilder moduleBuilder, QsMetaItemId? outerTypeId, QsMetaItemId typeId)
+        private QsRuntimeModuleTypeBuilder(QsRuntimeModuleBuilder moduleBuilder, ModuleItemId? outerTypeId, ModuleItemId typeId)
         {   
             this.moduleBuilder = moduleBuilder;
             this.outerTypeId = outerTypeId;
             this.typeId = typeId;
 
-            memberTypeIds = new List<QsMetaItemId>();
-            memberFuncIds = new List<QsMetaItemId>();
-            memberVarIds = new List<QsMetaItemId>();
+            memberTypeIds = new List<ModuleItemId>();
+            memberFuncIds = new List<ModuleItemId>();
+            memberVarIds = new List<ModuleItemId>();
         }
 
         private void BuildType(QsRuntimeModuleTypeBuildInfo buildInfo)
@@ -48,10 +49,10 @@ namespace QuickSC.Runtime
         }
 
         public void AddMemberFunc(
-            QsName funcName,
+            Name funcName,
             bool bSeqCall, bool bThisCall,
             IReadOnlyList<string> typeParams,
-            QsTypeValue retTypeValue, ImmutableArray<QsTypeValue> paramTypeValues,
+            TypeValue retTypeValue, ImmutableArray<TypeValue> paramTypeValues,
             Invoker invoker)
         {
             var funcId = typeId.Append(funcName, typeParams.Count);
@@ -69,7 +70,7 @@ namespace QuickSC.Runtime
             memberFuncIds.Add(funcId);
         }
 
-        public void AddMemberVar(QsName varName, bool bStatic, QsTypeValue typeValue)
+        public void AddMemberVar(Name varName, bool bStatic, TypeValue typeValue)
         {
             var varId = typeId.Append(varName);
 

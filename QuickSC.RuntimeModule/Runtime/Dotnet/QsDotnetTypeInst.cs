@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Reflection;
 
 namespace QuickSC.Runtime.Dotnet
@@ -12,7 +13,7 @@ namespace QuickSC.Runtime.Dotnet
             this.typeInfo = typeInfo;
         }
 
-        public override QsTypeValue GetTypeValue()
+        public override TypeValue GetTypeValue()
         {
             QsDotnetMisc.MakeTypeId(typeInfo.BaseType);
 

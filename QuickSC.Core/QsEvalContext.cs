@@ -1,4 +1,5 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Syntax;
 using QuickSC.Runtime;
 using QuickSC.StaticAnalyzer;
 using System;
@@ -109,7 +110,7 @@ namespace QuickSC
             return (TSyntaxNodeInfo)infosByNode[node];
         }
 
-        public QsValue GetStaticValue(QsVarValue varValue)
+        public QsValue GetStaticValue(VarValue varValue)
         {
             throw new NotImplementedException();
         }

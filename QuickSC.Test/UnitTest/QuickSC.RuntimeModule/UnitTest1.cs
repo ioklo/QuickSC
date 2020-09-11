@@ -1,3 +1,4 @@
+using Gum.CompileTime;
 using QuickSC;
 using QuickSC.Runtime;
 using System;
@@ -16,7 +17,7 @@ namespace QuickSC.RuntimeModule.Test
         {
             var runtimeModule = new QsRuntimeModule(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Directory.GetCurrentDirectory());
 
-            QsMetadataService metadataService = new QsMetadataService(ImmutableArray.Create<IQsMetadata>(runtimeModule));
+            ModuleInfoService moduleInfoService = new ModuleInfoService(ImmutableArray.Create<IModuleInfo>(runtimeModule));
 
             QsDomainService domainService = new QsDomainService();
 
@@ -26,13 +27,13 @@ namespace QuickSC.RuntimeModule.Test
             var listTypeId = QsRuntimeModule.ListId;
 
             // int
-            var intTypeValue = QsTypeValue.MakeNormal(intTypeId, QsTypeArgumentList.Empty);           
+            var intTypeValue = TypeValue.MakeNormal(intTypeId, TypeArgumentList.Empty);           
             
 
             // List<int>.Add
             var listAddFuncId = listTypeId.Append("Add", 0);
-            var listAddFuncTypeArgList = QsTypeArgumentList.Make(new[] { intTypeValue }, new QsTypeValue[] { }); // 첫번째는 List, 두번째는 Add에 대한 typeArgs
-            var funcInst = domainService.GetFuncInst(new QsFuncValue(listAddFuncId, listAddFuncTypeArgList));
+            var listAddFuncTypeArgList = TypeArgumentList.Make(new[] { intTypeValue }, new TypeValue[] { }); // 첫번째는 List, 두번째는 Add에 대한 typeArgs
+            var funcInst = domainService.GetFuncInst(new FuncValue(listAddFuncId, listAddFuncTypeArgList));
             
 
             // list = [1, 2]

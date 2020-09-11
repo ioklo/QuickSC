@@ -1,4 +1,5 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -11,20 +12,20 @@ namespace QuickSC.StaticAnalyzer
     {
         public static class Misc
         {
-            public static ImmutableArray<QsTypeValue> GetTypeValues(ImmutableArray<TypeExp> typeExps, Context context)
+            public static ImmutableArray<TypeValue> GetTypeValues(ImmutableArray<TypeExp> typeExps, Context context)
             {
                 return ImmutableArray.CreateRange(typeExps, typeExp => context.GetTypeValueByTypeExp(typeExp));
             }
 
-            public static bool IsVarStatic(QsMetaItemId varId, Context context)
+            public static bool IsVarStatic(ModuleItemId varId, Context context)
             {
-                var varInfo = context.MetadataService.GetVarInfos(varId).Single();
+                var varInfo = context.ModuleInfoService.GetVarInfos(varId).Single();
                 return varInfo.bStatic;
             }
 
-            public static bool IsFuncStatic(QsMetaItemId funcId, Context context)
+            public static bool IsFuncStatic(ModuleItemId funcId, Context context)
             {
-                var funcInfo = context.MetadataService.GetFuncInfos(funcId).Single();
+                var funcInfo = context.ModuleInfoService.GetFuncInfos(funcId).Single();
                 return !funcInfo.bThisCall;
             }
         }

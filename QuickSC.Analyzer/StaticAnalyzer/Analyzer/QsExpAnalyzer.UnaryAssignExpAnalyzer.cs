@@ -1,4 +1,5 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -26,11 +27,11 @@ namespace QuickSC.StaticAnalyzer
                 this.exp = exp;
             }
 
-            protected override QsTypeValue? AnalyzeDirect(QsTypeValue typeValue, QsStorageInfo storageInfo)
+            protected override TypeValue? AnalyzeDirect(TypeValue typeValue, QsStorageInfo storageInfo)
             {
                 var operatorName = GetOperatorName();
 
-                if (!context.TypeValueService.GetMemberFuncValue(typeValue, operatorName, ImmutableArray<QsTypeValue>.Empty, out var operatorValue))
+                if (!context.TypeValueService.GetMemberFuncValue(typeValue, operatorName, ImmutableArray<TypeValue>.Empty, out var operatorValue))
                 {
                     context.ErrorCollector.Add(exp, "해당 타입에 operator++이 없습니다");
                     return null;
@@ -64,20 +65,20 @@ namespace QuickSC.StaticAnalyzer
                 throw new InvalidOperationException();
             }
 
-            private QsName GetOperatorName()
+            private Name GetOperatorName()
             {
                 switch (exp.Kind)
                 {
-                    case UnaryOpKind.PostfixDec: return QsSpecialNames.OpDec;
-                    case UnaryOpKind.PostfixInc: return QsSpecialNames.OpInc;
-                    case UnaryOpKind.PrefixDec: return QsSpecialNames.OpDec;
-                    case UnaryOpKind.PrefixInc: return QsSpecialNames.OpInc;
+                    case UnaryOpKind.PostfixDec: return SpecialNames.OpDec;
+                    case UnaryOpKind.PostfixInc: return SpecialNames.OpInc;
+                    case UnaryOpKind.PrefixDec: return SpecialNames.OpDec;
+                    case UnaryOpKind.PrefixInc: return SpecialNames.OpInc;
                 }
 
                 throw new InvalidOperationException();
             }
 
-            protected override QsTypeValue? AnalyzeCall(QsTypeValue objTypeValue, Exp objExp, QsFuncValue? getter, QsFuncValue? setter, IEnumerable<(Exp Exp, QsTypeValue TypeValue)> args)
+            protected override TypeValue? AnalyzeCall(TypeValue objTypeValue, Exp objExp, FuncValue? getter, FuncValue? setter, IEnumerable<(Exp Exp, TypeValue TypeValue)> args)
             {
                 // e.x++;
                 // e.x가 프로퍼티(GetX, SetX) 라면,
@@ -107,7 +108,7 @@ namespace QuickSC.StaticAnalyzer
 
                 // 2. 
                 var operatorName = GetOperatorName();
-                if (!context.TypeValueService.GetMemberFuncValue(getterTypeValue.Return, operatorName, ImmutableArray<QsTypeValue>.Empty, out var operatorValue))
+                if (!context.TypeValueService.GetMemberFuncValue(getterTypeValue.Return, operatorName, ImmutableArray<TypeValue>.Empty, out var operatorValue))
                 {
                     context.ErrorCollector.Add(objExp, $"{objExp}에서 {operatorName} 함수를 찾을 수 없습니다");
                     return null;
@@ -146,7 +147,7 @@ namespace QuickSC.StaticAnalyzer
         internal bool AnalyzeUnaryAssignExp(
             UnaryOpExp unaryOpExp,
             Context context,
-            [NotNullWhen(returnValue: true)] out QsTypeValue? outTypeValue)
+            [NotNullWhen(returnValue: true)] out TypeValue? outTypeValue)
         {
             var assignAnalyzer = new UnaryAssignExpAnalyzer(analyzer, context, unaryOpExp);
             return assignAnalyzer.Analyze(out outTypeValue);

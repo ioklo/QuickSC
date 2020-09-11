@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Gum.CompileTime;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -6,18 +7,18 @@ namespace QuickSC
 {
     public class QsEnumTypeInst : QsTypeInst
     {
-        QsTypeValue.Normal typeValue;
+        TypeValue.Normal typeValue;
         string defaultElemName;
         (string Name, QsTypeInst TypeInst)[] defaultFieldInsts;
 
-        public QsEnumTypeInst(QsTypeValue.Normal typeValue, string defaultElemName, IEnumerable<(string Name, QsTypeInst TypeInst)> defaultFieldInsts)
+        public QsEnumTypeInst(TypeValue.Normal typeValue, string defaultElemName, IEnumerable<(string Name, QsTypeInst TypeInst)> defaultFieldInsts)
         {
             this.typeValue = typeValue;
             this.defaultElemName = defaultElemName;
             this.defaultFieldInsts = defaultFieldInsts.ToArray();
         }
 
-        public override QsTypeValue GetTypeValue()
+        public override TypeValue GetTypeValue()
         {
             return typeValue;
         }

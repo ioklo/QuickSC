@@ -6,8 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\External\Gum.ModuleInfo\Gum.ModuleInfo.csproj" />
     <ProjectReference Include="..\QuickSC.Infra\QuickSC.Infra.csproj" />
-    <ProjectReference Include="..\QuickSC.Metadata\QuickSC.Metadata.csproj" />
     <ProjectReference Include="..\QuickSC.Syntax\QuickSC.Syntax.csproj" />
   </ItemGroup>
 

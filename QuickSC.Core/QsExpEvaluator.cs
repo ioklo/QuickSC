@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static QuickSC.QsEvaluator;
 using static QuickSC.QsCollectionExtensions;
+using Gum.CompileTime;
 
 namespace QuickSC
 {
@@ -824,7 +825,7 @@ namespace QuickSC
                     throw new NotImplementedException();
             }
 
-            async ValueTask<ImmutableArray<QsValue>> EvaluateArgsAsync(IEnumerable<QsTypeValue> argTypeValues, ImmutableArray<Exp> argExps)
+            async ValueTask<ImmutableArray<QsValue>> EvaluateArgsAsync(IEnumerable<TypeValue> argTypeValues, ImmutableArray<Exp> argExps)
             {
                 var argsBuilder = ImmutableArray.CreateBuilder<QsValue>(argExps.Length);
 

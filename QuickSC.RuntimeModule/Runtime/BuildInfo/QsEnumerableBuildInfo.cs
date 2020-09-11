@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace QuickSC.Runtime
 {
-    using Invoker = Func<QsDomainService, QsTypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
+    using Invoker = Func<QsDomainService, TypeArgumentList, QsValue?, IReadOnlyList<QsValue>, QsValue, ValueTask>;
 
     class QsEnumerableBuildInfo : QsRuntimeModuleTypeBuildInfo.Class
     {
@@ -23,18 +24,18 @@ namespace QuickSC.Runtime
 
             // T
             var enumerableId = QsRuntimeModule.EnumerableId;
-            var elemTypeValue = QsTypeValue.MakeTypeVar(enumerableId, "T");
+            var elemTypeValue = TypeValue.MakeTypeVar(enumerableId, "T");
 
             // Enumerator<T>
-            var enumeratorTypeValue = QsTypeValue.MakeNormal(enumeratorId, QsTypeArgumentList.Make(elemTypeValue));
+            var enumeratorTypeValue = TypeValue.MakeNormal(enumeratorId, TypeArgumentList.Make(elemTypeValue));
 
-            var funcIdsBuilder = ImmutableArray.CreateBuilder<QsMetaItemId>();
+            var funcIdsBuilder = ImmutableArray.CreateBuilder<ModuleItemId>();
 
             Invoker wrappedGetEnumerator = 
                 (domainService, typeArgs, thisValue, args, result) => QsEnumerableObject.NativeGetEnumerator(domainService, enumeratorId, typeArgs, thisValue, args, result);
 
-            builder.AddMemberFunc(QsName.MakeText("GetEnumerator"),
-                false, true, ImmutableArray<string>.Empty, enumeratorTypeValue, ImmutableArray<QsTypeValue>.Empty,
+            builder.AddMemberFunc(Name.MakeText("GetEnumerator"),
+                false, true, ImmutableArray<string>.Empty, enumeratorTypeValue, ImmutableArray<TypeValue>.Empty,
                 wrappedGetEnumerator);
         }
         
@@ -52,14 +53,14 @@ namespace QuickSC.Runtime
         }
         
         // Enumerator<T> Enumerable<T>.GetEnumerator()
-        internal static ValueTask NativeGetEnumerator(QsDomainService domainService, QsMetaItemId enumeratorId, QsTypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
+        internal static ValueTask NativeGetEnumerator(QsDomainService domainService, ModuleItemId enumeratorId, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> args, QsValue result)
         {
             Debug.Assert(thisValue != null);
             Debug.Assert(result != null);
 
             var enumerableObject = GetObject<QsEnumerableObject>(thisValue);
 
-            var enumeratorInst = domainService.GetTypeInst(QsTypeValue.MakeNormal(enumeratorId, typeArgList)); // 같은 TypeArgList를 사용한다
+            var enumeratorInst = domainService.GetTypeInst(TypeValue.MakeNormal(enumeratorId, typeArgList)); // 같은 TypeArgList를 사용한다
             
             ((QsObjectValue)result).SetObject(new QsEnumeratorObject(enumeratorInst, enumerableObject.enumerable.GetAsyncEnumerator()));
 

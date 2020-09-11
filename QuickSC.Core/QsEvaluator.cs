@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Gum.CompileTime;
 using Gum.Syntax;
 using QuickSC.Runtime;
 using QuickSC.StaticAnalyzer;
@@ -31,40 +32,40 @@ namespace QuickSC
             return expValueEvaluator.EvalStringExpAsync(command, result, context);
         }
 
-        QsTypeArgumentList ApplyTypeArgumentList(QsTypeArgumentList typeArgList, ImmutableDictionary<QsTypeValue.TypeVar, QsTypeValue> typeEnv)
+        TypeArgumentList ApplyTypeArgumentList(TypeArgumentList typeArgList, ImmutableDictionary<TypeValue.TypeVar, TypeValue> typeEnv)
         {
-            QsTypeArgumentList? appliedOuter = null;
+            TypeArgumentList? appliedOuter = null;
 
             if (typeArgList.Outer != null)
                 appliedOuter = ApplyTypeArgumentList(typeArgList.Outer, typeEnv);
 
             var appliedArgs = typeArgList.Args.Select(arg => ApplyTypeValue(arg, typeEnv));
 
-            return QsTypeArgumentList.Make(appliedOuter, appliedArgs);
+            return TypeArgumentList.Make(appliedOuter, appliedArgs);
         }
 
-        QsTypeValue ApplyTypeValue(QsTypeValue typeValue, ImmutableDictionary<QsTypeValue.TypeVar, QsTypeValue> typeEnv)
+        TypeValue ApplyTypeValue(TypeValue typeValue, ImmutableDictionary<TypeValue.TypeVar, TypeValue> typeEnv)
         {
             switch(typeValue)
             {
-                case QsTypeValue.TypeVar typeVar: 
+                case TypeValue.TypeVar typeVar: 
                     return typeEnv[typeVar];
 
-                case QsTypeValue.Normal ntv:
+                case TypeValue.Normal ntv:
                     {
                         var appliedTypeArgList = ApplyTypeArgumentList(ntv.TypeArgList, typeEnv);
-                        return QsTypeValue.MakeNormal(ntv.TypeId, appliedTypeArgList);
+                        return TypeValue.MakeNormal(ntv.TypeId, appliedTypeArgList);
                     }
 
-                case QsTypeValue.Void vtv: 
+                case TypeValue.Void vtv: 
                     return typeValue;
 
-                case QsTypeValue.Func ftv:
+                case TypeValue.Func ftv:
                     {
                         var appliedReturn = ApplyTypeValue(ftv.Return, typeEnv);
                         var appliedParams = ImmutableArray.CreateRange(ftv.Params, param => ApplyTypeValue(param, typeEnv));
 
-                        return QsTypeValue.MakeFunc(appliedReturn, appliedParams);
+                        return TypeValue.MakeFunc(appliedReturn, appliedParams);
                     }
 
                 default:
@@ -73,13 +74,13 @@ namespace QuickSC
         }
 
         // xType이 y타입인가 묻는 것
-        public bool IsType(QsTypeValue xTypeValue, QsTypeValue yTypeValue, QsEvalContext context)
+        public bool IsType(TypeValue xTypeValue, TypeValue yTypeValue, QsEvalContext context)
         {
-            QsTypeValue? curTypeValue = xTypeValue;
+            TypeValue? curTypeValue = xTypeValue;
 
             while (curTypeValue != null)
             {
-                if (EqualityComparer<QsTypeValue?>.Default.Equals(curTypeValue, yTypeValue))
+                if (EqualityComparer<TypeValue?>.Default.Equals(curTypeValue, yTypeValue))
                     return true;
 
                 if (!context.TypeValueService.GetBaseTypeValue(curTypeValue, out var baseTypeValue))
@@ -95,7 +96,7 @@ namespace QuickSC
         }
 
         // DefaultValue란 무엇인가, 그냥 선언만 되어있는 상태        
-        public QsValue GetDefaultValue(QsTypeValue typeValue, QsEvalContext context)
+        public QsValue GetDefaultValue(TypeValue typeValue, QsEvalContext context)
         {
             var typeInst = context.DomainService.GetTypeInst(typeValue);
             return typeInst.MakeDefaultValue();
@@ -284,19 +285,19 @@ namespace QuickSC
             string moduleName,
             Script script,             
             IQsRuntimeModule runtimeModule,
-            IEnumerable<IQsMetadata> metadatas,
+            IEnumerable<IModuleInfo> moduleInfos,
             IQsErrorCollector errorCollector)
         {
             // 4. stmt를 분석하고, 전역 변수 타입 목록을 만든다 (3의 함수정보가 필요하다)
-            var optionalAnalyzeResult = analyzer.AnalyzeScript(moduleName, script, metadatas, errorCollector);
+            var optionalAnalyzeResult = analyzer.AnalyzeScript(moduleName, script, moduleInfos, errorCollector);
             if (optionalAnalyzeResult == null)
                 return null;
 
             var analyzeResult = optionalAnalyzeResult.Value;
 
             var scriptModule = new QsScriptModule(
-                analyzeResult.ScriptMetadata,
-                scriptModule => new QsTypeValueApplier(new QsMetadataService(metadatas.Append(scriptModule))),
+                analyzeResult.ModuleInfo,
+                scriptModule => new QsTypeValueApplier(new ModuleInfoService(moduleInfos.Append(scriptModule))),
                 analyzeResult.Templates);
 
             var domainService = new QsDomainService();
@@ -314,7 +315,7 @@ namespace QuickSC
             return await EvaluateScriptAsync(script, context);
         }
         
-        internal QsValue GetMemberValue(QsValue value, QsName varName)
+        internal QsValue GetMemberValue(QsValue value, Name varName)
         {
             if (value is QsObjectValue objValue)
                 return objValue.GetMemberValue(varName);

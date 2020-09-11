@@ -1,4 +1,5 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Syntax;
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -21,7 +22,7 @@ namespace QuickSC.StaticAnalyzer
 
         bool CollectFuncDecl(FuncDecl funcDecl, Context context)
         {
-            var funcId = QsMetaItemId.Make(funcDecl.Name, funcDecl.TypeParams.Length);
+            var funcId = ModuleItemId.Make(funcDecl.Name, funcDecl.TypeParams.Length);
             context.AddFuncId(funcDecl, funcId);
             return true;
         }
@@ -47,7 +48,7 @@ namespace QuickSC.StaticAnalyzer
             return true;
         }
 
-        public (QsSyntaxNodeMetaItemService SyntaxNodeMetaItemService, ImmutableArray<QsTypeSkeleton> TypeSkeletons)? 
+        public (QsSyntaxNodeModuleItemService SyntaxNodeModuleItemService, ImmutableArray<QsTypeSkeleton> TypeSkeletons)? 
             CollectScript(Script script, IQsErrorCollector errorCollector)
         {
             var context = new Context();
@@ -58,11 +59,11 @@ namespace QuickSC.StaticAnalyzer
                 return null;
             }
 
-            var syntaxNodeMetaItemService = new QsSyntaxNodeMetaItemService(
+            var syntaxNodeModuleItemService = new QsSyntaxNodeModuleItemService(
                 context.GetTypeIdsByNode(), 
                 context.GetFuncIdsByNode());
 
-            return (syntaxNodeMetaItemService, context.GetTypeSkeletons());
+            return (syntaxNodeModuleItemService, context.GetTypeSkeletons());
         }
     }
 }

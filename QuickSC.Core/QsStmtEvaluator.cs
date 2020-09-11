@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static QuickSC.QsEvaluator;
+using Gum.CompileTime;
 
 namespace QuickSC
 {
@@ -72,8 +73,8 @@ namespace QuickSC
 
                     var condValueTypeValue = tempValue.GetTypeInst().GetTypeValue();
 
-                    Debug.Assert(condValueTypeValue is QsTypeValue.Normal);
-                    bTestPassed = evaluator.IsType((QsTypeValue.Normal)condValueTypeValue, testClassInfo.TestTypeValue, context);
+                    Debug.Assert(condValueTypeValue is TypeValue.Normal);
+                    bTestPassed = evaluator.IsType((TypeValue.Normal)condValueTypeValue, testClassInfo.TestTypeValue, context);
                 }
                 else
                 {

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -9,9 +10,9 @@ namespace QuickSC.StaticAnalyzer
         public class LocalVarInfo
         {
             public int Index { get; }
-            public QsTypeValue TypeValue { get; }
+            public TypeValue TypeValue { get; }
 
-            public LocalVarInfo(int index, QsTypeValue typeValue)
+            public LocalVarInfo(int index, TypeValue typeValue)
             {
                 Index = index;
                 TypeValue = typeValue;

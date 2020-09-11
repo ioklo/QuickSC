@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
@@ -7,19 +8,19 @@ namespace QuickSC.Runtime
 {
     abstract class QsRuntimeModuleTypeBuildInfo
     {
-        QsMetaItemId? outerTypeId;
-        QsMetaItemId id;
+        ModuleItemId? outerTypeId;
+        ModuleItemId id;
         IEnumerable<string> typeParams;
-        QsTypeValue? baseTypeValue;
+        TypeValue? baseTypeValue;
         Func<QsValue> defaultValueFactory;
 
-        public QsMetaItemId? GetOuterTypeId() => outerTypeId;
-        public QsMetaItemId GetId() => id;
+        public ModuleItemId? GetOuterTypeId() => outerTypeId;
+        public ModuleItemId GetId() => id;
         public IEnumerable<string> GetTypeParams() => typeParams;
-        public QsTypeValue? GetBaseTypeValue() => baseTypeValue;
+        public TypeValue? GetBaseTypeValue() => baseTypeValue;
         public Func<QsValue> GetDefaultValueFactory() => defaultValueFactory;
 
-        public QsRuntimeModuleTypeBuildInfo(QsMetaItemId? outerTypeId, QsMetaItemId id, IEnumerable<string> typeParams, QsTypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
+        public QsRuntimeModuleTypeBuildInfo(ModuleItemId? outerTypeId, ModuleItemId id, IEnumerable<string> typeParams, TypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
         {
             this.outerTypeId = outerTypeId;
             this.id = id;
@@ -30,7 +31,7 @@ namespace QuickSC.Runtime
 
         public abstract class Class : QsRuntimeModuleTypeBuildInfo
         {   
-            public Class(QsMetaItemId? outerTypeId, QsMetaItemId id, IEnumerable<string> typeParams, QsTypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
+            public Class(ModuleItemId? outerTypeId, ModuleItemId id, IEnumerable<string> typeParams, TypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
                 : base(outerTypeId, id, typeParams, baseTypeValue, defaultValueFactory)
             {   
             }
@@ -38,7 +39,7 @@ namespace QuickSC.Runtime
 
         public abstract class Struct : QsRuntimeModuleTypeBuildInfo
         {
-            public Struct(QsMetaItemId? outerTypeId, QsMetaItemId id, IEnumerable<string> typeParams, QsTypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
+            public Struct(ModuleItemId? outerTypeId, ModuleItemId id, IEnumerable<string> typeParams, TypeValue? baseTypeValue, Func<QsValue> defaultValueFactory)
                 : base(outerTypeId, id, typeParams, baseTypeValue, defaultValueFactory)
             {
             }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
@@ -10,16 +11,16 @@ namespace QuickSC.StaticAnalyzer
         // 현재 함수 정보
         public class FuncContext
         {
-            private QsMetaItemId? funcId;
-            private QsTypeValue? retTypeValue; // 리턴 타입이 미리 정해져 있다면 이걸 쓴다
+            private ModuleItemId? funcId;
+            private TypeValue? retTypeValue; // 리턴 타입이 미리 정해져 있다면 이걸 쓴다
             private bool bSequence; // 시퀀스 여부
             private int lambdaCount;
 
             private List<LocalVarInfo> localVarInfos;
             private ImmutableDictionary<string, LocalVarInfo> localVarsByName;
-            private ImmutableDictionary<QsStorageInfo, QsTypeValue> overriddenTypeValues;
+            private ImmutableDictionary<QsStorageInfo, TypeValue> overriddenTypeValues;
 
-            public FuncContext(QsMetaItemId? funcId, QsTypeValue? retTypeValue, bool bSequence)
+            public FuncContext(ModuleItemId? funcId, TypeValue? retTypeValue, bool bSequence)
             {
                 this.funcId = funcId;
                 this.retTypeValue = retTypeValue;
@@ -28,10 +29,10 @@ namespace QuickSC.StaticAnalyzer
 
                 this.localVarInfos = new List<LocalVarInfo>();
                 this.localVarsByName = ImmutableDictionary<string, LocalVarInfo>.Empty;
-                this.overriddenTypeValues = ImmutableDictionary<QsStorageInfo, QsTypeValue>.Empty;
+                this.overriddenTypeValues = ImmutableDictionary<QsStorageInfo, TypeValue>.Empty;
             }
 
-            public int AddLocalVarInfo(string name, QsTypeValue typeValue)
+            public int AddLocalVarInfo(string name, TypeValue typeValue)
             {
                 var localVarInfo = new LocalVarInfo(localVarInfos.Count, typeValue);
                 localVarInfos.Add(localVarInfo);
@@ -40,7 +41,7 @@ namespace QuickSC.StaticAnalyzer
                 return localVarInfo.Index;
             }
 
-            public void AddOverrideVarInfo(QsStorageInfo storageInfo, QsTypeValue typeValue)
+            public void AddOverrideVarInfo(QsStorageInfo storageInfo, TypeValue typeValue)
             {
                 overriddenTypeValues = overriddenTypeValues.SetItem(storageInfo, typeValue);
             }
@@ -50,26 +51,26 @@ namespace QuickSC.StaticAnalyzer
                 return localVarsByName.TryGetValue(varName, out localVarInfo);
             }
 
-            internal QsMetaItemId MakeLambdaFuncId()
+            internal ModuleItemId MakeLambdaFuncId()
             {
-                QsMetaItemId id;
+                ModuleItemId id;
 
                 if (funcId == null)
-                    id = QsMetaItemId.Make(QsName.MakeAnonymousLambda(lambdaCount.ToString()), 0);
+                    id = ModuleItemId.Make(Name.MakeAnonymousLambda(lambdaCount.ToString()), 0);
                 else
-                    id = funcId.Append(QsName.MakeAnonymousLambda(lambdaCount.ToString()), 0);
+                    id = funcId.Append(Name.MakeAnonymousLambda(lambdaCount.ToString()), 0);
 
                 lambdaCount++;
 
                 return id;
             }
 
-            public QsTypeValue? GetRetTypeValue()
+            public TypeValue? GetRetTypeValue()
             {
                 return retTypeValue;
             }
 
-            public void SetRetTypeValue(QsTypeValue retTypeValue)
+            public void SetRetTypeValue(TypeValue retTypeValue)
             {
                 this.retTypeValue = retTypeValue;
             }
@@ -102,8 +103,8 @@ namespace QuickSC.StaticAnalyzer
 
             public bool ShouldOverrideTypeValue(
                 QsStorageInfo storageInfo,
-                QsTypeValue typeValue,
-                [NotNullWhen(returnValue: true)] out QsTypeValue? overriddenTypeValue)
+                TypeValue typeValue,
+                [NotNullWhen(returnValue: true)] out TypeValue? overriddenTypeValue)
             {
                 return overriddenTypeValues.TryGetValue(storageInfo, out overriddenTypeValue);
             }

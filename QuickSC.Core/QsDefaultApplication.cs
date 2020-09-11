@@ -1,4 +1,5 @@
 ﻿using Gum;
+using Gum.CompileTime;
 using QuickSC.Runtime;
 using QuickSC.StaticAnalyzer;
 using System;
@@ -23,7 +24,7 @@ namespace QuickSC
 
             var typeSkeletonCollector = new QsTypeSkeletonCollector();
             var typeExpEvaluator = new QsTypeExpEvaluator(typeSkeletonCollector);
-            var typeAndFuncBuilder = new QsMetadataBuilder(typeExpEvaluator);
+            var typeAndFuncBuilder = new QsModuleInfoBuilder(typeExpEvaluator);
 
             var capturer = new QsCapturer();
             var analyzer = new QsAnalyzer(typeAndFuncBuilder, capturer);
@@ -34,18 +35,18 @@ namespace QuickSC
         public async ValueTask<int?> RunAsync(
             string moduleName, string input, IQsRuntimeModule runtimeModule, ImmutableArray<IQsModule> modulesExceptRuntimeModule, IQsErrorCollector errorCollector) // 레퍼런스를 포함
         {
-            var metadatas = new List<IQsMetadata>(modulesExceptRuntimeModule.Length + 1);
+            var moduleInfos = new List<IModuleInfo>(modulesExceptRuntimeModule.Length + 1);
 
-            metadatas.Add(runtimeModule);
+            moduleInfos.Add(runtimeModule);
             foreach(var module in modulesExceptRuntimeModule)
-                metadatas.Add(module);
+                moduleInfos.Add(module);
 
             // 파싱 QsParserContext -> QsScript             
             var script = await parser.ParseScriptAsync(input);
             if (script == null)
                 return null;
             
-            return await evaluator.EvaluateScriptAsync(moduleName, script, runtimeModule, metadatas, errorCollector);
+            return await evaluator.EvaluateScriptAsync(moduleName, script, runtimeModule, moduleInfos, errorCollector);
         }
     }
 

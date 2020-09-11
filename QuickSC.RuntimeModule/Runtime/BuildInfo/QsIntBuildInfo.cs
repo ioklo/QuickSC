@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -19,13 +20,13 @@ namespace QuickSC.Runtime
 
         public override void Build(QsRuntimeModuleTypeBuilder builder)
         {
-            QsTypeValue intTypeValue = QsTypeValue.MakeNormal(QsRuntimeModule.IntId);
+            TypeValue intTypeValue = TypeValue.MakeNormal(QsRuntimeModule.IntId);
 
-            builder.AddMemberFunc(QsSpecialNames.OpInc, false, false, ImmutableArray<string>.Empty, intTypeValue, ImmutableArray.Create(intTypeValue), OperatorInc);
-            builder.AddMemberFunc(QsSpecialNames.OpDec, false, false, ImmutableArray<string>.Empty, intTypeValue, ImmutableArray.Create(intTypeValue), OperatorDec);
+            builder.AddMemberFunc(SpecialNames.OpInc, false, false, ImmutableArray<string>.Empty, intTypeValue, ImmutableArray.Create(intTypeValue), OperatorInc);
+            builder.AddMemberFunc(SpecialNames.OpDec, false, false, ImmutableArray<string>.Empty, intTypeValue, ImmutableArray.Create(intTypeValue), OperatorDec);
         }
 
-        ValueTask OperatorInc(QsDomainService domainService, QsTypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> argValues, QsValue resultValue)
+        ValueTask OperatorInc(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> argValues, QsValue resultValue)
         {
             Debug.Assert(argValues.Count == 1);
             var source = argValues[0];
@@ -36,7 +37,7 @@ namespace QuickSC.Runtime
             return default;
         }
 
-        ValueTask OperatorDec(QsDomainService domainService, QsTypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> argValues, QsValue resultValue)
+        ValueTask OperatorDec(QsDomainService domainService, TypeArgumentList typeArgList, QsValue? thisValue, IReadOnlyList<QsValue> argValues, QsValue resultValue)
         {
             Debug.Assert(argValues.Count == 1);
             var source = argValues[0];

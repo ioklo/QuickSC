@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
@@ -8,7 +9,7 @@ namespace QuickSC.Runtime.Dotnet
 {
     static class QsDotnetMisc
     {
-        public static QsMetaItemId? MakeTypeId(Type type)
+        public static ModuleItemId? MakeTypeId(Type type)
         {
             // ([^\s]+(`(\d+))?)([\.+][^\s]+(`(\d+))?)+
             // C20200622_Reflection.Type1`1+Type2`1<T, U>
@@ -16,7 +17,7 @@ namespace QuickSC.Runtime.Dotnet
             // System.Collections.Generic.List`1
 
             var elems = type.FullName.Split('.', '+');
-            QsMetaItemId? curId = null;
+            ModuleItemId? curId = null;
 
             foreach (var elem in elems)
             {
@@ -34,7 +35,7 @@ namespace QuickSC.Runtime.Dotnet
                 if (curId != null)
                     curId = curId.Append(name, typeParamCount);
                 else
-                    curId = QsMetaItemId.Make(name, typeParamCount);
+                    curId = ModuleItemId.Make(name, typeParamCount);
             }
 
             return curId;

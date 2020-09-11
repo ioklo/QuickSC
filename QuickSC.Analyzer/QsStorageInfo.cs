@@ -1,4 +1,5 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Syntax;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,8 +12,8 @@ namespace QuickSC
     {
         public class ModuleGlobal : QsStorageInfo
         {
-            public QsMetaItemId VarId { get; }
-            internal ModuleGlobal(QsMetaItemId varId) { VarId = varId; }
+            public ModuleItemId VarId { get; }
+            internal ModuleGlobal(ModuleItemId varId) { VarId = varId; }
 
             public override bool Equals(object? obj)
             {
@@ -79,15 +80,15 @@ namespace QuickSC
 
         public class StaticMember : QsStorageInfo
         {
-            public (QsTypeValue TypeValue, Exp Exp)? ObjectInfo { get; }
-            public QsVarValue VarValue { get; }
-            public StaticMember((QsTypeValue TypeValue, Exp Exp)? objectInfo, QsVarValue varValue) { ObjectInfo = objectInfo; VarValue = varValue; }
+            public (TypeValue TypeValue, Exp Exp)? ObjectInfo { get; }
+            public VarValue VarValue { get; }
+            public StaticMember((TypeValue TypeValue, Exp Exp)? objectInfo, VarValue varValue) { ObjectInfo = objectInfo; VarValue = varValue; }
 
             public override bool Equals(object? obj)
             {
                 return obj is StaticMember member &&
-                       EqualityComparer<(QsTypeValue TypeValue, Exp Exp)?>.Default.Equals(ObjectInfo, member.ObjectInfo) &&
-                       EqualityComparer<QsVarValue>.Default.Equals(VarValue, member.VarValue);
+                       EqualityComparer<(TypeValue TypeValue, Exp Exp)?>.Default.Equals(ObjectInfo, member.ObjectInfo) &&
+                       EqualityComparer<VarValue>.Default.Equals(VarValue, member.VarValue);
             }
 
             public override int GetHashCode()
@@ -99,9 +100,9 @@ namespace QuickSC
         public class InstanceMember : QsStorageInfo
         {
             public Exp ObjectExp { get; }
-            public QsTypeValue ObjectTypeValue { get; }
-            public QsName VarName { get; }
-            public InstanceMember(Exp objectExp, QsTypeValue objectTypeValue, QsName varName)
+            public TypeValue ObjectTypeValue { get; }
+            public Name VarName { get; }
+            public InstanceMember(Exp objectExp, TypeValue objectTypeValue, Name varName)
             {
                 ObjectExp = objectExp;
                 ObjectTypeValue = objectTypeValue;
@@ -112,8 +113,8 @@ namespace QuickSC
             {
                 return obj is InstanceMember member &&
                        EqualityComparer<Exp>.Default.Equals(ObjectExp, member.ObjectExp) &&
-                       EqualityComparer<QsTypeValue>.Default.Equals(ObjectTypeValue, member.ObjectTypeValue) &&
-                       EqualityComparer<QsName>.Default.Equals(VarName, member.VarName);
+                       EqualityComparer<TypeValue>.Default.Equals(ObjectTypeValue, member.ObjectTypeValue) &&
+                       EqualityComparer<Name>.Default.Equals(VarName, member.VarName);
             }
 
             public override int GetHashCode()
@@ -122,7 +123,7 @@ namespace QuickSC
             }
         }
 
-        public static ModuleGlobal MakeModuleGlobal(QsMetaItemId varId) 
+        public static ModuleGlobal MakeModuleGlobal(ModuleItemId varId) 
             => new ModuleGlobal(varId);
 
         public static PrivateGlobal MakePrivateGlobal(int index) 
@@ -134,10 +135,10 @@ namespace QuickSC
         public static EnumElem MakeEnumElem(string elemName)
             => new EnumElem(elemName);
 
-        public static StaticMember MakeStaticMember((QsTypeValue TypeValue, Exp Exp)? objetInfo, QsVarValue varValue)
+        public static StaticMember MakeStaticMember((TypeValue TypeValue, Exp Exp)? objetInfo, VarValue varValue)
             => new StaticMember(objetInfo, varValue);
 
-        public static InstanceMember MakeInstanceMember(Exp objectExp, QsTypeValue objectTypeValue, QsName varName)
+        public static InstanceMember MakeInstanceMember(Exp objectExp, TypeValue objectTypeValue, Name varName)
             => new InstanceMember(objectExp, objectTypeValue, varName);
         
         public static bool operator ==(QsStorageInfo? left, QsStorageInfo? right)

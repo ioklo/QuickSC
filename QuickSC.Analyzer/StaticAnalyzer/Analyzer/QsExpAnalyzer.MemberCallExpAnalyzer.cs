@@ -1,4 +1,5 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Syntax;
 using System;
 using System.Collections.Immutable;
 using System.Linq;
@@ -13,11 +14,11 @@ namespace QuickSC.StaticAnalyzer
         {
             public struct Result
             {
-                public QsTypeValue.Func TypeValue { get; }
+                public TypeValue.Func TypeValue { get; }
                 public QsMemberCallExpInfo NodeInfo { get; }
-                public ImmutableArray<QsTypeValue> ArgTypeValues { get; }
+                public ImmutableArray<TypeValue> ArgTypeValues { get; }
 
-                public Result(QsTypeValue.Func typeValue, QsMemberCallExpInfo nodeInfo, ImmutableArray<QsTypeValue> argTypeValues)
+                public Result(TypeValue.Func typeValue, QsMemberCallExpInfo nodeInfo, ImmutableArray<TypeValue> argTypeValues)
                 {
                     TypeValue = typeValue;
                     NodeInfo = nodeInfo;
@@ -28,7 +29,7 @@ namespace QuickSC.StaticAnalyzer
             QsExpAnalyzer expAnalyzer;
             MemberCallExp exp;
             Context context;
-            ImmutableArray<QsTypeValue> args;
+            ImmutableArray<TypeValue> args;
 
             public MemberCallExpAnalyzer(QsExpAnalyzer expAnalyzer, MemberCallExp exp, Context context)
             {
@@ -81,12 +82,12 @@ namespace QuickSC.StaticAnalyzer
                 throw new InvalidOperationException();
             }
 
-            private Result? Analyze_Instance(QsTypeValue objTypeValue)
+            private Result? Analyze_Instance(TypeValue objTypeValue)
             {
                 var memberTypeArgs = GetTypeValues(exp.MemberTypeArgs, context);
 
                 // 1. 함수에서 찾기.. FuncValue도 같이 주는것이 좋을 듯 하다
-                if (context.TypeValueService.GetMemberFuncValue(objTypeValue, QsName.MakeText(exp.MemberName), memberTypeArgs, out var funcValue))
+                if (context.TypeValueService.GetMemberFuncValue(objTypeValue, Name.MakeText(exp.MemberName), memberTypeArgs, out var funcValue))
                 {
                     // staticObject인 경우는 StaticFunc만, 아니라면 모든 함수가 가능 
                     var funcTypeValue = context.TypeValueService.GetTypeValue(funcValue);
@@ -101,10 +102,10 @@ namespace QuickSC.StaticAnalyzer
                 // 2. 변수에서 찾기
                 if (memberTypeArgs.Length == 0)
                 {
-                    if (context.TypeValueService.GetMemberVarValue(objTypeValue, QsName.MakeText(exp.MemberName), out var varValue))
+                    if (context.TypeValueService.GetMemberVarValue(objTypeValue, Name.MakeText(exp.MemberName), out var varValue))
                     {
                         // TODO: as 대신 함수로 의미 부여하기, 호출 가능하면? 쿼리하는 함수로 변경
-                        var varFuncTypeValue = context.TypeValueService.GetTypeValue(varValue) as QsTypeValue.Func;
+                        var varFuncTypeValue = context.TypeValueService.GetTypeValue(varValue) as TypeValue.Func;
 
                         if (varFuncTypeValue == null)
                         {
@@ -127,8 +128,8 @@ namespace QuickSC.StaticAnalyzer
 
             private Result? Analyze_EnumOrType(IdentifierInfo.Type typeIdInfo)
             {
-                var typeInfo = context.MetadataService.GetTypeInfos(typeIdInfo.TypeValue.TypeId).Single();
-                if (typeInfo is IQsEnumInfo enumTypeInfo)
+                var typeInfo = context.ModuleInfoService.GetTypeInfos(typeIdInfo.TypeValue.TypeId).Single();
+                if (typeInfo is IEnumInfo enumTypeInfo)
                 {
                     if (exp.MemberTypeArgs.Length != 0)
                     {
@@ -153,7 +154,7 @@ namespace QuickSC.StaticAnalyzer
 
                     // (int, T) => E<T>
                     var paramTypes = elemInfo.Value.FieldInfos.Select(fieldInfo => fieldInfo.TypeValue);
-                    var funcTypeValue = QsTypeValue.MakeFunc(typeIdInfo.TypeValue, paramTypes);
+                    var funcTypeValue = TypeValue.MakeFunc(typeIdInfo.TypeValue, paramTypes);
                     var appliedFuncTypeValue = context.TypeValueService.Apply(typeIdInfo.TypeValue, funcTypeValue);
 
                     var nodeInfo = QsMemberCallExpInfo.MakeEnumValue(null, args, elemInfo.Value);
@@ -169,7 +170,7 @@ namespace QuickSC.StaticAnalyzer
                 var memberTypeArgs = GetTypeValues(exp.MemberTypeArgs, context);
 
                 // 1. 함수에서 찾기
-                if (context.TypeValueService.GetMemberFuncValue(objTypeValue, QsName.MakeText(exp.MemberName), memberTypeArgs, out var memberFuncValue))
+                if (context.TypeValueService.GetMemberFuncValue(objTypeValue, Name.MakeText(exp.MemberName), memberTypeArgs, out var memberFuncValue))
                 {
                     if (!IsFuncStatic(memberFuncValue.FuncId, context))
                     {
@@ -187,7 +188,7 @@ namespace QuickSC.StaticAnalyzer
                 // 2. 변수에서 찾기
                 if (memberTypeArgs.Length == 0)
                 {
-                    if (context.TypeValueService.GetMemberVarValue(objTypeValue, QsName.MakeText(exp.MemberName), out var varValue))
+                    if (context.TypeValueService.GetMemberVarValue(objTypeValue, Name.MakeText(exp.MemberName), out var varValue))
                     {
                         if (!IsVarStatic(varValue.VarId, context))
                         {
@@ -196,7 +197,7 @@ namespace QuickSC.StaticAnalyzer
                         }
 
                         // TODO: as 대신 함수로 의미 부여하기, 호출 가능하면? 쿼리하는 함수로 변경
-                        var varFuncTypeValue = context.TypeValueService.GetTypeValue(varValue) as QsTypeValue.Func;
+                        var varFuncTypeValue = context.TypeValueService.GetTypeValue(varValue) as TypeValue.Func;
 
                         if (varFuncTypeValue == null)
                         {

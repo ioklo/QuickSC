@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -8,16 +9,16 @@ namespace QuickSC
 {
     public class QsTypeValueApplier
     {
-        QsMetadataService metadataService;
+        ModuleInfoService moduleInfoService;
 
-        public QsTypeValueApplier(QsMetadataService metadataService)
+        public QsTypeValueApplier(ModuleInfoService moduleInfoService)
         {
-            this.metadataService = metadataService;
+            this.moduleInfoService = moduleInfoService;
         }
 
-        private void MakeTypeEnv_Type(QsMetaItemId typeId, QsTypeArgumentList typeArgList, Dictionary<QsTypeValue.TypeVar, QsTypeValue> typeEnv)
+        private void MakeTypeEnv_Type(ModuleItemId typeId, TypeArgumentList typeArgList, Dictionary<TypeValue.TypeVar, TypeValue> typeEnv)
         {
-            var typeInfo = metadataService.GetTypeInfos(typeId).SingleOrDefault();
+            var typeInfo = moduleInfoService.GetTypeInfos(typeId).SingleOrDefault();
             if (typeInfo == null)
                 Debug.Assert(false);
 
@@ -29,40 +30,40 @@ namespace QuickSC
             Debug.Assert(typeParams.Count == typeArgList.Args.Length);
 
             for (int i = 0; i < typeParams.Count; i++)
-                typeEnv[QsTypeValue.MakeTypeVar(typeId, typeParams[i])] = typeArgList.Args[i];
+                typeEnv[TypeValue.MakeTypeVar(typeId, typeParams[i])] = typeArgList.Args[i];
         }
 
         // ApplyTypeEnv_Normal(Normal (Z, [[T], [U], []]), { T -> int, U -> short })
         // 
         // Normal(Z, [[int], [short], []])
 
-        private QsTypeArgumentList ApplyTypeEnv_TypeArgumentList(QsTypeArgumentList typeArgList, Dictionary<QsTypeValue.TypeVar, QsTypeValue> typeEnv)
+        private TypeArgumentList ApplyTypeEnv_TypeArgumentList(TypeArgumentList typeArgList, Dictionary<TypeValue.TypeVar, TypeValue> typeEnv)
         {
-            QsTypeArgumentList? appliedOuter = null;
+            TypeArgumentList? appliedOuter = null;
 
             if (typeArgList.Outer != null)
                 appliedOuter = ApplyTypeEnv_TypeArgumentList(typeArgList.Outer, typeEnv);
 
-            var appliedTypeArgs = new List<QsTypeValue>(typeArgList.Args.Length);
+            var appliedTypeArgs = new List<TypeValue>(typeArgList.Args.Length);
             foreach (var typeArg in typeArgList.Args)
             {
                 var appliedTypeArg = ApplyTypeEnv(typeArg, typeEnv);
                 appliedTypeArgs.Add(appliedTypeArg);
             }
 
-            return QsTypeArgumentList.Make(appliedOuter, appliedTypeArgs);
+            return TypeArgumentList.Make(appliedOuter, appliedTypeArgs);
         }
 
-        private QsTypeValue ApplyTypeEnv_Normal(QsTypeValue.Normal ntv, Dictionary<QsTypeValue.TypeVar, QsTypeValue> typeEnv)
+        private TypeValue ApplyTypeEnv_Normal(TypeValue.Normal ntv, Dictionary<TypeValue.TypeVar, TypeValue> typeEnv)
         {
             var appliedTypeArgList = ApplyTypeEnv_TypeArgumentList(ntv.TypeArgList, typeEnv);
-            return QsTypeValue.MakeNormal(ntv.TypeId, appliedTypeArgList);
+            return TypeValue.MakeNormal(ntv.TypeId, appliedTypeArgList);
         }
 
         // 
-        private QsTypeValue.Func ApplyTypeEnv_Func(QsTypeValue.Func typeValue, Dictionary<QsTypeValue.TypeVar, QsTypeValue> typeEnv)
+        private TypeValue.Func ApplyTypeEnv_Func(TypeValue.Func typeValue, Dictionary<TypeValue.TypeVar, TypeValue> typeEnv)
         {
-            return QsTypeValue.MakeFunc(
+            return TypeValue.MakeFunc(
                 ApplyTypeEnv(typeValue.Return, typeEnv),
                 ImmutableArray.CreateRange(
                     typeValue.Params,
@@ -70,7 +71,7 @@ namespace QuickSC
         }
 
         // T, [T -> ]
-        private QsTypeValue ApplyTypeEnv_TypeVar(QsTypeValue.TypeVar typeValue, Dictionary<QsTypeValue.TypeVar, QsTypeValue> typeEnv)
+        private TypeValue ApplyTypeEnv_TypeVar(TypeValue.TypeVar typeValue, Dictionary<TypeValue.TypeVar, TypeValue> typeEnv)
         {
             if (typeEnv.TryGetValue(typeValue, out var appliedTypeValue))
                 return appliedTypeValue;
@@ -78,22 +79,22 @@ namespace QuickSC
             return typeValue;
         }
 
-        private QsTypeValue ApplyTypeEnv(QsTypeValue typeValue, Dictionary<QsTypeValue.TypeVar, QsTypeValue> typeEnv)
+        private TypeValue ApplyTypeEnv(TypeValue typeValue, Dictionary<TypeValue.TypeVar, TypeValue> typeEnv)
         {
             return typeValue switch
             {
-                QsTypeValue.Normal normalTypeValue => ApplyTypeEnv_Normal(normalTypeValue, typeEnv),
-                QsTypeValue.Func funcTypeValue => ApplyTypeEnv_Func(funcTypeValue, typeEnv),
-                QsTypeValue.TypeVar typeVarTypeValue => ApplyTypeEnv_TypeVar(typeVarTypeValue, typeEnv),
-                QsTypeValue.Void vtv => vtv,
+                TypeValue.Normal normalTypeValue => ApplyTypeEnv_Normal(normalTypeValue, typeEnv),
+                TypeValue.Func funcTypeValue => ApplyTypeEnv_Func(funcTypeValue, typeEnv),
+                TypeValue.TypeVar typeVarTypeValue => ApplyTypeEnv_TypeVar(typeVarTypeValue, typeEnv),
+                TypeValue.Void vtv => vtv,
                 _ => throw new NotImplementedException()
             };
         }
 
         // class X<T> { class Y<U> { S<T>.List<U> u; } } => ApplyTypeValue_Normal(X<int>.Y<short>, S<T>.List<U>, context) => S<int>.Dict<short>
-        private QsTypeValue Apply_Normal(QsTypeValue.Normal context, QsTypeValue typeValue)
+        private TypeValue Apply_Normal(TypeValue.Normal context, TypeValue typeValue)
         {
-            var typeEnv = new Dictionary<QsTypeValue.TypeVar, QsTypeValue>();
+            var typeEnv = new Dictionary<TypeValue.TypeVar, TypeValue>();
 
             MakeTypeEnv_Type(context.TypeId, context.TypeArgList, typeEnv);
 
@@ -101,11 +102,11 @@ namespace QuickSC
         }
 
         // 주어진 funcValue 컨텍스트 내에서, typeValue를 치환하기
-        public QsTypeValue.Func Apply_Func(QsFuncValue context, QsTypeValue.Func typeValue)
+        public TypeValue.Func Apply_Func(FuncValue context, TypeValue.Func typeValue)
         {
-            var funcInfo = metadataService.GetFuncInfos(context.FuncId).Single();
+            var funcInfo = moduleInfoService.GetFuncInfos(context.FuncId).Single();
 
-            var typeEnv = new Dictionary<QsTypeValue.TypeVar, QsTypeValue>();
+            var typeEnv = new Dictionary<TypeValue.TypeVar, TypeValue>();
             if (funcInfo.OuterId != null)
             {
                 // TODO: Outer가 꼭 TypeId이지는 않을 것 같다. FuncId일 수도
@@ -113,14 +114,14 @@ namespace QuickSC
             }
 
             for (int i = 0; i < funcInfo.TypeParams.Length; i++)
-                typeEnv[QsTypeValue.MakeTypeVar(funcInfo.FuncId, funcInfo.TypeParams[i])] = context.TypeArgList.Args[i];
+                typeEnv[TypeValue.MakeTypeVar(funcInfo.FuncId, funcInfo.TypeParams[i])] = context.TypeArgList.Args[i];
 
             return ApplyTypeEnv_Func(typeValue, typeEnv);
         }
 
-        public QsTypeValue Apply(QsTypeValue? context, QsTypeValue typeValue)
+        public TypeValue Apply(TypeValue? context, TypeValue typeValue)
         {
-            if (context is QsTypeValue.Normal context_normal)
+            if (context is TypeValue.Normal context_normal)
                 return Apply_Normal(context_normal, typeValue);
 
             return typeValue;

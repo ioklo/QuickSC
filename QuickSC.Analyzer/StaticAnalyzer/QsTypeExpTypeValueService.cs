@@ -1,18 +1,19 @@
-﻿using Gum.Syntax;
+﻿using Gum.CompileTime;
+using Gum.Syntax;
 using System.Collections.Immutable;
 
 namespace QuickSC.StaticAnalyzer
 {
     public class QsTypeExpTypeValueService
     {
-        ImmutableDictionary<TypeExp, QsTypeValue> typeValuesByTypeExp;
+        ImmutableDictionary<TypeExp, TypeValue> typeValuesByTypeExp;
 
-        public QsTypeExpTypeValueService(ImmutableDictionary<TypeExp, QsTypeValue> typeValuesByTypeExp)
+        public QsTypeExpTypeValueService(ImmutableDictionary<TypeExp, TypeValue> typeValuesByTypeExp)
         {
             this.typeValuesByTypeExp = typeValuesByTypeExp;
         }
 
-        public QsTypeValue GetTypeValue(TypeExp typeExp)
+        public TypeValue GetTypeValue(TypeExp typeExp)
         {
             return typeValuesByTypeExp[typeExp];
         }

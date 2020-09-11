@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Gum.CompileTime;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
@@ -7,15 +8,15 @@ using System.Reflection;
 
 namespace QuickSC.Runtime.Dotnet
 {
-    public class QsDotnetTypeInfo : IQsTypeInfo
+    public class QsDotnetTypeInfo : ITypeInfo
     {
-        public QsMetaItemId? OuterTypeId { get; }
-        public QsMetaItemId TypeId { get; }
+        public ModuleItemId? OuterTypeId { get; }
+        public ModuleItemId TypeId { get; }
 
         // it must be open type
         TypeInfo typeInfo;
 
-        public QsDotnetTypeInfo(QsMetaItemId typeId, TypeInfo typeInfo)
+        public QsDotnetTypeInfo(ModuleItemId typeId, TypeInfo typeInfo)
         {
             if (typeInfo.DeclaringType != null)
                 OuterTypeId = QsDotnetMisc.MakeTypeId(typeInfo.DeclaringType);
@@ -25,22 +26,22 @@ namespace QuickSC.Runtime.Dotnet
             this.typeInfo = typeInfo;
         }        
 
-        public QsTypeValue? GetBaseTypeValue()
+        public TypeValue? GetBaseTypeValue()
         {
             throw new NotImplementedException();
         }
 
-        public bool GetMemberFuncId(QsName memberFuncId, [NotNullWhen(true)] out QsMetaItemId? outFuncId)
+        public bool GetMemberFuncId(Name memberFuncId, [NotNullWhen(true)] out ModuleItemId? outFuncId)
         {
-            if (memberFuncId.Kind != QsSpecialName.Normal)
+            if (memberFuncId.Kind != SpecialName.Normal)
                 throw new NotImplementedException();
 
             try
             {
-                var methodInfo = typeInfo.GetMethod(memberFuncId.Name!, BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance);
+                var methodInfo = typeInfo.GetMethod(memberFuncId.Text!, BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance);
 
                 // NOTICE: type의 경우에는 typeargument에 nested가 다 나오더니, func의 경우 함수의 것만 나온다
-                outFuncId = TypeId.Append(memberFuncId.Name!, methodInfo.GetGenericArguments().Length);
+                outFuncId = TypeId.Append(memberFuncId.Text!, methodInfo.GetGenericArguments().Length);
                 return true;
             }
             catch(AmbiguousMatchException)
@@ -50,7 +51,7 @@ namespace QuickSC.Runtime.Dotnet
             }
         }
 
-        public bool GetMemberTypeId(string name, [NotNullWhen(true)] out QsMetaItemId? outTypeId)
+        public bool GetMemberTypeId(string name, [NotNullWhen(true)] out ModuleItemId? outTypeId)
         {
             var memberType = typeInfo.GetNestedType(name);
             if (memberType == null)
@@ -63,10 +64,10 @@ namespace QuickSC.Runtime.Dotnet
             return true;
         }
 
-        public bool GetMemberVarId(QsName varName, [NotNullWhen(true)] out QsMetaItemId? outVarId)
+        public bool GetMemberVarId(Name varName, [NotNullWhen(true)] out ModuleItemId? outVarId)
         {
             var candidates = new List<MemberInfo>();
-            var memberInfos = typeInfo.GetMember(varName.Name!, MemberTypes.Field, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+            var memberInfos = typeInfo.GetMember(varName.Text!, MemberTypes.Field, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
 
             if (1 < memberInfos.Length || !(memberInfos[0] is FieldInfo fieldInfo))
             {
@@ -74,7 +75,7 @@ namespace QuickSC.Runtime.Dotnet
                 return false;
             }
 
-            outVarId = TypeId.Append(varName.Name!, 0);
+            outVarId = TypeId.Append(varName.Text!, 0);
             return true;
         }
 

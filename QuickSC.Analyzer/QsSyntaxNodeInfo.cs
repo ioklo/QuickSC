@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Gum.CompileTime;
 
 namespace QuickSC
 {
@@ -33,18 +34,18 @@ namespace QuickSC
 
     public class QsListExpInfo : QsSyntaxNodeInfo
     {
-        public QsTypeValue ElemTypeValue { get; }
-        public QsListExpInfo(QsTypeValue elemTypeValue) { ElemTypeValue = elemTypeValue; }
+        public TypeValue ElemTypeValue { get; }
+        public QsListExpInfo(TypeValue elemTypeValue) { ElemTypeValue = elemTypeValue; }
     }
 
     public class QsMemberExpInfo : QsSyntaxNodeInfo
     {
         public class Instance : QsMemberExpInfo
         {
-            public QsTypeValue ObjectTypeValue { get; }
-            public QsName VarName { get; }
+            public TypeValue ObjectTypeValue { get; }
+            public Name VarName { get; }
 
-            public Instance(QsTypeValue objectTypeValue, QsName varName)
+            public Instance(TypeValue objectTypeValue, Name varName)
             {
                 ObjectTypeValue = objectTypeValue;
                 VarName = varName;
@@ -54,10 +55,10 @@ namespace QuickSC
         public class Static : QsMemberExpInfo
         {
             public bool bEvaluateObject => ObjectTypeValue != null;
-            public QsTypeValue? ObjectTypeValue { get; }
-            public QsVarValue VarValue { get; }
+            public TypeValue? ObjectTypeValue { get; }
+            public VarValue VarValue { get; }
 
-            public Static(QsTypeValue? objectTypeValue, QsVarValue varValue)
+            public Static(TypeValue? objectTypeValue, VarValue varValue)
             {
                 ObjectTypeValue = objectTypeValue;
                 VarValue = varValue;
@@ -67,10 +68,10 @@ namespace QuickSC
         // E.One
         public class EnumElem : QsMemberExpInfo
         {
-            public QsTypeValue.Normal EnumTypeValue { get; }
+            public TypeValue.Normal EnumTypeValue { get; }
             public string Name { get; }
 
-            public EnumElem(QsTypeValue.Normal enumTypeValue, string name)
+            public EnumElem(TypeValue.Normal enumTypeValue, string name)
             {
                 EnumTypeValue = enumTypeValue;
                 Name = name;
@@ -80,26 +81,26 @@ namespace QuickSC
         // e.i
         public class EnumElemField : QsMemberExpInfo
         {
-            public QsTypeValue.Normal ObjectTypeValue;
+            public TypeValue.Normal ObjectTypeValue;
             public string Name { get; }
 
-            public EnumElemField(QsTypeValue.Normal objTypeValue, string name)
+            public EnumElemField(TypeValue.Normal objTypeValue, string name)
             {
                 ObjectTypeValue = objTypeValue;
                 Name = name;
             }
         }
 
-        public static QsMemberExpInfo MakeInstance(QsTypeValue objectTypeValue, QsName varName) 
+        public static QsMemberExpInfo MakeInstance(TypeValue objectTypeValue, Name varName) 
             => new Instance(objectTypeValue, varName);
 
-        public static QsMemberExpInfo MakeStatic(QsTypeValue? objectTypeValue, QsVarValue varValue)
+        public static QsMemberExpInfo MakeStatic(TypeValue? objectTypeValue, VarValue varValue)
             => new Static(objectTypeValue, varValue);
 
-        public static QsMemberExpInfo MakeEnumElem(QsTypeValue.Normal enumTypeValue, string elemName)
+        public static QsMemberExpInfo MakeEnumElem(TypeValue.Normal enumTypeValue, string elemName)
             => new EnumElem(enumTypeValue, elemName);
 
-        public static QsMemberExpInfo MakeEnumElemField(QsTypeValue.Normal objTypeValue, string name)
+        public static QsMemberExpInfo MakeEnumElemField(TypeValue.Normal objTypeValue, string name)
             => new EnumElemField(objTypeValue, name);
     }
 
@@ -127,18 +128,18 @@ namespace QuickSC
         
         public class CallSetter : QsBinaryOpExpAssignInfo
         {
-            public QsTypeValue? ObjectTypeValue { get; }
+            public TypeValue? ObjectTypeValue { get; }
             public Exp? Object { get;}            
-            public QsFuncValue Setter { get;}
-            public ImmutableArray<(Exp Exp, QsTypeValue TypeValue)> Arguments { get; }
-            public QsTypeValue ValueTypeValue { get; }
+            public FuncValue Setter { get;}
+            public ImmutableArray<(Exp Exp, TypeValue TypeValue)> Arguments { get; }
+            public TypeValue ValueTypeValue { get; }
 
             public CallSetter(
-                QsTypeValue? objTypeValue,
+                TypeValue? objTypeValue,
                 Exp? obj,
-                QsFuncValue setter,
-                IEnumerable<(Exp Exp, QsTypeValue TypeValue)> arguments,
-                QsTypeValue valueTypeValue)
+                FuncValue setter,
+                IEnumerable<(Exp Exp, TypeValue TypeValue)> arguments,
+                TypeValue valueTypeValue)
             {
                 ObjectTypeValue = objTypeValue;
                 Object = obj;                
@@ -152,11 +153,11 @@ namespace QuickSC
             => new Direct(storageInfo);
 
         public static CallSetter MakeCallSetter(
-            QsTypeValue? objTypeValue,
+            TypeValue? objTypeValue,
             Exp? obj,
-            QsFuncValue setter,
-            IEnumerable<(Exp Exp, QsTypeValue TypeValue)> arguments,
-            QsTypeValue valueTypeValue)
+            FuncValue setter,
+            IEnumerable<(Exp Exp, TypeValue TypeValue)> arguments,
+            TypeValue valueTypeValue)
             => new CallSetter(objTypeValue, obj, setter, arguments, valueTypeValue);
     }
 
@@ -165,11 +166,11 @@ namespace QuickSC
         public class Direct : QsUnaryOpExpAssignInfo
         {
             public QsStorageInfo StorageInfo { get; }
-            public QsFuncValue OperatorValue { get; }
+            public FuncValue OperatorValue { get; }
             public bool bReturnPrevValue { get; }
-            public QsTypeValue ValueTypeValue { get; }
+            public TypeValue ValueTypeValue { get; }
 
-            public Direct(QsStorageInfo storageInfo, QsFuncValue operatorValue, bool bReturnPrevValue, QsTypeValue valueTypeValue) 
+            public Direct(QsStorageInfo storageInfo, FuncValue operatorValue, bool bReturnPrevValue, TypeValue valueTypeValue) 
             { 
                 StorageInfo = storageInfo;
                 OperatorValue = operatorValue;
@@ -181,29 +182,29 @@ namespace QuickSC
         public class CallFunc : QsUnaryOpExpAssignInfo
         {
             public Exp? ObjectExp { get; }
-            public QsTypeValue? ObjectTypeValue { get; }
+            public TypeValue? ObjectTypeValue { get; }
 
-            public QsTypeValue ValueTypeValue0 { get; }
-            public QsTypeValue ValueTypeValue1 { get; }
+            public TypeValue ValueTypeValue0 { get; }
+            public TypeValue ValueTypeValue1 { get; }
             public bool bReturnPrevValue { get; }
 
             // Getter/setter Arguments without setter value
-            public ImmutableArray<(Exp Exp, QsTypeValue TypeValue)> Arguments { get; }
+            public ImmutableArray<(Exp Exp, TypeValue TypeValue)> Arguments { get; }
 
-            public QsFuncValue Getter { get; }            
-            public QsFuncValue Setter { get; }
-            public QsFuncValue Operator { get; }
+            public FuncValue Getter { get; }            
+            public FuncValue Setter { get; }
+            public FuncValue Operator { get; }
 
             public CallFunc(
                 Exp? objectExp,
-                QsTypeValue? objectTypeValue,
-                QsTypeValue valueTypeValue0,
-                QsTypeValue valueTypeValue1,
+                TypeValue? objectTypeValue,
+                TypeValue valueTypeValue0,
+                TypeValue valueTypeValue1,
                 bool bReturnPrevValue,
-                IEnumerable<(Exp Exp, QsTypeValue TypeValue)> arguments,
-                QsFuncValue getter,
-                QsFuncValue setter,
-                QsFuncValue op)
+                IEnumerable<(Exp Exp, TypeValue TypeValue)> arguments,
+                FuncValue getter,
+                FuncValue setter,
+                FuncValue op)
             {
                 ObjectExp = objectExp;
                 ObjectTypeValue = objectTypeValue;
@@ -218,19 +219,19 @@ namespace QuickSC
             }
         }
 
-        public static Direct MakeDirect(QsStorageInfo storageInfo, QsFuncValue operatorValue, bool bReturnPrevValue, QsTypeValue valueTypeValue)
+        public static Direct MakeDirect(QsStorageInfo storageInfo, FuncValue operatorValue, bool bReturnPrevValue, TypeValue valueTypeValue)
             => new Direct(storageInfo, operatorValue, bReturnPrevValue, valueTypeValue);
 
         public static CallFunc MakeCallFunc(
             Exp? objectExp,
-            QsTypeValue? objectTypeValue,
-            QsTypeValue valueTypeValue0,
-            QsTypeValue valueTypeValue1,
+            TypeValue? objectTypeValue,
+            TypeValue valueTypeValue0,
+            TypeValue valueTypeValue1,
             bool bReturnPrevValue,
-            IEnumerable<(Exp Exp, QsTypeValue TypeValue)> arguments,
-            QsFuncValue getter,
-            QsFuncValue setter,
-            QsFuncValue op)
+            IEnumerable<(Exp Exp, TypeValue TypeValue)> arguments,
+            FuncValue getter,
+            FuncValue setter,
+            FuncValue op)
             => new CallFunc(objectExp, objectTypeValue, valueTypeValue0, valueTypeValue1, bReturnPrevValue, arguments, getter, setter, op);
     }
 
@@ -238,10 +239,10 @@ namespace QuickSC
     {
         public class Normal : QsCallExpInfo
         {
-            public QsFuncValue? FuncValue { get; }
-            public ImmutableArray<QsTypeValue> ArgTypeValues { get; }
+            public FuncValue? FuncValue { get; }
+            public ImmutableArray<TypeValue> ArgTypeValues { get; }
 
-            public Normal(QsFuncValue? funcValue, IEnumerable<QsTypeValue> argTypeValues)
+            public Normal(FuncValue? funcValue, IEnumerable<TypeValue> argTypeValues)
             {
                 FuncValue = funcValue;
                 ArgTypeValues = argTypeValues.ToImmutableArray();
@@ -250,32 +251,32 @@ namespace QuickSC
 
         public class EnumValue : QsCallExpInfo
         {
-            public  QsEnumElemInfo ElemInfo { get; }
-            public ImmutableArray<QsTypeValue> ArgTypeValues { get; }
+            public  EnumElemInfo ElemInfo { get; }
+            public ImmutableArray<TypeValue> ArgTypeValues { get; }
 
-            public EnumValue(QsEnumElemInfo elemInfo, IEnumerable<QsTypeValue> argTypeValues)
+            public EnumValue(EnumElemInfo elemInfo, IEnumerable<TypeValue> argTypeValues)
             {
                 ElemInfo = elemInfo;
                 ArgTypeValues = argTypeValues.ToImmutableArray();
             }
         }
 
-        public static Normal MakeNormal(QsFuncValue? funcValue, ImmutableArray<QsTypeValue> argTypeValues) => new Normal(funcValue, argTypeValues);
-        public static EnumValue MakeEnumValue(QsEnumElemInfo elemInfo, IEnumerable<QsTypeValue> argTypeValues) => new EnumValue(elemInfo, argTypeValues);
+        public static Normal MakeNormal(FuncValue? funcValue, ImmutableArray<TypeValue> argTypeValues) => new Normal(funcValue, argTypeValues);
+        public static EnumValue MakeEnumValue(EnumElemInfo elemInfo, IEnumerable<TypeValue> argTypeValues) => new EnumValue(elemInfo, argTypeValues);
     }
 
     public class QsMemberCallExpInfo : QsSyntaxNodeInfo
     {
-        public QsTypeValue? ObjectTypeValue { get; }
-        public ImmutableArray<QsTypeValue> ArgTypeValues { get; set; }
+        public TypeValue? ObjectTypeValue { get; }
+        public ImmutableArray<TypeValue> ArgTypeValues { get; set; }
 
         // C.F(), x.F() // F is static
         public class StaticFuncCall : QsMemberCallExpInfo
         {
             public bool bEvaluateObject { get => ObjectTypeValue != null; }
-            public QsFuncValue FuncValue { get; }
+            public FuncValue FuncValue { get; }
 
-            public StaticFuncCall(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsFuncValue funcValue)
+            public StaticFuncCall(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues, FuncValue funcValue)
                 : base(objectTypeValue, argTypeValues)
             {
                 FuncValue = funcValue;
@@ -285,8 +286,8 @@ namespace QuickSC
         // x.F()
         public class InstanceFuncCall : QsMemberCallExpInfo
         {
-            public QsFuncValue FuncValue { get; }
-            public InstanceFuncCall(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsFuncValue funcValue)
+            public FuncValue FuncValue { get; }
+            public InstanceFuncCall(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues, FuncValue funcValue)
                 : base(objectTypeValue, argTypeValues)
             {
                 FuncValue = funcValue;
@@ -296,8 +297,8 @@ namespace QuickSC
         // x.f() C.f()
         public class InstanceLambdaCall : QsMemberCallExpInfo
         {
-            public QsName VarName { get; }
-            public InstanceLambdaCall(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsName varName)
+            public Name VarName { get; }
+            public InstanceLambdaCall(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues, Name varName)
                 : base(objectTypeValue, argTypeValues)
             {
                 VarName = varName;
@@ -307,8 +308,8 @@ namespace QuickSC
         public class StaticLambdaCall : QsMemberCallExpInfo
         {
             public bool bEvaluateObject { get => ObjectTypeValue != null; }
-            public QsVarValue VarValue { get; }
-            public StaticLambdaCall(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsVarValue varValue)
+            public VarValue VarValue { get; }
+            public StaticLambdaCall(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues, VarValue varValue)
                 : base(objectTypeValue, argTypeValues)
             {
                 VarValue = varValue;
@@ -317,8 +318,8 @@ namespace QuickSC
 
         public class EnumValue : QsMemberCallExpInfo
         {
-            public QsEnumElemInfo ElemInfo { get; }
-            public EnumValue(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsEnumElemInfo elemInfo)
+            public EnumElemInfo ElemInfo { get; }
+            public EnumValue(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues, EnumElemInfo elemInfo)
                 : base(objectTypeValue, argTypeValues)
             {
                 ElemInfo = elemInfo;
@@ -326,23 +327,23 @@ namespace QuickSC
         }
 
         // 네개 씩이나 나눠야 하다니
-        public static QsMemberCallExpInfo MakeStaticFunc(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsFuncValue funcValue)
+        public static QsMemberCallExpInfo MakeStaticFunc(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues, FuncValue funcValue)
             => new StaticFuncCall(objectTypeValue, argTypeValues, funcValue);
 
-        public static QsMemberCallExpInfo MakeInstanceFunc(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsFuncValue funcValue)
+        public static QsMemberCallExpInfo MakeInstanceFunc(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues, FuncValue funcValue)
             => new InstanceFuncCall(objectTypeValue, argTypeValues, funcValue);
 
-        public static QsMemberCallExpInfo MakeStaticLambda(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsVarValue varValue)
+        public static QsMemberCallExpInfo MakeStaticLambda(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues, VarValue varValue)
             => new StaticLambdaCall(objectTypeValue, argTypeValues, varValue);
 
-        public static QsMemberCallExpInfo MakeInstanceLambda(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsName varName)
+        public static QsMemberCallExpInfo MakeInstanceLambda(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues, Name varName)
             => new InstanceLambdaCall(objectTypeValue, argTypeValues, varName);
 
-        public static QsMemberCallExpInfo MakeEnumValue(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues, QsEnumElemInfo elemInfo)
+        public static QsMemberCallExpInfo MakeEnumValue(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues, EnumElemInfo elemInfo)
             => new EnumValue(objectTypeValue, argTypeValues, elemInfo);
 
         // 왜 private 인데 base()가 먹는지;
-        private QsMemberCallExpInfo(QsTypeValue? objectTypeValue, ImmutableArray<QsTypeValue> argTypeValues)
+        private QsMemberCallExpInfo(TypeValue? objectTypeValue, ImmutableArray<TypeValue> argTypeValues)
         {
             ObjectTypeValue = objectTypeValue;
             ArgTypeValues = argTypeValues;
@@ -351,8 +352,8 @@ namespace QuickSC
 
     public class QsExpStmtInfo : QsSyntaxNodeInfo
     {
-        public QsTypeValue ExpTypeValue { get; }
-        public QsExpStmtInfo(QsTypeValue expTypeValue)
+        public TypeValue ExpTypeValue { get; }
+        public QsExpStmtInfo(TypeValue expTypeValue)
         {
             ExpTypeValue = expTypeValue;
         }
@@ -362,10 +363,10 @@ namespace QuickSC
     {
         public class Element
         {
-            public QsTypeValue TypeValue { get; }
+            public TypeValue TypeValue { get; }
             public QsStorageInfo StorageInfo { get; }
             
-            public Element(QsTypeValue typeValue, QsStorageInfo storageInfo)
+            public Element(TypeValue typeValue, QsStorageInfo storageInfo)
             {
                 TypeValue = typeValue;
                 StorageInfo = storageInfo;
@@ -384,10 +385,10 @@ namespace QuickSC
     {
         public class TestEnum : QsIfStmtInfo
         {
-            public QsTypeValue TestTargetTypeValue { get; }
+            public TypeValue TestTargetTypeValue { get; }
             public string ElemName { get; }
 
-            public TestEnum(QsTypeValue testTargetTypeValue, string elemName)
+            public TestEnum(TypeValue testTargetTypeValue, string elemName)
             {
                 TestTargetTypeValue = testTargetTypeValue;
                 ElemName = elemName;
@@ -396,18 +397,18 @@ namespace QuickSC
 
         public class TestClass : QsIfStmtInfo
         {
-            public QsTypeValue TestTargetTypeValue { get; }
-            public QsTypeValue TestTypeValue { get; }
+            public TypeValue TestTargetTypeValue { get; }
+            public TypeValue TestTypeValue { get; }
 
-            public TestClass(QsTypeValue testTargetTypeValue, QsTypeValue testTypeValue)
+            public TestClass(TypeValue testTargetTypeValue, TypeValue testTypeValue)
             {
                 TestTargetTypeValue = testTargetTypeValue;
                 TestTypeValue = testTypeValue;
             }
         }
 
-        public static TestEnum MakeTestEnum(QsTypeValue testTargetTypeValue, string elemName) => new TestEnum(testTargetTypeValue, elemName);
-        public static TestClass MakeTestClass(QsTypeValue testTargetTypeValue, QsTypeValue testTypeValue) => new TestClass(testTargetTypeValue, testTypeValue);
+        public static TestEnum MakeTestEnum(TypeValue testTargetTypeValue, string elemName) => new TestEnum(testTargetTypeValue, elemName);
+        public static TestClass MakeTestClass(TypeValue testTargetTypeValue, TypeValue testTypeValue) => new TestClass(testTargetTypeValue, testTypeValue);
     }
 
     public class QsTaskStmtInfo : QsSyntaxNodeInfo
@@ -437,8 +438,8 @@ namespace QuickSC
 
     public class QsForStmtInfo : QsSyntaxNodeInfo
     {
-        public QsTypeValue? ContTypeValue { get; }
-        public QsForStmtInfo(QsTypeValue? contTypeValue)
+        public TypeValue? ContTypeValue { get; }
+        public QsForStmtInfo(TypeValue? contTypeValue)
         {
             ContTypeValue = contTypeValue;
         }
@@ -446,8 +447,8 @@ namespace QuickSC
 
     public class QsExpForStmtInitializerInfo : QsSyntaxNodeInfo
     {
-        public QsTypeValue ExpTypeValue { get; }
-        public QsExpForStmtInitializerInfo(QsTypeValue expTypeValue)
+        public TypeValue ExpTypeValue { get; }
+        public QsExpForStmtInitializerInfo(TypeValue expTypeValue)
         {
             ExpTypeValue = expTypeValue;
         }
@@ -455,16 +456,16 @@ namespace QuickSC
 
     public class QsForeachStmtInfo : QsSyntaxNodeInfo
     {
-        public QsTypeValue ObjTypeValue { get; }
-        public QsTypeValue EnumeratorTypeValue { get; }
+        public TypeValue ObjTypeValue { get; }
+        public TypeValue EnumeratorTypeValue { get; }
 
-        public QsTypeValue ElemTypeValue { get; }
+        public TypeValue ElemTypeValue { get; }
         public int ElemLocalIndex { get; }
-        public QsFuncValue GetEnumeratorValue { get; }
-        public QsFuncValue MoveNextValue { get; }
-        public QsFuncValue GetCurrentValue { get; }        
+        public FuncValue GetEnumeratorValue { get; }
+        public FuncValue MoveNextValue { get; }
+        public FuncValue GetCurrentValue { get; }        
 
-        public QsForeachStmtInfo(QsTypeValue objTypeValue, QsTypeValue enumeratorTypeValue, QsTypeValue elemTypeValue, int elemLocalIndex, QsFuncValue getEnumeratorValue, QsFuncValue moveNextValue, QsFuncValue getCurrentValue)
+        public QsForeachStmtInfo(TypeValue objTypeValue, TypeValue enumeratorTypeValue, TypeValue elemTypeValue, int elemLocalIndex, FuncValue getEnumeratorValue, FuncValue moveNextValue, FuncValue getCurrentValue)
         {
             ObjTypeValue = objTypeValue;
             EnumeratorTypeValue = enumeratorTypeValue;
@@ -488,11 +489,11 @@ namespace QuickSC
 
     public class QsIndexerExpInfo : QsSyntaxNodeInfo
     {
-        public QsFuncValue FuncValue { get; }
-        public QsTypeValue ObjectTypeValue { get; }
-        public QsTypeValue IndexTypeValue { get; }
+        public FuncValue FuncValue { get; }
+        public TypeValue ObjectTypeValue { get; }
+        public TypeValue IndexTypeValue { get; }
 
-        public QsIndexerExpInfo(QsFuncValue funcValue, QsTypeValue objectTypeValue, QsTypeValue indexTypeValue)
+        public QsIndexerExpInfo(FuncValue funcValue, TypeValue objectTypeValue, TypeValue indexTypeValue)
         {
             FuncValue = funcValue;
             ObjectTypeValue = objectTypeValue;
@@ -502,8 +503,8 @@ namespace QuickSC
 
     public class QsExpStringExpElementInfo : QsSyntaxNodeInfo
     {
-        public QsTypeValue ExpTypeValue { get; }
-        public QsExpStringExpElementInfo(QsTypeValue expTypeValue) 
+        public TypeValue ExpTypeValue { get; }
+        public QsExpStringExpElementInfo(TypeValue expTypeValue) 
         { 
             ExpTypeValue = expTypeValue; 
         }
