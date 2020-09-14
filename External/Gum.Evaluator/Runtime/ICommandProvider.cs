@@ -4,9 +4,9 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QuickSC
+namespace Gum.Runtime
 {
-    public interface IQsCommandProvider
+    public interface ICommandProvider
     {
         Task ExecuteAsync(string cmdText);
     }

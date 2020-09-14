@@ -9,9 +9,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Gum;
 
-namespace QuickSC
+namespace Gum.Runtime
 {   
-    public class QsEvalContext
+    public class EvalContext
     {
         public IRuntimeModule RuntimeModule { get; }
         public DomainService DomainService { get; }
@@ -20,14 +20,14 @@ namespace QuickSC
         private Value?[] privateGlobalVars;
         private Value?[] localVars;
 
-        private QsEvalFlowControl flowControl;
+        private EvalFlowControl flowControl;
         private ImmutableArray<Task> tasks;
         private Value? thisValue;
         private Value retValue;
 
         private ImmutableDictionary<ISyntaxNode, SyntaxNodeInfo> infosByNode;
 
-        public QsEvalContext(
+        public EvalContext(
             IRuntimeModule runtimeModule, 
             DomainService domainService, 
             TypeValueService typeValueService,
@@ -42,16 +42,16 @@ namespace QuickSC
             
             localVars = new Value?[0];
             privateGlobalVars = new Value?[privateGlobalVarCount];
-            flowControl = QsEvalFlowControl.None;
+            flowControl = EvalFlowControl.None;
             tasks = ImmutableArray<Task>.Empty; ;
             thisValue = null;
             retValue = VoidValue.Instance;
         }
 
-        public QsEvalContext(
-            QsEvalContext other,
+        public EvalContext(
+            EvalContext other,
             Value?[] localVars,
-            QsEvalFlowControl flowControl,
+            EvalFlowControl flowControl,
             ImmutableArray<Task> tasks,
             Value? thisValue,
             Value retValue)
@@ -69,7 +69,7 @@ namespace QuickSC
             this.retValue = retValue;
         }
 
-        public QsEvalContext SetTasks(ImmutableArray<Task> newTasks)
+        public EvalContext SetTasks(ImmutableArray<Task> newTasks)
         {
             tasks = newTasks;
             return this;
@@ -87,7 +87,7 @@ namespace QuickSC
 
         public async ValueTask ExecInNewFuncFrameAsync(
             Value?[] newLocalVars, 
-            QsEvalFlowControl newFlowControl, 
+            EvalFlowControl newFlowControl, 
             ImmutableArray<Task> newTasks, 
             Value? newThisValue, 
             Value newRetValue,
@@ -138,17 +138,17 @@ namespace QuickSC
             localVars[i] = value;
         }
 
-        public bool IsFlowControl(QsEvalFlowControl testValue)
+        public bool IsFlowControl(EvalFlowControl testValue)
         {
             return flowControl == testValue;
         }
 
-        public QsEvalFlowControl GetFlowControl()
+        public EvalFlowControl GetFlowControl()
         {
             return flowControl;
         }
 
-        public void SetFlowControl(QsEvalFlowControl newFlowControl)
+        public void SetFlowControl(EvalFlowControl newFlowControl)
         {
             flowControl = newFlowControl;
         }

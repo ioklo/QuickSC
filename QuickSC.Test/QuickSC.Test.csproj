@@ -27,10 +27,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\External\Gum.Evaluator\Gum.Evaluator.csproj" />
     <ProjectReference Include="..\External\Gum.StaticAnalysis\Gum.StaticAnalysis.csproj" />
-    <ProjectReference Include="..\QuickSC.Core\QuickSC.Core.csproj" />
     <ProjectReference Include="..\QuickSC.RuntimeModule\QuickSC.RuntimeModule.csproj" />
-    <ProjectReference Include="..\QuickSC.Syntax\QuickSC.Syntax.csproj" />
   </ItemGroup>
 
   <ItemGroup>

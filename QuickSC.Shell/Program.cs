@@ -28,7 +28,7 @@ namespace QuickSC.Shell
             }
         }
 
-        class QsRawCommandProvider : IQsCommandProvider
+        class QsRawCommandProvider : ICommandProvider
         {
             public Task ExecuteAsync(string cmdText)
             {
@@ -60,7 +60,7 @@ namespace QuickSC.Shell
         }
             
 
-        class QsCmdCommandProvider : IQsCommandProvider
+        class QsCmdCommandProvider : ICommandProvider
         {   
             public Task ExecuteAsync(string cmdText)
             {
@@ -88,7 +88,7 @@ namespace QuickSC.Shell
         }
 
 
-        class QsDemoCommandProvider : IQsCommandProvider
+        class QsDemoCommandProvider : ICommandProvider
         {
             StringBuilder sb = new StringBuilder();
 
@@ -125,7 +125,7 @@ namespace QuickSC.Shell
             public string GetOutput() => sb.ToString();
         }
 
-        public static IQsCommandProvider? MakeCommandProvider()
+        public static ICommandProvider? MakeCommandProvider()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
@@ -163,7 +163,7 @@ namespace QuickSC.Shell
                 }
 
                 // code
-                var app = new QsDefaultApplication(cmdProvider);                
+                var app = new DefaultApplication(cmdProvider);                
                 var errorCollector = new QsDemoErrorCollector();
 
                 using (var stream = new StreamReader(args[0]))

@@ -4,15 +4,15 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace QuickSC
+namespace Gum.Runtime
 {
-    public class QsEnumTypeInst : TypeInst
+    public class EnumTypeInst : TypeInst
     {
         TypeValue.Normal typeValue;
         string defaultElemName;
         (string Name, TypeInst TypeInst)[] defaultFieldInsts;
 
-        public QsEnumTypeInst(TypeValue.Normal typeValue, string defaultElemName, IEnumerable<(string Name, TypeInst TypeInst)> defaultFieldInsts)
+        public EnumTypeInst(TypeValue.Normal typeValue, string defaultElemName, IEnumerable<(string Name, TypeInst TypeInst)> defaultFieldInsts)
         {
             this.typeValue = typeValue;
             this.defaultElemName = defaultElemName;

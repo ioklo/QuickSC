@@ -9,23 +9,23 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static QuickSC.QsEvaluator;
+using static Gum.Runtime.Evaluator;
 using static Gum.Infra.CollectionExtensions;
 using Gum.CompileTime;
 using Gum;
 
-namespace QuickSC
+namespace Gum.Runtime
 {
-    partial class QsExpEvaluator
+    class ExpEvaluator
     {
-        private QsEvaluator evaluator;
+        private Evaluator evaluator;
 
-        public QsExpEvaluator(QsEvaluator evaluator)
+        public ExpEvaluator(Evaluator evaluator)
         {
             this.evaluator = evaluator;
         }
         
-        public async ValueTask<Value> GetValueAsync(StorageInfo storageInfo, QsEvalContext context)
+        public async ValueTask<Value> GetValueAsync(StorageInfo storageInfo, EvalContext context)
         {
             switch(storageInfo)
             {
@@ -70,7 +70,7 @@ namespace QuickSC
             };
         }
         
-        async ValueTask EvalIdExpAsync(IdentifierExp idExp, Value result, QsEvalContext context)
+        async ValueTask EvalIdExpAsync(IdentifierExp idExp, Value result, EvalContext context)
         {
             var info = context.GetNodeInfo<IdentifierExpInfo>(idExp);
 
@@ -79,17 +79,17 @@ namespace QuickSC
             result.SetValue(value);
         }
 
-        void EvalBoolLiteralExp(BoolLiteralExp boolLiteralExp, Value result, QsEvalContext context)
+        void EvalBoolLiteralExp(BoolLiteralExp boolLiteralExp, Value result, EvalContext context)
         {
             context.RuntimeModule.SetBool(result, boolLiteralExp.Value);
         }
 
-        void EvalIntLiteralExp(IntLiteralExp intLiteralExp, Value result, QsEvalContext context)
+        void EvalIntLiteralExp(IntLiteralExp intLiteralExp, Value result, EvalContext context)
         {
             context.RuntimeModule.SetInt(result, intLiteralExp.Value);
         }
 
-        internal async ValueTask EvalStringExpAsync(StringExp stringExp, Value result, QsEvalContext context)
+        internal async ValueTask EvalStringExpAsync(StringExp stringExp, Value result, EvalContext context)
         {
             // stringExp는 element들의 concatenation
             var sb = new StringBuilder();
@@ -120,7 +120,7 @@ namespace QuickSC
             context.RuntimeModule.SetString(context.DomainService, result, sb.ToString());
         }        
 
-        async ValueTask EvalUnaryOpExpAssignAsync(UnaryOpExp exp, Value result, QsEvalContext context)
+        async ValueTask EvalUnaryOpExpAssignAsync(UnaryOpExp exp, Value result, EvalContext context)
         {
             async ValueTask EvalDirectAsync(UnaryOpExpAssignInfo.Direct directInfo)
             {
@@ -227,7 +227,7 @@ namespace QuickSC
                 throw new InvalidOperationException();
         }
 
-        async ValueTask EvalUnaryOpExpAsync(UnaryOpExp exp, Value result, QsEvalContext context)
+        async ValueTask EvalUnaryOpExpAsync(UnaryOpExp exp, Value result, EvalContext context)
         {
             switch (exp.Kind)
             {
@@ -262,7 +262,7 @@ namespace QuickSC
             throw new NotImplementedException();
         }
 
-        private ValueTask EvalBinaryAssignExpAsync(BinaryOpExp exp, Value result, QsEvalContext context)
+        private ValueTask EvalBinaryAssignExpAsync(BinaryOpExp exp, Value result, EvalContext context)
         {
             // 내부함수는 꼭 필요하지 않은 이상 한 단계 아래로 만들지 않기로
 
@@ -320,7 +320,7 @@ namespace QuickSC
                 throw new InvalidOperationException();
         }
 
-        async ValueTask EvalBinaryOpExpAsync(BinaryOpExp exp, Value result, QsEvalContext context)
+        async ValueTask EvalBinaryOpExpAsync(BinaryOpExp exp, Value result, EvalContext context)
         {
             switch (exp.Kind)
             {
@@ -669,7 +669,7 @@ namespace QuickSC
             throw new NotImplementedException();
         }
 
-        async ValueTask EvalCallExpAsync(CallExp exp, Value result, QsEvalContext context)
+        async ValueTask EvalCallExpAsync(CallExp exp, Value result, EvalContext context)
         {
             var info = context.GetNodeInfo<CallExpInfo>(exp);
 
@@ -699,7 +699,7 @@ namespace QuickSC
                     // 2. globalFunc (localFunc는 없으므로 패스), or 
 
                     // var typeInstArgs = MakeTypeInstArgs(funcValue, context.TypeEnv);
-                    // TODO: 일단 QsTypeInst를 Empty로 둔다 .. List때문에 문제지만 List는 내부에서 TypeInst를 안쓴다
+                    // TODO: 일단 TypeInst를 Empty로 둔다 .. List때문에 문제지만 List는 내부에서 TypeInst를 안쓴다
                     funcInst = context.DomainService.GetFuncInst(normalInfo.FuncValue);
                 }
                 else
@@ -726,13 +726,13 @@ namespace QuickSC
             }
         }
         
-        void EvalLambdaExp(LambdaExp exp, Value result, QsEvalContext context)
+        void EvalLambdaExp(LambdaExp exp, Value result, EvalContext context)
         {
             var info = context.GetNodeInfo<LambdaExpInfo>(exp);
 
             var captures = evaluator.MakeCaptures(info.CaptureInfo.Captures, context);
 
-            ((FuncInstValue)result).SetFuncInst(new QsScriptFuncInst(
+            ((FuncInstValue)result).SetFuncInst(new ScriptFuncInst(
                 null,
                 false,
                 info.CaptureInfo.bCaptureThis ? context.GetThisValue() : null,
@@ -742,7 +742,7 @@ namespace QuickSC
         }
 
         // a[x] => a.Func(x)
-        async ValueTask EvalIndexerExpAsync(IndexerExp exp, Value result, QsEvalContext context)
+        async ValueTask EvalIndexerExpAsync(IndexerExp exp, Value result, EvalContext context)
         {
             var info = context.GetNodeInfo<IndexerExpInfo>(exp);
             var thisValue = evaluator.GetDefaultValue(info.ObjectTypeValue, context);
@@ -756,7 +756,7 @@ namespace QuickSC
             await evaluator.EvaluateFuncInstAsync(thisValue, funcInst, ImmutableArray.Create(indexValue), result, context);
         }
 
-        async ValueTask EvalMemberCallExpAsync(MemberCallExp exp, Value result, QsEvalContext context)
+        async ValueTask EvalMemberCallExpAsync(MemberCallExp exp, Value result, EvalContext context)
         {
             var info = context.GetNodeInfo<MemberCallExpInfo>(exp);
 
@@ -843,7 +843,7 @@ namespace QuickSC
             }
         }
 
-        async ValueTask EvalMemberExpAsync(MemberExp exp, Value result, QsEvalContext context)
+        async ValueTask EvalMemberExpAsync(MemberExp exp, Value result, EvalContext context)
         {
             // TODO: namespace가 있으면 Global(N.x의 경우) 이 될수 있다.  
             // 지금은 Instance(obj.id) / Static(Type.id)으로 나눠진다
@@ -884,7 +884,7 @@ namespace QuickSC
             }
         }
 
-        async ValueTask EvalListExpAsync(ListExp listExp, Value result, QsEvalContext context)
+        async ValueTask EvalListExpAsync(ListExp listExp, Value result, EvalContext context)
         {
             var info = context.GetNodeInfo<ListExpInfo>(listExp);
 
@@ -901,7 +901,7 @@ namespace QuickSC
             context.RuntimeModule.SetList(context.DomainService, result, info.ElemTypeValue, elems);
         }
 
-        internal async ValueTask EvalAsync(Exp exp, Value result, QsEvalContext context)
+        internal async ValueTask EvalAsync(Exp exp, Value result, EvalContext context)
         {
             switch(exp)
             {

@@ -5,9 +5,9 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QuickSC
+namespace Gum.Runtime
 {
-    public class QsCmdCommandProvider : IQsCommandProvider
+    public class CmdCommandProvider : ICommandProvider
     {
         public Task ExecuteAsync(string cmdText)
         {

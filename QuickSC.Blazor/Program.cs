@@ -49,7 +49,7 @@ namespace QuickSC.Blazor
             }
         }
 
-        class QsDemoCommandProvider : IQsCommandProvider
+        class QsDemoCommandProvider : ICommandProvider
         {
             public QsDemoCommandProvider()
             {   
@@ -90,7 +90,7 @@ namespace QuickSC.Blazor
             try
             {
                 var demoCmdProvider = new QsDemoCommandProvider();
-                var app = new QsDefaultApplication(demoCmdProvider);                
+                var app = new DefaultApplication(demoCmdProvider);                
                 var runtimeModule = new QsRuntimeModule("/", "/");
                 var errorCollector = new QsDemoErrorCollector();
 

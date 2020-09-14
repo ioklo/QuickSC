@@ -11,14 +11,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QuickSC
+namespace Gum.Runtime
 {
-    public class QsDefaultApplication
+    public class DefaultApplication
     {
         Parser parser;
-        QsEvaluator evaluator;
+        Evaluator evaluator;
 
-        public QsDefaultApplication(IQsCommandProvider commandProvider)
+        public DefaultApplication(ICommandProvider commandProvider)
         {
             Lexer lexer = new Lexer();
             parser = new Parser(lexer);
@@ -30,7 +30,7 @@ namespace QuickSC
             var capturer = new Capturer();
             var analyzer = new Analyzer(typeAndFuncBuilder, capturer);
             
-            evaluator = new QsEvaluator(analyzer, commandProvider);        
+            evaluator = new Evaluator(analyzer, commandProvider);        
         }
         
         public async ValueTask<int?> RunAsync(
@@ -42,7 +42,7 @@ namespace QuickSC
             foreach(var module in modulesExceptRuntimeModule)
                 moduleInfos.Add(module);
 
-            // 파싱 QsParserContext -> QsScript             
+            // 파싱 ParserContext -> Script             
             var script = await parser.ParseScriptAsync(input);
             if (script == null)
                 return null;

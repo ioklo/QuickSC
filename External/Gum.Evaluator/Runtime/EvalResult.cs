@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace QuickSC
+namespace Gum.Runtime
 {
-    public struct QsEvalResult<TValue>
+    public struct EvalResult<TValue>
     {
-        public static QsEvalResult<TValue> Invalid = new QsEvalResult<TValue>();
+        public static EvalResult<TValue> Invalid = new EvalResult<TValue>();
 
         public bool HasValue { get; }
         public TValue Value { get; }
-        public QsEvalContext Context { get; }
-        public QsEvalResult(TValue value, QsEvalContext context)
+        public EvalContext Context { get; }
+        public EvalResult(TValue value, EvalContext context)
         {
             HasValue = true;
             Value = value;

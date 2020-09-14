@@ -8,17 +8,17 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Gum;
 
-namespace QuickSC
+namespace Gum.Runtime
 {
-    internal class QsScriptModule : IModule
+    internal class ScriptModule : IModule
     {
         private ScriptModuleInfo moduleInfo;
         private ImmutableDictionary<ModuleItemId, ScriptTemplate> templatesById;
         private TypeValueApplier typeValueApplier;
 
-        public QsScriptModule(
+        public ScriptModule(
             ScriptModuleInfo moduleInfo, 
-            Func<QsScriptModule, TypeValueApplier> typeValueApplierConstructor, 
+            Func<ScriptModule, TypeValueApplier> typeValueApplierConstructor, 
             IEnumerable<ScriptTemplate> templates)
         {
             this.moduleInfo = moduleInfo;
@@ -52,7 +52,7 @@ namespace QuickSC
                 if (funcValue.TypeArgList.GetTotalLength() != 0)
                     throw new NotImplementedException();
 
-                return new QsScriptFuncInst(
+                return new ScriptFuncInst(
                     funcTempl.SeqElemTypeValue, 
                     funcTempl.bThisCall, 
                     null, ImmutableArray<Value>.Empty, funcTempl.LocalVarCount, funcTempl.Body);
@@ -74,7 +74,7 @@ namespace QuickSC
                     return (field.Name, domainService.GetTypeInst(fieldType));
                 });
 
-                return new QsEnumTypeInst(typeValue, enumTempl.DefaultElemName, defaultFieldInsts);
+                return new EnumTypeInst(typeValue, enumTempl.DefaultElemName, defaultFieldInsts);
             }
 
             throw new InvalidOperationException();

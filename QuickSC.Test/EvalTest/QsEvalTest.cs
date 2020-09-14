@@ -14,7 +14,7 @@ using Xunit.Abstractions;
 
 namespace QuickSC.EvalTest
 {
-    class QsTestCmdProvider : IQsCommandProvider
+    class QsTestCmdProvider : ICommandProvider
     {
         public bool Error = false;
         public string Output { get => sb.ToString(); }
@@ -57,7 +57,7 @@ namespace QuickSC.EvalTest
         public async Task TestEvaluateScript(QsEvalTestData data)
         {
             var cmdProvider = new QsTestCmdProvider();
-            var app = new QsDefaultApplication(cmdProvider);
+            var app = new DefaultApplication(cmdProvider);
 
             string text;
             using(var reader = new StreamReader(data.Path))

@@ -1,6 +1,6 @@
-﻿namespace QuickSC
+﻿namespace Gum.Runtime
 {
-    public enum QsEvalFlowControl 
+    public enum EvalFlowControl 
     {
         None,
         Break,

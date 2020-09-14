@@ -8,9 +8,9 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text;
 
-namespace QuickSC
+namespace Gum.Runtime
 {
-    class QsScriptFuncInst : FuncInst
+    class ScriptFuncInst : FuncInst
     {
         public TypeValue? SeqElemTypeValue { get; }  // seqCall이 아니라면 null이다
         public override bool bThisCall { get; }        // Caller입장에서 this를 전달할지
@@ -19,7 +19,7 @@ namespace QuickSC
         public int LocalVarCount { get; }
         public Stmt Body { get; }
 
-        public QsScriptFuncInst(TypeValue? seqElemTypeValue, bool bThisCall, Value? capturedThis, ImmutableArray<Value> captures, int localVarCount, Stmt body)
+        public ScriptFuncInst(TypeValue? seqElemTypeValue, bool bThisCall, Value? capturedThis, ImmutableArray<Value> captures, int localVarCount, Stmt body)
         {
             // 둘 중 하나는 false여야 한다
             Debug.Assert(!bThisCall || capturedThis == null);
