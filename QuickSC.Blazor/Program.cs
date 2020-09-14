@@ -91,7 +91,7 @@ namespace QuickSC.Blazor
             {
                 var demoCmdProvider = new QsDemoCommandProvider();
                 var app = new DefaultApplication(demoCmdProvider);                
-                var runtimeModule = new QsRuntimeModule("/", "/");
+                var runtimeModule = new RuntimeModule("/", "/");
                 var errorCollector = new QsDemoErrorCollector();
 
                 var runResult = await app.RunAsync("Demo", input, runtimeModule, ImmutableArray<IModule>.Empty, errorCollector);

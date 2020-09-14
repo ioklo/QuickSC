@@ -42,7 +42,7 @@ namespace Gum.Runtime
             foreach(var module in modulesExceptRuntimeModule)
                 moduleInfos.Add(module);
 
-            // 파싱 ParserContext -> Script             
+            // 파싱 ParserContext -> Script
             var script = await parser.ParseScriptAsync(input);
             if (script == null)
                 return null;

@@ -14,6 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\External\Gum.Evaluator\Gum.Evaluator.csproj" />
-    <ProjectReference Include="..\QuickSC.RuntimeModule\QuickSC.RuntimeModule.csproj" />
+    <ProjectReference Include="..\External\Gum.RuntimeModule\Gum.RuntimeModule.csproj" />
   </ItemGroup>
 </Project>

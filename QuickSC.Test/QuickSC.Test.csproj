@@ -23,19 +23,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Input\**" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\External\Gum.Evaluator\Gum.Evaluator.csproj" />
     <ProjectReference Include="..\External\Gum.StaticAnalysis\Gum.StaticAnalysis.csproj" />
-    <ProjectReference Include="..\QuickSC.RuntimeModule\QuickSC.RuntimeModule.csproj" />
+    <ProjectReference Include="..\External\Gum.RuntimeModule\Gum.RuntimeModule.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Input\Exp\CallExp\" />
-    <Folder Include="LexerTest\" />
-    <Folder Include="ParserTest\" />
+    <Folder Include="UnitTest\QuickSC.Analyzer\" />
+    <Folder Include="UnitTest\QuickSC.Core\" />
+    <Folder Include="UnitTest\QuickSC.Metadata\" />
+    <Folder Include="UnitTest\QuickSC.RuntimeModule\" />
   </ItemGroup>
 
 </Project>

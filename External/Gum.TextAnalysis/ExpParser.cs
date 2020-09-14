@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 
 namespace Gum
 {
-    using QsExpParseResult = QsParseResult<Exp>;
-    using QsStringExpParseResult = QsParseResult<StringExp>;
+    using ExpParseResult = ParseResult<Exp>;
+    using StringExpParseResult = ParseResult<StringExp>;
 
     class ExpParser
     {
@@ -53,14 +53,14 @@ namespace Gum
 
         public delegate BinaryOpKind? AcceptBinaryOpKindFunc(LexResult result, ref ParserContext context);
 
-        async ValueTask<QsExpParseResult> ParseLeftAssocBinaryOpExpAsync(
+        async ValueTask<ExpParseResult> ParseLeftAssocBinaryOpExpAsync(
             ParserContext context,
-            Func<ParserContext, ValueTask<QsExpParseResult>> ParseBaseExpAsync,
+            Func<ParserContext, ValueTask<ExpParseResult>> ParseBaseExpAsync,
             (Token Token, BinaryOpKind OpKind)[] infos)
         {
             var expResult0 = await ParseBaseExpAsync(context);
             if (!expResult0.HasValue)
-                return QsExpParseResult.Invalid;
+                return ExpParseResult.Invalid;
 
             context = expResult0.Context;
             Exp exp = expResult0.Elem;
@@ -84,11 +84,11 @@ namespace Gum
                 }
 
                 if (!opKind.HasValue)
-                    return new QsExpParseResult(exp, context);
+                    return new ExpParseResult(exp, context);
 
                 var expResult = await ParseBaseExpAsync(context);
                 if (!expResult.HasValue)
-                    return QsExpParseResult.Invalid;
+                    return ExpParseResult.Invalid;
 
                 context = expResult.Context;
 
@@ -109,7 +109,7 @@ namespace Gum
         }
 
         #region Single
-        async ValueTask<QsExpParseResult> ParseSingleExpAsync(ParserContext context)
+        async ValueTask<ExpParseResult> ParseSingleExpAsync(ParserContext context)
         {
             var parenExpResult = await ParseParenExpAsync(context);
             if (parenExpResult.HasValue)
@@ -117,25 +117,25 @@ namespace Gum
 
             var boolExpResult = await ParseBoolLiteralExpAsync(context);
             if (boolExpResult.HasValue)
-                return new QsExpParseResult(boolExpResult.Elem, boolExpResult.Context);
+                return new ExpParseResult(boolExpResult.Elem, boolExpResult.Context);
 
             var intExpResult = await ParseIntLiteralExpAsync(context);
             if (intExpResult.HasValue)
-                return new QsExpParseResult(intExpResult.Elem, intExpResult.Context);
+                return new ExpParseResult(intExpResult.Elem, intExpResult.Context);
 
             var stringExpResult = await ParseStringExpAsync(context);
             if (stringExpResult.HasValue)
-                return new QsExpParseResult(stringExpResult.Elem, stringExpResult.Context);
+                return new ExpParseResult(stringExpResult.Elem, stringExpResult.Context);
 
             var listExpResult = await ParseListExpAsync(context);
             if (listExpResult.HasValue)
-                return new QsExpParseResult(listExpResult.Elem, listExpResult.Context);
+                return new ExpParseResult(listExpResult.Elem, listExpResult.Context);
 
             var idExpResult = await ParseIdentifierExpAsync(context);
             if (idExpResult.HasValue)
                 return idExpResult;
 
-            return QsExpParseResult.Invalid;
+            return ExpParseResult.Invalid;
         }
 
         #endregion
@@ -147,37 +147,37 @@ namespace Gum
             (MinusMinusToken.Instance, UnaryOpKind.PostfixDec),
         };
 
-        async ValueTask<QsParseResult<ImmutableArray<Exp>>> ParseCallArgs(ParserContext context)
+        async ValueTask<ParseResult<ImmutableArray<Exp>>> ParseCallArgs(ParserContext context)
         {
             if (!Accept<LParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                return QsParseResult<ImmutableArray<Exp>>.Invalid;
+                return ParseResult<ImmutableArray<Exp>>.Invalid;
             
             var args = ImmutableArray.CreateBuilder<Exp>();
             while (!Accept<RParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
             {
                 if (0 < args.Count)
                     if (!Accept<CommaToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                        return QsParseResult<ImmutableArray<Exp>>.Invalid;
+                        return ParseResult<ImmutableArray<Exp>>.Invalid;
 
                 var argResult = await ParseExpAsync(context);
                 if (!argResult.HasValue)
-                    return QsParseResult<ImmutableArray<Exp>>.Invalid;
+                    return ParseResult<ImmutableArray<Exp>>.Invalid;
 
                 context = argResult.Context;
                 args.Add(argResult.Elem);
             }
 
-            return new QsParseResult<ImmutableArray<Exp>>(args.ToImmutable(), context);
+            return new ParseResult<ImmutableArray<Exp>>(args.ToImmutable(), context);
         }
 
         // TODO: 현재 Primary중 Postfix Unary만 구현했다.
-        internal async ValueTask<QsExpParseResult> ParsePrimaryExpAsync(ParserContext context)
+        internal async ValueTask<ExpParseResult> ParsePrimaryExpAsync(ParserContext context)
         {
-            ValueTask<QsExpParseResult> ParseBaseExpAsync(ParserContext context) => ParseSingleExpAsync(context);
+            ValueTask<ExpParseResult> ParseBaseExpAsync(ParserContext context) => ParseSingleExpAsync(context);
 
             var expResult = await ParseBaseExpAsync(context);
             if (!expResult.HasValue)
-                return QsExpParseResult.Invalid;
+                return ExpParseResult.Invalid;
 
             context = expResult.Context;
             Exp exp = expResult.Elem;
@@ -210,11 +210,11 @@ namespace Gum
                 if (Accept<LBracketToken>(lexResult, ref context))
                 {
                     var indexResult = await ParseExpAsync(context);
-                    if (!indexResult.HasValue) return QsExpParseResult.Invalid;
+                    if (!indexResult.HasValue) return ExpParseResult.Invalid;
                     context = indexResult.Context;
 
                     if (!Accept<RBracketToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                        return QsExpParseResult.Invalid;
+                        return ExpParseResult.Invalid;
 
                     exp = new IndexerExp(exp, indexResult.Elem);
                     continue;
@@ -224,7 +224,7 @@ namespace Gum
                 if (Accept<DotToken>(lexResult, ref context))
                 {
                     var idResult = AcceptAndReturn<IdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
-                    if (idResult == null) return QsExpParseResult.Invalid;
+                    if (idResult == null) return ExpParseResult.Invalid;
 
                     var memberCallArgsResult = await ParseCallArgs(context);
                     if (memberCallArgsResult.HasValue)
@@ -252,7 +252,7 @@ namespace Gum
                 break;
             }
 
-            return new QsExpParseResult(exp, context);
+            return new ExpParseResult(exp, context);
         }
         #endregion
 
@@ -265,9 +265,9 @@ namespace Gum
             (MinusMinusToken.Instance, UnaryOpKind.PrefixDec),
         };
 
-        async ValueTask<QsExpParseResult> ParseUnaryExpAsync(ParserContext context)
+        async ValueTask<ExpParseResult> ParseUnaryExpAsync(ParserContext context)
         {
-            ValueTask<QsExpParseResult> ParseBaseExpAsync(ParserContext context) => ParsePrimaryExpAsync(context);
+            ValueTask<ExpParseResult> ParseBaseExpAsync(ParserContext context) => ParsePrimaryExpAsync(context);
 
             UnaryOpKind? opKind = null;
 
@@ -289,15 +289,15 @@ namespace Gum
             {
                 var expResult = await ParseUnaryExpAsync(context);
                 if (!expResult.HasValue)
-                    return QsExpParseResult.Invalid;
+                    return ExpParseResult.Invalid;
 
                 context = expResult.Context;
 
                 var handledExp = HandleUnaryMinusWithIntLiteral(opKind.Value, expResult.Elem);
                 if (handledExp != null)                
-                    return new QsExpParseResult(handledExp, context);
+                    return new ExpParseResult(handledExp, context);
 
-                return new QsExpParseResult(new UnaryOpExp(opKind.Value, expResult.Elem), context);
+                return new ExpParseResult(new UnaryOpExp(opKind.Value, expResult.Elem), context);
             }
             else
             {
@@ -314,7 +314,7 @@ namespace Gum
             (PercentToken.Instance, BinaryOpKind.Modulo),
         };
 
-        ValueTask<QsExpParseResult> ParseMultiplicativeExpAsync(ParserContext context)
+        ValueTask<ExpParseResult> ParseMultiplicativeExpAsync(ParserContext context)
         {
             return ParseLeftAssocBinaryOpExpAsync(context, ParseUnaryExpAsync, multiplicativeInfos);
         }
@@ -328,7 +328,7 @@ namespace Gum
             (MinusToken.Instance, BinaryOpKind.Subtract),
         };
 
-        ValueTask<QsExpParseResult> ParseAdditiveExpAsync(ParserContext context)
+        ValueTask<ExpParseResult> ParseAdditiveExpAsync(ParserContext context)
         {
             return ParseLeftAssocBinaryOpExpAsync(context, ParseMultiplicativeExpAsync, additiveInfos);
         }
@@ -343,7 +343,7 @@ namespace Gum
             (GreaterThanToken.Instance, BinaryOpKind.GreaterThan),
         };
 
-        ValueTask<QsExpParseResult> ParseTestExpAsync(ParserContext context)
+        ValueTask<ExpParseResult> ParseTestExpAsync(ParserContext context)
         {
             return ParseLeftAssocBinaryOpExpAsync(context, ParseAdditiveExpAsync, testInfos);
         }
@@ -356,7 +356,7 @@ namespace Gum
             (ExclEqualToken.Instance, BinaryOpKind.NotEqual),
         };
 
-        ValueTask<QsExpParseResult> ParseEqualityExpAsync(ParserContext context)
+        ValueTask<ExpParseResult> ParseEqualityExpAsync(ParserContext context)
         {
             return ParseLeftAssocBinaryOpExpAsync(context, ParseTestExpAsync, equalityInfos);
         }
@@ -364,18 +364,18 @@ namespace Gum
         
 
         #region Assignment, Right Assoc
-        async ValueTask<QsExpParseResult> ParseAssignExpAsync(ParserContext context)
+        async ValueTask<ExpParseResult> ParseAssignExpAsync(ParserContext context)
         {
-            ValueTask<QsExpParseResult> ParseBaseExpAsync(ParserContext context) => ParseEqualityExpAsync(context);
+            ValueTask<ExpParseResult> ParseBaseExpAsync(ParserContext context) => ParseEqualityExpAsync(context);
 
             // a => b를 파싱했을 때 a가 리턴되는 경우를 피하려면 순서상 람다가 먼저
             var lambdaResult = await ParseLambdaExpAsync(context);
             if (lambdaResult.HasValue)
-                return new QsExpParseResult(lambdaResult.Elem, lambdaResult.Context);
+                return new ExpParseResult(lambdaResult.Elem, lambdaResult.Context);
 
             var expResult0 = await ParseBaseExpAsync(context);
             if (!expResult0.HasValue)
-                return QsExpParseResult.Invalid;
+                return ExpParseResult.Invalid;
 
             context = expResult0.Context;
 
@@ -384,17 +384,17 @@ namespace Gum
 
             var expResult1 = await ParseAssignExpAsync(context);
             if (!expResult1.HasValue)
-                return QsExpParseResult.Invalid;
+                return ExpParseResult.Invalid;
 
             context = expResult1.Context;
 
-            return new QsExpParseResult(new BinaryOpExp(BinaryOpKind.Assign, expResult0.Elem, expResult1.Elem), context);
+            return new ExpParseResult(new BinaryOpExp(BinaryOpKind.Assign, expResult0.Elem, expResult1.Elem), context);
         }
 
         #endregion
 
         #region LambdaExpression, Right Assoc
-        async ValueTask<QsExpParseResult> ParseLambdaExpAsync(ParserContext context)
+        async ValueTask<ExpParseResult> ParseLambdaExpAsync(ParserContext context)
         {
             var parameters = ImmutableArray.CreateBuilder<LambdaExpParam>();
 
@@ -453,57 +453,57 @@ namespace Gum
                 body = new ReturnStmt(expBodyResult.Elem);
             }
 
-            return new QsExpParseResult(new LambdaExp(parameters.ToImmutable(), body), context);
+            return new ExpParseResult(new LambdaExp(parameters.ToImmutable(), body), context);
 
-            static QsExpParseResult Invalid() => QsExpParseResult.Invalid;
+            static ExpParseResult Invalid() => ExpParseResult.Invalid;
         }
         #endregion
 
-        public ValueTask<QsExpParseResult> ParseExpAsync(ParserContext context)
+        public ValueTask<ExpParseResult> ParseExpAsync(ParserContext context)
         {   
             return ParseAssignExpAsync(context);
         }
         
-        async ValueTask<QsExpParseResult> ParseParenExpAsync(ParserContext context)
+        async ValueTask<ExpParseResult> ParseParenExpAsync(ParserContext context)
         {
             if (!Accept<LParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                return QsExpParseResult.Invalid;
+                return ExpParseResult.Invalid;
             
             var expResult = await ParseExpAsync(context);
             if (!expResult.HasValue)
-                return QsExpParseResult.Invalid;
+                return ExpParseResult.Invalid;
 
             context = expResult.Context;
 
             if (!Accept<RParenToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                return QsExpParseResult.Invalid;
+                return ExpParseResult.Invalid;
 
-            return new QsExpParseResult(expResult.Elem, context);
+            return new ExpParseResult(expResult.Elem, context);
         }
 
-        async ValueTask<QsExpParseResult> ParseBoolLiteralExpAsync(ParserContext context)
+        async ValueTask<ExpParseResult> ParseBoolLiteralExpAsync(ParserContext context)
         {
             var boolResult = AcceptAndReturn<BoolToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
             if (boolResult != null)
-                return new QsExpParseResult(new BoolLiteralExp(boolResult.Value), context);
+                return new ExpParseResult(new BoolLiteralExp(boolResult.Value), context);
 
-            return QsExpParseResult.Invalid;
+            return ExpParseResult.Invalid;
         }
 
-        async ValueTask<QsExpParseResult> ParseIntLiteralExpAsync(ParserContext context)
+        async ValueTask<ExpParseResult> ParseIntLiteralExpAsync(ParserContext context)
         {
             var intResult = AcceptAndReturn<IntToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
             if (intResult != null)
-                return new QsExpParseResult(new IntLiteralExp(intResult.Value), context);
+                return new ExpParseResult(new IntLiteralExp(intResult.Value), context);
 
-            return QsExpParseResult.Invalid;
+            return ExpParseResult.Invalid;
         }
 
         // 스트링 파싱
-        public async ValueTask<QsStringExpParseResult> ParseStringExpAsync(ParserContext context)
+        public async ValueTask<StringExpParseResult> ParseStringExpAsync(ParserContext context)
         {
             if (!Accept<DoubleQuoteToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                return QsStringExpParseResult.Invalid;
+                return StringExpParseResult.Invalid;
 
             var elems = ImmutableArray.CreateBuilder<StringExpElement>();
             while (!Accept<DoubleQuoteToken>(await lexer.LexStringModeAsync(context.LexerContext), ref context))
@@ -527,53 +527,53 @@ namespace Gum
                 {
                     var expResult = await ParseExpAsync(context); // TODO: EndInnerExpToken 일때 빠져나와야 한다는 표시를 해줘야 한다
                     if (!expResult.HasValue)
-                        return QsStringExpParseResult.Invalid;
+                        return StringExpParseResult.Invalid;
 
                     context = expResult.Context;
 
                     if (!Accept<RBraceToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                        return QsStringExpParseResult.Invalid;
+                        return StringExpParseResult.Invalid;
 
                     elems.Add(new ExpStringExpElement(expResult.Elem));
                     continue;
                 }
 
                 // 나머지는 에러
-                return QsStringExpParseResult.Invalid;
+                return StringExpParseResult.Invalid;
             }
 
-            return new QsStringExpParseResult(new StringExp(elems.ToImmutable()), context);
+            return new StringExpParseResult(new StringExp(elems.ToImmutable()), context);
         }
 
-        public async ValueTask<QsExpParseResult> ParseListExpAsync(ParserContext context)
+        public async ValueTask<ExpParseResult> ParseListExpAsync(ParserContext context)
         {
             if (!Accept<LBracketToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                return QsExpParseResult.Invalid;
+                return ExpParseResult.Invalid;
 
             var elems = ImmutableArray.CreateBuilder<Exp>();
             while (!Accept<RBracketToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
             {
                 if (0 < elems.Count)
                     if (!Accept<CommaToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context))
-                        return QsExpParseResult.Invalid;
+                        return ExpParseResult.Invalid;
 
                 var elemResult = await ParseExpAsync(context);
-                if (!elemResult.HasValue) return QsExpParseResult.Invalid;
+                if (!elemResult.HasValue) return ExpParseResult.Invalid;
                 context = elemResult.Context;
 
                 elems.Add(elemResult.Elem);
             }
 
-            return new QsExpParseResult(new ListExp(null, elems.ToImmutable()), context);
+            return new ExpParseResult(new ListExp(null, elems.ToImmutable()), context);
         }
 
-        async ValueTask<QsExpParseResult> ParseIdentifierExpAsync(ParserContext context)
+        async ValueTask<ExpParseResult> ParseIdentifierExpAsync(ParserContext context)
         {
             var idToken = AcceptAndReturn<IdentifierToken>(await lexer.LexNormalModeAsync(context.LexerContext, true), ref context);
             if (idToken != null)
-                return new QsExpParseResult(new IdentifierExp(idToken.Value), context);
+                return new ExpParseResult(new IdentifierExp(idToken.Value), context);
 
-            return QsExpParseResult.Invalid;
+            return ExpParseResult.Invalid;
         }
     }
 }

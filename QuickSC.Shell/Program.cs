@@ -172,7 +172,7 @@ namespace QuickSC.Shell
                     var scriptDir = Path.GetDirectoryName(fullPath);
                     if (scriptDir == null) return;
 
-                    var runtimeModule = new QsRuntimeModule(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), scriptDir);
+                    var runtimeModule = new RuntimeModule(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), scriptDir);
 
                     var input = await stream.ReadToEndAsync();
                     var moduleName = Path.GetFileNameWithoutExtension(fullPath);
