@@ -104,7 +104,6 @@ namespace Gum.Runtime
         {
             Debug.Assert(args.Count == 1);
             Debug.Assert(thisValue != null);
-            Debug.Assert(result == null);
 
             var list = GetObject<ListObject>(thisValue);
             list.Elems.Add(args[0]);

@@ -15,35 +15,35 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "App", "App", "{D3742362-AB1
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QuickSC.Blazor", "QuickSC.Blazor\QuickSC.Blazor.csproj", "{F7B4BA40-6524-46FA-8252-409BBD03882F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.StaticAnalysis", "External\Gum.StaticAnalysis\Gum.StaticAnalysis.csproj", "{B5EED9F4-2DD5-46CE-BD0E-A3713650E99E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.StaticAnalysis", "External\Gum\Src\Gum.StaticAnalysis\Gum.StaticAnalysis.csproj", "{B5EED9F4-2DD5-46CE-BD0E-A3713650E99E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.RuntimeModule", "External\Gum.RuntimeModule\Gum.RuntimeModule.csproj", "{7394899B-FBCC-40AB-B334-A0408C979121}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.RuntimeModule", "External\Gum\Src\Gum.RuntimeModule\Gum.RuntimeModule.csproj", "{7394899B-FBCC-40AB-B334-A0408C979121}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.Syntax", "External\Gum.Syntax\Gum.Syntax.csproj", "{25914EF3-5AAC-405E-AC63-170A9281ED8A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.Syntax", "External\Gum\Src\Gum.Syntax\Gum.Syntax.csproj", "{25914EF3-5AAC-405E-AC63-170A9281ED8A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.TextAnalysis", "External\Gum.TextAnalysis\Gum.TextAnalysis.csproj", "{D26FE959-1E77-4120-8D6D-2EB4E16B054F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.TextAnalysis", "External\Gum\Src\Gum.TextAnalysis\Gum.TextAnalysis.csproj", "{D26FE959-1E77-4120-8D6D-2EB4E16B054F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gum", "Gum", "{024BC1EB-EDA9-4D39-94CB-5E55E70C38B8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.TextAnalysis.Test", "External\Test\Gum.TextAnalysis.Test\Gum.TextAnalysis.Test.csproj", "{D89B0F16-B494-4EFD-8582-6B2A6D5D83E3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.TextAnalysis.Test", "External\Gum\Src\Test\Gum.TextAnalysis.Test\Gum.TextAnalysis.Test.csproj", "{D89B0F16-B494-4EFD-8582-6B2A6D5D83E3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.ModuleInfo", "External\Gum.ModuleInfo\Gum.ModuleInfo.csproj", "{189799FC-8ACF-4A51-8D9A-5F59648183AD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.ModuleInfo", "External\Gum\Src\Gum.ModuleInfo\Gum.ModuleInfo.csproj", "{189799FC-8ACF-4A51-8D9A-5F59648183AD}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.Infra", "External\Gum.Infra\Gum.Infra.csproj", "{764D76EA-F92A-4F09-8589-7AD871770815}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.Infra", "External\Gum\Src\Gum.Infra\Gum.Infra.csproj", "{764D76EA-F92A-4F09-8589-7AD871770815}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.Runtime", "External\Gum.Runtime\Gum.Runtime.csproj", "{16A064CC-7EA7-4B9B-8C14-C1223EC7FCF4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.Runtime", "External\Gum\Src\Gum.Runtime\Gum.Runtime.csproj", "{16A064CC-7EA7-4B9B-8C14-C1223EC7FCF4}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.Evaluator", "External\Gum.Evaluator\Gum.Evaluator.csproj", "{36B9E935-E674-4F89-8CB7-EE367D21FE0E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.Evaluator", "External\Gum\Src\Gum.Evaluator\Gum.Evaluator.csproj", "{36B9E935-E674-4F89-8CB7-EE367D21FE0E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{C794A5C2-BF75-4F46-9E83-D46676B2EA07}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.StaticAnalysis.Test", "External\Test\Gum.StaticAnalysis.Test\Gum.StaticAnalysis.Test.csproj", "{D2F68441-1039-43AA-9DF2-4E9C1D0536B9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.StaticAnalysis.Test", "External\Gum\Src\Test\Gum.StaticAnalysis.Test\Gum.StaticAnalysis.Test.csproj", "{D2F68441-1039-43AA-9DF2-4E9C1D0536B9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.Evaluator.Test", "External\Test\Gum.Evaluator.Test\Gum.Evaluator.Test.csproj", "{34B115C2-A059-4CB9-993C-B628C40D6316}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gum.Evaluator.Test", "External\Gum\Src\Test\Gum.Evaluator.Test\Gum.Evaluator.Test.csproj", "{34B115C2-A059-4CB9-993C-B628C40D6316}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gum.ModuleInfo.Test", "External\Test\Gum.ModuleInfo.Test\Gum.ModuleInfo.Test.csproj", "{AA05AEBE-1CF6-4F54-9C90-EC5F0F0EB0D3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gum.ModuleInfo.Test", "External\Gum\Src\Test\Gum.ModuleInfo.Test\Gum.ModuleInfo.Test.csproj", "{AA05AEBE-1CF6-4F54-9C90-EC5F0F0EB0D3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gum.RuntimeModule.Test", "External\Test\Gum.RuntimeModule.Test\Gum.RuntimeModule.Test.csproj", "{0ADBCE42-A69E-4471-AA37-FCAF6276A729}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gum.RuntimeModule.Test", "External\Gum\Src\Test\Gum.RuntimeModule.Test\Gum.RuntimeModule.Test.csproj", "{0ADBCE42-A69E-4471-AA37-FCAF6276A729}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
